@@ -6,7 +6,7 @@ if [ -d /Volumes/LunaDrive/DeveloperCache ] && [ -w /Volumes/LunaDrive/Developer
 else
   derived="$PWD/DerivedData"
 fi
-app="$derived/CloudKitDevelopment/macOS/Build/Products/Debug/ioant-Clip-macOS.app"
+app="$derived/CloudKitCaptureExtensions/macOS/Build/Products/Debug/ioant-Clip-macOS.app"
 test -d "$app"
 echo "HEAD $(git rev-parse HEAD)"
 /usr/bin/python3 scripts/install_native_host.py --app "$app"

@@ -6,6 +6,7 @@ let args = CommandLine.arguments
 let path = URL(fileURLWithPath: args[1]).resolvingSymlinksInPath()
 let derived = URL(fileURLWithPath: args[2]).resolvingSymlinksInPath()
 let firstActivation = args.count > 3 && args[3] == "first-cloud-development"
+let extensionActivation = args.count > 3 && args[3] == "first-capture-extensions"
 guard let target = Bundle(url: path), target.bundleIdentifier == id,
       target.object(forInfoDictionaryKey: "ClipCloudKitDevelopment") as? String == "YES",
       target.object(forInfoDictionaryKey: "ClipCloudKitUIReview") as? String == "NO",
@@ -22,6 +23,7 @@ func readLibrary() throws -> ([String: Any], Data) {
 func ids(_ json: [String: Any]) -> Set<String> {
     Set((json["notes"] as? [[String: Any]] ?? []).compactMap { $0["id"] as? String })
 }
+let oldDaily = derived.appending(path: "CloudKitDevelopment/macOS/Build/Products/Debug/ioant-Clip-macOS.app").resolvingSymlinksInPath()
 let oldUnsigned = derived.appending(path: "macOS/Build/Products/Debug/ioant-Clip-macOS.app").resolvingSymlinksInPath()
 let oldReview = derived.appending(path: "CloudKitUIReview/macOS/Build/Products/Debug/ioant-Clip-macOS.app").resolvingSymlinksInPath()
 let legacyID = "com.ioant.note.macos"
@@ -30,8 +32,13 @@ guard NSRunningApplication.runningApplications(withBundleIdentifier: legacyID).i
 }
 let old = NSRunningApplication.runningApplications(withBundleIdentifier: id).filter { !$0.isTerminated }
 for proc in old {
-    guard let url = proc.bundleURL?.resolvingSymlinksInPath(), [path.path, oldUnsigned.path, oldReview.path].contains(url.path) else {
+    guard let url = proc.bundleURL?.resolvingSymlinksInPath(), [path.path, oldDaily.path, oldUnsigned.path, oldReview.path].contains(url.path) else {
         fatalError("Unknown Clip installation running; no process terminated")
+    }
+    if url.path == oldDaily.path {
+        guard Bundle(url: url)?.object(forInfoDictionaryKey: "ClipCloudKitDevelopment") as? String == "YES" else {
+            fatalError("Unrecognized prior daily build")
+        }
     }
     if url.path == oldReview.path {
         guard Bundle(url: url)?.object(forInfoDictionaryKey: "ClipCloudKitUIReview") as? String == "YES" else {
@@ -56,15 +63,17 @@ guard old.allSatisfy(\.isTerminated) else { fatalError("Clip still running; no f
 let (before, beforeData) = try readLibrary()
 let existingIDs = ids(before)
 guard existingIDs.count == (before["notes"] as? [[String: Any]])?.count else { fatalError("Invalid note identities") }
-if firstActivation {
-    guard before["syncEnrollment"] == nil || before["syncEnrollment"] is NSNull else { fatalError("Unexpected enrollment") }
+if firstActivation || extensionActivation {
+    if firstActivation {
+        guard before["syncEnrollment"] == nil || before["syncEnrollment"] is NSNull else { fatalError("Unexpected enrollment") }
+    }
     let backupRoot = support.appending(path: "ioant-Note/DevelopmentBackups")
     try fm.createDirectory(at: backupRoot, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
     let backup = backupRoot.appending(path: UUID().uuidString + ".json")
     try beforeData.write(to: backup, options: .withoutOverwriting)
     try fm.setAttributes([.posixPermissions: 0o600], ofItemAtPath: backup.path)
     guard try Data(contentsOf: backup) == beforeData else { fatalError("Backup verification failed") }
-    print("Verified local backup; existing notes: \(existingIDs.count); enrollment absent")
+    print("Verified local backup; existing notes: \(existingIDs.count)")
     print("Backup path: \(backup.path)")
 }
 let process = Process()
@@ -81,6 +90,11 @@ while Date() < launchDeadline {
         guard existingIDs.isSubset(of: ids(after)) else { fatalError("Daily notes missing after launch") }
         if firstActivation {
             guard after["syncEnrollment"] == nil || after["syncEnrollment"] is NSNull else { fatalError("Unexpected cloud enrollment") }
+        }
+        if extensionActivation {
+            let prior = before["syncEnrollment"] as? NSDictionary
+            let current = after["syncEnrollment"] as? NSDictionary
+            guard prior == current else { fatalError("Existing cloud enrollment changed") }
         }
         print("PASS: signed development client PID \(app.processIdentifier); previous \(existingIDs.count) note IDs retained; library bytes unchanged: \(afterData == beforeData)")
         print("Cloud enrollment present: \(after["syncEnrollment"] != nil && !(after["syncEnrollment"] is NSNull))")

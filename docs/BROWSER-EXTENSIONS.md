@@ -15,3 +15,6 @@ App Group group.com.ioant.clip; target identifiers com.ioant.clip.macos.safari, 
 2. Shared inbox writer and main app integration, Share Extension with explicit save, app group verification.
 3. Safari adapter/targets sharing existing capture engine, capability detection for screenshot and clipboard APIs.
 4. Real Chrome/Safari/share capture acceptance and signed daily app builds.
+
+## Signed daily extension build
+After both macOS and iOS signed extension builds passed, the daily Mac launcher targets CloudKitCaptureExtensions. The previous CloudKitDevelopment daily bundle is an explicitly recognized predecessor, with a verified backup and unchanged enrollment required at activation. `scripts/cloudkit/build_signed_development_mac.sh` now builds the extension-enabled artifact; unsigned regression remains separate. Simulator support uses its own extension artifact and verifies embedded entitlements before installation. No legacy user data is moved or deleted.

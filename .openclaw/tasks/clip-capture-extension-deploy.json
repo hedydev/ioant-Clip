@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "title": "Validate shared capture path and deploy verified signed Mac extension client; build iOS simulator",
+  "steps": [
+    {
+      "name": "full_regression",
+      "runtime": "bash",
+      "script": "scripts/validate.sh",
+      "timeoutSeconds": 300
+    },
+    {
+      "name": "activate_mac",
+      "runtime": "bash",
+      "script": "scripts/cloudkit/activate_capture_extensions_mac.sh",
+      "timeoutSeconds": 120
+    },
+    {
+      "name": "build_simulator_extensions",
+      "runtime": "bash",
+      "script": "scripts/cloudkit/build_capture_extensions_simulator.sh",
+      "timeoutSeconds": 300
+    }
+  ],
+  "artifacts": []
+}

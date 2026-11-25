@@ -3,6 +3,23 @@ import XCTest
 
 final class CaptureInboxTests: XCTestCase {
     let fixture = #"{"version":1,"title":"Browser capture","sourceURL":"https://example.com/","mode":"page","html":"<h1>Hello</h1>","text":"Hello"}"#
+    func testSharedEnqueueAndDrain() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let inbox = root.appendingPathComponent("CaptureInbox")
+        let id = try SharedCaptureInbox.enqueue(Data(fixture.utf8), directory: inbox)
+        let files = try FileManager.default.contentsOfDirectory(atPath: inbox.path)
+        XCTAssertEqual(files, [id.uuidString + ".json"])
+        let path = inbox.appendingPathComponent(files[0])
+        XCTAssertEqual(try FileManager.default.attributesOfItem(atPath: path.path)[.posixPermissions] as? NSNumber, 0o600)
+        XCTAssertThrowsError(try SharedCaptureInbox.enqueue(Data("invalid".utf8), directory: inbox))
+        XCTAssertEqual(try FileManager.default.contentsOfDirectory(atPath: inbox.path), files)
+        var library = NoteLibrary()
+        let url = root.appendingPathComponent("notes.json")
+        XCTAssertEqual(try CaptureInbox.drain(directory: inbox, libraryURL: url, library: &library).imported, [id])
+        XCTAssertEqual(try NoteLibrary.load(from: url), library)
+        XCTAssertEqual(library.notes.count, 1)
+    }
     func testDurableImportAndReplay() throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }
