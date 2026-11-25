@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "title": "Initial Swift core and native Apple platform build verification",
+  "steps": [
+    {
+      "name": "verify_core_and_apple_builds",
+      "runtime": "bash",
+      "script": "scripts/validate.sh",
+      "timeoutSeconds": 900
+    }
+  ],
+  "artifacts": []
+}

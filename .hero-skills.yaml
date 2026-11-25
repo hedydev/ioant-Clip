@@ -1,0 +1,49 @@
+version: 1
+source:
+  repo: hedydev/hero-skills
+  ref: 62f7b2ac062e62de41f8fe8565583d761aeabb0f
+  local_path: ../hero-skills
+required:
+  skills:
+    - execute-staged-work
+    - track-ai-development-tasks
+    - work-evidence-first
+    - git-safe-delivery
+    - build-diagnostic-sessions
+    - structure-modular-code
+    - design-internationalization
+    - design-theme-system
+  standards:
+    - development-governance
+    - mcp-local-execution
+    - ai-development-task-tracking
+    - evidence-based-fixes
+    - git-delivery
+    - diagnostic-sessions
+    - code-modularity
+    - internationalization
+    - theme-design
+    - apple-release-build-contract
+project:
+  ai_entry: AGENTS.md
+  targets:
+    - id: note-core
+      type: shared-library
+      source_roots: [Sources/NoteCore]
+    - id: macos-client
+      type: macos-client
+      source_roots: [App]
+    - id: ios-client
+      type: ios-app
+      source_roots: [App]
+    - id: browser-extension
+      type: browser-extension
+      source_roots: [BrowserExtension]
+  collaboration:
+    mode: single-writer
+  validation:
+    - bash scripts/validate.sh
+contribution:
+  target_repo: hedydev/hero-skills
+  require_user_approval_before_commit: true
+  require_user_approval_before_push: true
