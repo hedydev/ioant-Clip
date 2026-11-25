@@ -6,3 +6,6 @@
 4. Design optional synchronization only after the local data format and rendering are stable.
 
 No background clipboard monitoring, cloud backend or AI processing in the initial release.
+
+## Current priority (2026-11-26)
+Validate actual Safari and iOS share capture, maintain iCloud-only sync stability, improve UI/localization, prepare physical-device and release acceptance. Google Drive transport remains in the repository but OAuth, enrollment and all further Google Drive development are paused at the owner's request. Do not change an existing cloud enrollment.

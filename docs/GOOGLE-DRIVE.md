@@ -17,3 +17,6 @@ https://developers.google.com/workspace/drive/api/guides/appdata
 https://developers.google.com/workspace/drive/api/guides/manage-uploads
 https://developers.google.com/identity/protocols/oauth2/native-app
 https://developers.google.com/identity/sign-in/ios/start-integrating
+
+## Owner decision (2026-11-26)
+Google Drive integration is paused. Keep the existing tested transport; do not implement OAuth, Keychain credentials, provider enrollment, or enable it in the daily UI until explicitly resumed. Current cloud provider remains iCloud.

@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "title": "Read actual extension registration, app-group receipts, and daily synchronization parity",
+  "steps": [
+    {
+      "name": "registration_and_sync",
+      "runtime": "bash",
+      "script": "scripts/cloudkit/probe_extension_registration.sh",
+      "timeoutSeconds": 90
+    },
+    {
+      "name": "live_settings",
+      "runtime": "bash",
+      "script": "scripts/cloudkit/inspect_settings_accessibility.sh",
+      "timeoutSeconds": 60
+    }
+  ],
+  "artifacts": []
+}

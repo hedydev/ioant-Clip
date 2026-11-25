@@ -87,3 +87,9 @@ guard found.count >= 5 && settingsKeys.allSatisfy({ found.contains($0) }) else {
     exit(2)
 }
 print("PASS: actual running settings sheet contains expected localized section and control labels")
+
+let observed = labels(sheetNodes())
+let stateKeys = ["settings.extensions.checking","settings.extensions.notEmbedded","settings.extensions.manual","settings.extensions.enabled","settings.extensions.disabled","settings.extensions.unknown","settings.extensions.registered","settings.extensions.notRegistered","settings.extensions.noContact","settings.extensions.noActivity","settings.extensions.lastContact","settings.extensions.lastQueued"]
+for key in stateKeys where observed.contains(text(key,code)) {
+    print("Live settings extension label:",key)
+}
