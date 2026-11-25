@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "title": "Read-only CloudKit signing prerequisite inventory",
+  "steps": [
+    {
+      "name": "local_profile_inventory",
+      "runtime": "bash",
+      "script": "scripts/cloudkit/preflight.sh",
+      "timeoutSeconds": 180
+    }
+  ],
+  "artifacts": []
+}
