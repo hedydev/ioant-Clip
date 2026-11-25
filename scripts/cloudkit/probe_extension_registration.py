@@ -24,6 +24,12 @@ for ext in sorted((installed/"PlugIns").glob("*.appex")):
     print("Installed iOS extension:",plistlib.loads((ext/"Info.plist").read_bytes())["CFBundleIdentifier"],flush=True)
 data=pathlib.Path(sim("get_app_container",udid,"com.ioant.clip.ios","data"))
 def group_snapshot(directory):
+    try:
+        return read_group_snapshot(directory)
+    except PermissionError:
+        return {"available": False, "reason": "permission_denied"}
+
+def read_group_snapshot(directory):
     if not directory.is_dir(): return {"exists":False}
     results={"exists":True}
     for source in ("safari","share"):
