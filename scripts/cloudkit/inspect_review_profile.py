@@ -26,7 +26,7 @@ print("Expected team entitlement:", ent.get("com.apple.developer.team-identifier
 print("Not expired:", bool(expiry and expiry > datetime.datetime.now(datetime.timezone.utc)))
 print("Platform:", sorted(values(profile.get("Platform"))))
 print("Profile entitlement names:", sorted(ent))
-print("CloudKit service:", "CloudKit" in values(ent.get("com.apple.developer.icloud-services")))
+print("CloudKit profile service allowlist:", sorted(values(ent.get("com.apple.developer.icloud-services"))))
 print("Container listed:", container in values(ent.get("com.apple.developer.icloud-container-identifiers")))
 print("Development container listed:", container in values(ent.get("com.apple.developer.icloud-container-development-container-identifiers")))
 print("Container environment:", sorted(values(ent.get("com.apple.developer.icloud-container-environment"))))
