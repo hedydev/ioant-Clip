@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "title": "Open real isolated iPhone UI over completed synthetic smoke only",
+  "steps": [
+    {
+      "name": "launch_ui_review",
+      "runtime": "bash",
+      "script": "scripts/cloudkit/launch_ui_review_simulator.sh",
+      "timeoutSeconds": 120
+    }
+  ],
+  "artifacts": []
+}
