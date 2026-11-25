@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "title": "Read only Clip native messaging host registration",
+  "steps": [
+    {
+      "name": "inspect_host",
+      "runtime": "bash",
+      "script": "scripts/cloudkit/inspect_development_host.sh",
+      "timeoutSeconds": 60
+    }
+  ],
+  "artifacts": []
+}
