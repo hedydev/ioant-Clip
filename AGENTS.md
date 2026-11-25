@@ -7,3 +7,6 @@ Read .hero-skills.yaml and the pinned Hero staged execution and development gove
 Build: swift test; node --check BrowserExtension/Popup/popup.js; xcodegen generate; xcodebuild for macOS and generic iOS Simulator (no boot). See scripts/validate.sh. App release and physical-device installation are separate acceptance steps.
 
 Current priority: modularization, internationalization (en, zh-Hans, zh-Hant, ja, ko), theme, native UI refinement, then cloud sync. Keep original SwiftUI navigation, sheets, gestures and native motion. Preserve existing bundle IDs, data paths, serialized schema and browser host identity. See docs/ROADMAP.md.
+
+## Window and modal UI
+Use `App/DesignSystem/Presentation/ClipSheet.swift` and `ModalScrollPage` for all feature sheets. Shared `PresentationMetrics` owns window/sheet sizes and margins; no per-feature arbitrary fixed modal sizes or macOS two-column Form for long content. Keep system sheet/navigation transitions and actions; let page content scroll and wrap. See docs/ARCHITECTURE.md.

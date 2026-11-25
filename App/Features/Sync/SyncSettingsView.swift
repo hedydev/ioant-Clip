@@ -5,23 +5,23 @@ struct SyncSettingsView: View {
     @State private var pending: SyncRevision?
     private var journal: SyncJournal? { store.library.syncJournal }
     var body: some View {
-        List {
-                Section("sync.storage") {
+        ModalScrollPage {
+                ModalSection(title: "sync.storage") {
                     Label("sync.local", systemImage: "checkmark.circle.fill")
-                    Text("sync.local.description").font(.caption).foregroundStyle(.secondary)
+                    ModalDescription(key: "sync.local.description")
                 }
-                Section("sync.providers") {
+                ModalSection(title: "sync.providers") {
                     provider("iCloud", icon: "icloud", status: "sync.cloudkit.required")
                     provider("Google Drive", icon: "externaldrive", status: "sync.google.required")
                 }
-                Section("sync.history") {
+                ModalSection(title: "sync.history") {
                     LabeledContent { Text(journal?.revisions.count ?? 0, format: .number) } label: { Text("sync.revisions") }
                     LabeledContent { Text(journal?.conflictKeys.count ?? 0, format: .number) } label: { Text("sync.conflicts") }
-                    Text("sync.history.description").font(.caption).foregroundStyle(.secondary)
+                    ModalDescription(key: "sync.history.description")
                 }
                 if let journal {
                     ForEach(Array(journal.conflictKeys).sorted(by: { String(describing: $0) < String(describing: $1) }), id: \.self) { key in
-                        Section {
+                        ModalSection(title: "sync.conflict.versions") {
                             ForEach(journal.heads(for: key), id: \.id) { revision in
                                 VStack(alignment: .leading, spacing: 6) {
                                     switch revision.value {
@@ -37,7 +37,7 @@ struct SyncSettingsView: View {
                                     Button("sync.conflict.keep") { pending = revision }.buttonStyle(.bordered)
                                 }.padding(.vertical, 4)
                             }
-                        } header: { Text("sync.conflict.versions") }
+                        }
                     }
                 }
             }
@@ -51,14 +51,25 @@ struct SyncSettingsView: View {
             }
     }
     private func provider(_ name: String, icon: String, status: LocalizedStringKey) -> some View {
-        HStack {
+        ViewThatFits(in: .horizontal) {
+            HStack {
+                providerDetails(name, icon: icon, status: status)
+                Spacer(minLength: LayoutMetrics.small)
+                Text("sync.disconnected").font(.caption).foregroundStyle(.secondary)
+            }
+            VStack(alignment: .leading, spacing: LayoutMetrics.small) {
+                providerDetails(name, icon: icon, status: status)
+                Text("sync.disconnected").font(.caption).foregroundStyle(.secondary)
+            }
+        }.padding(.vertical, 4)
+    }
+    private func providerDetails(_ name: String, icon: String, status: LocalizedStringKey) -> some View {
+        HStack(alignment: .top) {
             Image(systemName: icon).font(.title2).foregroundStyle(.secondary)
             VStack(alignment: .leading, spacing: 4) {
                 Text(name).font(.headline)
-                Text(status).font(.caption).foregroundStyle(.secondary)
+                Text(status).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             }
-            Spacer()
-            Text("sync.disconnected").font(.caption).foregroundStyle(.secondary)
-        }.padding(.vertical, 4)
+        }
     }
 }

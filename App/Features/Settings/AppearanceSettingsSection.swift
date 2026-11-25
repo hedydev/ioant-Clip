@@ -3,11 +3,17 @@ import SwiftUI
 struct AppearanceSettingsSection: View {
     @EnvironmentObject private var theme: ThemePreferences
     var body: some View {
-        Section {
-            Picker("settings.appearance.mode", selection: $theme.appearance) {
+        ModalSection(title: "settings.appearance") {
+            VStack(alignment: .leading, spacing: LayoutMetrics.small) {
+                Text("settings.appearance.mode").font(.subheadline.weight(.medium))
+                Picker("settings.appearance.mode", selection: $theme.appearance) {
                 ForEach(AppAppearance.allCases) { appearance in
                     Label(appearance.label, systemImage: appearance.symbol).tag(appearance)
                 }
+            }
+                .labelsHidden()
+                .accessibilityLabel(Text("settings.appearance.mode"))
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
             VStack(alignment: .leading, spacing: LayoutMetrics.medium) {
                 Text("settings.appearance.accent").font(.subheadline.weight(.medium))
@@ -24,12 +30,8 @@ struct AppearanceSettingsSection: View {
                 ThemePreview()
             }
             .padding(.vertical, LayoutMetrics.small)
-            Text("settings.appearance.description")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            ModalDescription(key: "settings.appearance.description")
             Button("settings.appearance.reset") { theme.reset() }
-        } header: {
-            Text("settings.appearance")
         }
     }
 }

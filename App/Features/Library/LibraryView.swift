@@ -12,6 +12,7 @@ struct LibraryView: View {
     @AppStorage("ioant.clip.library.search.v1") private var query = ""
     @State private var importing = false
     @State private var appSettings = false
+    @State private var sheetParentSize = PresentationMetrics.mainDefault
     @State private var editing: Note?
     @State private var deleting = Set<UUID>()
     @State private var confirmDelete = false
@@ -32,6 +33,12 @@ struct LibraryView: View {
         } detail: {
             ClipDetailView(current: current, tags: tags, plainPreview: $plainPreview, copiedID: $copiedID, editing: $editing, deleting: $deleting, confirmDelete: $confirmDelete, importing: $importing, paste: paste)
         }
+        .background { GeometryReader { geometry in
+            Color.clear.preference(key: SheetParentSizeKey.self, value: geometry.size)
+        } }
+        .onPreferenceChange(SheetParentSizeKey.self) { size in
+            if size.width > 0 && size.height > 0 { sheetParentSize = size }
+        }
         .onChange(of: selected) { _, _ in copiedID = nil }
         .onChange(of: store.lastIncoming) { _, id in
             if let id, !selecting { selected = id; compactColumn = .detail; tagFilter = .all; query = "" }
@@ -39,9 +46,13 @@ struct LibraryView: View {
         .fileImporter(isPresented: $importing, allowedContentTypes: [.json]) { result in
             switch result { case .success(let url): if let id = store.importFile(url) { selected = id; compactColumn = .detail; tagFilter = .all; query = "" }; case .failure(let error): store.error = LibraryIssue(error) }
         }
-        .sheet(isPresented: $appSettings) { AppSettingsView() }
+        .sheet(isPresented: $appSettings) {
+            ClipSheet(title: "settings.title", size: .large, parentSize: sheetParentSize) {
+                AppSettingsView()
+            }
+        }
         .sheet(item: $editing) { note in
-            EditClipView(note: note, library: store.library) { title, tags, colors in
+            EditClipView(note: note, library: store.library, parentSize: sheetParentSize) { title, tags, colors in
                 let saved: Bool? = store.change { library in
                     library.update(note.id, title: title, tags: tags)
                     for (tag, color) in colors { library.setColor(color, for: tag) }

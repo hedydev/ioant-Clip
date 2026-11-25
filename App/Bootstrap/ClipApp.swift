@@ -10,6 +10,8 @@ import SwiftUI
                 AppLocaleScope(preferences: language) { LibraryView().environmentObject(store) }
             }
             #if os(macOS)
+                .frame(minWidth: PresentationMetrics.mainMinimum.width, minHeight: PresentationMetrics.mainMinimum.height)
+                .background(MainWindowSizing())
                 .task {
                     while !Task.isCancelled {
                         store.receivePendingCaptures()
@@ -19,6 +21,10 @@ import SwiftUI
                 }
             #endif
         }
+        #if os(macOS)
+        .defaultSize(width: PresentationMetrics.mainDefault.width, height: PresentationMetrics.mainDefault.height)
+        .windowResizability(.contentMinSize)
+        #endif
     }
 }
 
