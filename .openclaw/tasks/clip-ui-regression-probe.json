@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "title": "Repair render readiness test and inspect owned simulator automation",
+  "steps": [
+    {
+      "name": "probe_ui",
+      "runtime": "bash",
+      "script": "scripts/cloudkit/probe_ui_automation.sh",
+      "timeoutSeconds": 60
+    },
+    {
+      "name": "full_regression",
+      "runtime": "bash",
+      "script": "scripts/validate.sh",
+      "timeoutSeconds": 300
+    }
+  ],
+  "artifacts": []
+}
