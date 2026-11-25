@@ -43,6 +43,6 @@ for platform, suffix in (("macOS","macos"), ("iOS","ios")):
     if platform=="macOS": settings["ENABLE_HARDENED_RUNTIME"]="YES"
     else: settings.update({"TARGETED_DEVICE_FAMILY":"1,2","INFOPLIST_KEY_UILaunchScreen_Generation":"YES","INFOPLIST_KEY_UIApplicationSceneManifest_Generation":"YES"})
     targets[target]={"type":"application","platform":platform,"sources":["App","Sources/ClipCore"],"dependencies":deps,"settings":{"base":settings}}
-spec={"name":"ioant-Clip","options":{"bundleIdPrefix":"com.ioant","deploymentTarget":{"macOS":"14.0","iOS":"17.0"}},"settings":{"base":{"SWIFT_VERSION":"5.0","GENERATE_INFOPLIST_FILE":"YES","MARKETING_VERSION":"0.1.0","CURRENT_PROJECT_VERSION":"1","INFOPLIST_KEY_CFBundleDisplayName":"ioant-Clip","CODE_SIGN_STYLE":"Automatic","DEVELOPMENT_TEAM":"64RS366WKG"}},"targets":targets}
+spec={"name":"ioant-Clip","options":{"bundleIdPrefix":"com.ioant","deploymentTarget":{"macOS":"14.0","iOS":"17.0"}},"settings":{"base":{"SWIFT_VERSION":"5.0","GENERATE_INFOPLIST_FILE":"YES","MARKETING_VERSION":"0.1.0","CURRENT_PROJECT_VERSION":"1","INFOPLIST_KEY_CFBundleDisplayName":"ioant-Clip","CODE_SIGN_STYLE":"Automatic","REGISTER_APP_GROUPS":"YES","DEVELOPMENT_TEAM":"64RS366WKG"}},"targets":targets}
 # JSON is valid YAML; place spec at root so paths are relative to the project.
 (root/"GeneratedExtensions"/"project.yml").write_text(json.dumps(spec,indent=2)+"\n")

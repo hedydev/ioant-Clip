@@ -24,3 +24,5 @@ Safari ping records device-local activity without reading the page or creating a
 
 ## Inbox failure handling
 Each capture inbox maintains independent retry and health state. Background errors surface as a non-modal status and retry at 15-second intervals rather than interrupting the user every second. Failed payloads are retained; only successfully saved captures are removed. The macOS signed entitlement must be authorized by its embedded provisioning profile for protected group access; verify both main and extension profiles. An existing development profile without group authorization may run the UI hotfix but is explicitly not considered full capture authorization.
+
+Apple's provisioned `group.` entitlement requires `REGISTER_APP_GROUPS=YES` with automatic signing to refresh older macOS provisioning profiles. The generated extension project now explicitly sets this for its own targets. Verify embedded profile authorization separately from the signed entitlement; never revoke or delete unrelated profiles. See https://developer.apple.com/documentation/xcode/accessing-app-group-containers.

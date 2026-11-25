@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "title": "Refresh project-scoped App Group provisioning and restart verified Mac daily client",
+  "steps": [
+    {
+      "name": "build_with_registered_groups",
+      "runtime": "bash",
+      "script": "scripts/cloudkit/build_capture_extensions_mac.sh",
+      "timeoutSeconds": 300
+    },
+    {
+      "name": "restart_verified_client",
+      "runtime": "bash",
+      "script": "scripts/cloudkit/restart_blocked_clip.sh",
+      "timeoutSeconds": 120
+    }
+  ],
+  "artifacts": []
+}
