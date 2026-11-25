@@ -55,7 +55,7 @@ for platform in macOS iOS; do
     iOS) dest="generic/platform=iOS Simulator";;
   esac
   echo "BEGIN BUILD $platform"
-  xcodebuild -project ioant-Clip.xcodeproj -scheme "ioant-Note-$platform" -destination "$dest" -derivedDataPath "$derived/$platform" CODE_SIGNING_ALLOWED=NO build > "$derived/$platform.log" 2>&1
+  xcodebuild -project ioant-Clip.xcodeproj -scheme "ioant-Clip-$platform" -destination "$dest" -derivedDataPath "$derived/$platform" CODE_SIGNING_ALLOWED=NO build > "$derived/$platform.log" 2>&1
   rc=$?
   grep -E 'error:|warning:|BUILD (SUCCEEDED|FAILED)' "$derived/$platform.log" | tail -n 35 || true
   echo "END BUILD $platform exit=$rc"

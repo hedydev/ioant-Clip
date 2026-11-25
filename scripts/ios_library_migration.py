@@ -48,7 +48,9 @@ def migrate_simulator(udid, sim):
     # Verify the existing old bundle via the device's installed app inventory,
     # not by guessing its container UUID.
     apps = sim("listapps", udid)
-    installed = plistlib.loads(apps.encode())
+    converted = subprocess.run(["/usr/bin/plutil", "-convert", "xml1", "-o", "-", "--", "-"],
+                               input=apps.encode(), capture_output=True, check=True, timeout=10)
+    installed = plistlib.loads(converted.stdout)
     if LEGACY_ID not in installed:
         print("Migration: no legacy app installed", flush=True)
         return
