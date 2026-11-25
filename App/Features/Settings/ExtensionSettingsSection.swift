@@ -7,7 +7,7 @@ import AppKit
 struct ExtensionSettingsSection: View {
     private enum SafariStatus {
         case checking, notEmbedded, unavailable, enabled, disabled, unknown
-        var label: LocalizedStringKey {
+        var label: String {
             switch self {
             case .checking: "settings.extensions.checking"
             case .notEmbedded: "settings.extensions.notEmbedded"
@@ -19,6 +19,7 @@ struct ExtensionSettingsSection: View {
         }
     }
     @Environment(\.scenePhase) private var phase
+    @EnvironmentObject private var language: LanguagePreferences
     @State private var safari: SafariStatus = .checking
     @State private var checking = false
     @State private var safariIdentifier: String?
@@ -36,17 +37,17 @@ struct ExtensionSettingsSection: View {
             if let date = chrome.lastContact {
                 LabeledContent {
                     Text(date, format: .dateTime.month().day().hour().minute())
-                } label: { Text("settings.extensions.lastContact") }
+                } label: { Text(verbatim: language.localized("settings.extensions.lastContact")) }
                 .font(.caption)
             } else {
-                Text("settings.extensions.noContact").font(.caption).foregroundStyle(.secondary)
+                Text(verbatim: language.localized("settings.extensions.noContact")).font(.caption).foregroundStyle(.secondary)
             }
-            Button("settings.extensions.openChrome") {
+            Button {
                 if let chromeURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.google.Chrome"),
                    let target = URL(string: "chrome://extensions/") {
                     NSWorkspace.shared.open([target], withApplicationAt: chromeURL, configuration: NSWorkspace.OpenConfiguration(), completionHandler: nil)
                 }
-            }.buttonStyle(.bordered)
+            } label: { Text(verbatim: language.localized("settings.extensions.openChrome")) }.buttonStyle(.bordered)
             #else
             details("Chrome", icon: "globe", status: shareEmbedded ? "settings.extensions.shareAvailable" : "settings.extensions.notEmbedded",
                     description: "settings.extensions.mobileChrome.description")
@@ -60,15 +61,15 @@ struct ExtensionSettingsSection: View {
                     description: "settings.extensions.safari.description")
             #if os(macOS)
             if let safariIdentifier {
-                Button("settings.extensions.openSafari") {
+                Button {
                     SFSafariApplication.showPreferencesForExtension(withIdentifier: safariIdentifier) { _ in }
-                }.buttonStyle(.bordered)
+                } label: { Text(verbatim: language.localized("settings.extensions.openSafari")) }.buttonStyle(.bordered)
             }
             #endif
             Button {
                 Task { await refresh() }
             } label: {
-                Label("settings.extensions.refresh", systemImage: "arrow.clockwise")
+                Label { Text(verbatim: language.localized("settings.extensions.refresh")) } icon: { Image(systemName: "arrow.clockwise") }
             }
             .disabled(checking)
             .buttonStyle(.bordered)
@@ -80,14 +81,14 @@ struct ExtensionSettingsSection: View {
         }
     }
 
-    private func details(_ name: LocalizedStringKey, icon: String, status: LocalizedStringKey, description: LocalizedStringKey) -> some View {
+    private func details(_ name: String, icon: String, status: String, description: String) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
-                Label(name, systemImage: icon).font(.headline)
+                Label { Text(verbatim: name == "Chrome" || name == "Safari" ? name : language.localized(name)) } icon: { Image(systemName: icon) }.font(.headline)
                 Spacer(minLength: LayoutMetrics.small)
-                Text(status).font(.caption).foregroundStyle(.secondary)
+                Text(verbatim: language.localized(status)).font(.caption).foregroundStyle(.secondary)
             }
-            Text(description).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            Text(verbatim: language.localized(description)).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
         }.padding(.vertical, 4)
     }
 
@@ -128,7 +129,7 @@ struct ExtensionSettingsSection: View {
 private struct ChromeExtensionEvidence {
     enum Registration {
         case registered, absent, unknown
-        var label: LocalizedStringKey {
+        var label: String {
             switch self {
             case .registered: "settings.extensions.registered"
             case .absent: "settings.extensions.notRegistered"

@@ -31,6 +31,11 @@ enum AppLanguage: String, CaseIterable, Identifiable {
     func resolvedLocale(system: Locale, preferredLanguages: [String]? = nil) -> Locale {
         Locale(identifier: CaptureLanguage.resolve(selection: selection.rawValue, preferred: preferredLanguages ?? [system.identifier]))
     }
+    /// Resolve app-owned strings explicitly for native controls that may
+    /// snapshot the system locale (sheets, menus, pickers and toolbars).
+    func localized(_ key: String, bundle: Bundle = .main) -> String {
+        CaptureLanguage.localized(key, language: CaptureLanguage.resolve(selection: selection.rawValue, preferred: Locale.preferredLanguages), bundle: bundle)
+    }
     func publishExtensionLanguage(_ language: String) {
         #if CLIP_CAPTURE_EXTENSIONS
         if let url = CaptureLanguage.groupFile { try? CaptureLanguage.write(language, to: url) }

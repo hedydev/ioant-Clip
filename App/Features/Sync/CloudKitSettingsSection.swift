@@ -44,7 +44,7 @@ struct CloudKitSettingsSection: View {
             case .syncing:
                 ProgressView("sync.running")
             case .failed(let key):
-                ModalDescription(key: LocalizedStringKey(key))
+                ModalDescription(key: key)
             case .idle: EmptyView()
             }
             if let date = controller.lastSuccess {

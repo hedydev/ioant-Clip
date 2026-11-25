@@ -5,10 +5,11 @@ import SwiftUI
 struct ClipSheet<Content: View>: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.locale) private var locale
-    let title: LocalizedStringKey
+    @EnvironmentObject private var language: LanguagePreferences
+    let title: String
     var size: PresentationMetrics.SheetSize = .regular
     let parentSize: CGSize
-    var confirmTitle: LocalizedStringKey = "common.done"
+    var confirmTitle: String = "common.done"
     var showsCancel = false
     var onConfirm: () -> Bool = { true }
     @ViewBuilder let content: () -> Content
@@ -16,18 +17,18 @@ struct ClipSheet<Content: View>: View {
     var body: some View {
         let navigation = NavigationStack {
             content()
-                .navigationTitle(title)
+                .navigationTitle(Text(verbatim: language.localized(title)))
                 #if os(iOS)
                 .navigationBarTitleDisplayMode(.inline)
                 #endif
                 .toolbar {
                     if showsCancel {
                         ToolbarItem(placement: .cancellationAction) {
-                            Button("common.cancel") { dismiss() }
+                            Button { dismiss() } label: { Text(verbatim: language.localized("common.cancel")) }
                         }
                     }
                     ToolbarItem(placement: .confirmationAction) {
-                        Button(confirmTitle) { if onConfirm() { dismiss() } }
+                        Button { if onConfirm() { dismiss() } } label: { Text(verbatim: language.localized(confirmTitle)) }
                     }
                 }
         }
@@ -64,11 +65,12 @@ struct ModalScrollPage<Content: View>: View {
 }
 
 struct ModalSection<Content: View>: View {
-    let title: LocalizedStringKey
+    @EnvironmentObject private var language: LanguagePreferences
+    let title: String
     @ViewBuilder let content: () -> Content
     var body: some View {
         VStack(alignment: .leading, spacing: LayoutMetrics.medium) {
-            Text(title).font(.headline).accessibilityAddTraits(.isHeader)
+            Text(verbatim: language.localized(title)).font(.headline).accessibilityAddTraits(.isHeader)
             content()
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -76,9 +78,10 @@ struct ModalSection<Content: View>: View {
 }
 
 struct ModalDescription: View {
-    let key: LocalizedStringKey
+    @EnvironmentObject private var language: LanguagePreferences
+    let key: String
     var body: some View {
-        Text(key)
+        Text(verbatim: language.localized(key))
             .font(.callout)
             .foregroundStyle(.secondary)
             .fixedSize(horizontal: false, vertical: true)

@@ -3,7 +3,8 @@ import SwiftUI
 enum AppAppearance: String, CaseIterable, Identifiable {
     case system, light, dark
     var id: String { rawValue }
-    var label: LocalizedStringKey {
+    var label: LocalizedStringKey { LocalizedStringKey(localizationKey) }
+    var localizationKey: String {
         switch self {
         case .system: "settings.appearance.system"
         case .light: "settings.appearance.light"
@@ -30,7 +31,8 @@ enum AppAppearance: String, CaseIterable, Identifiable {
 enum AppAccent: String, CaseIterable, Identifiable {
     case blue, purple, teal, green, orange, pink, graphite
     var id: String { rawValue }
-    var label: LocalizedStringKey {
+    var label: LocalizedStringKey { LocalizedStringKey(localizationKey) }
+    var localizationKey: String {
         switch self {
         case .blue: "color.blue"
         case .purple: "color.purple"

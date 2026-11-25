@@ -3,13 +3,14 @@ import SwiftUI
 /// Static sample of app chrome, never renders or modifies actual saved content.
 struct ThemePreview: View {
     @Environment(\.clipTheme) private var theme
+    @EnvironmentObject private var language: LanguagePreferences
     var body: some View {
         VStack(alignment: .leading, spacing: LayoutMetrics.small) {
-            Text("settings.appearance.preview")
+            Text(verbatim: language.localized("settings.appearance.preview"))
                 .font(.caption)
                 .foregroundStyle(theme.secondaryText)
             HStack {
-                Label("library.all", systemImage: "tray.full")
+                Label { Text(verbatim: language.localized("library.all")) } icon: { Image(systemName: "tray.full") }
                     .font(.subheadline.weight(.medium))
                     .foregroundStyle(theme.primaryText)
                 Spacer()
@@ -19,7 +20,7 @@ struct ThemePreview: View {
             .background(theme.selectedFilter, in: RoundedRectangle(cornerRadius: 8))
             HStack(spacing: LayoutMetrics.small) {
                 Image(systemName: "doc.on.clipboard").foregroundStyle(theme.action)
-                Text("library.paste").font(.subheadline)
+                Text(verbatim: language.localized("library.paste")).font(.subheadline)
                 Spacer(minLength: 0)
             }
             .padding(LayoutMetrics.small)

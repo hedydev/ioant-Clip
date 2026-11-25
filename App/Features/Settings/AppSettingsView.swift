@@ -5,17 +5,17 @@ struct AppSettingsView: View {
     var body: some View {
         ModalScrollPage {
             ModalSection(title: "settings.language") {
-                Picker("settings.language", selection: $preferences.selection) {
+                Picker(selection: $preferences.selection) {
                     ForEach(AppLanguage.allCases) { language in
                         if language == .system {
-                            Text("settings.language.system").tag(language)
+                            Text(verbatim: preferences.localized("settings.language.system")).tag(language)
                         } else {
                             Text(verbatim: language.autonym).tag(language)
                         }
                     }
-                }
+                } label: { Text(verbatim: preferences.localized("settings.language")) }
                 .labelsHidden()
-                .accessibilityLabel(Text("settings.language"))
+                .accessibilityLabel(Text(verbatim: preferences.localized("settings.language")))
                 .frame(maxWidth: .infinity, alignment: .leading)
                 ModalDescription(key: "settings.language.description")
             }
