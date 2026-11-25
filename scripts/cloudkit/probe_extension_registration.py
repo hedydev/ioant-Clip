@@ -5,7 +5,7 @@ root=pathlib.Path(__file__).resolve().parents[2]
 cache=pathlib.Path("/Volumes/LunaDrive/DeveloperCache")
 base=cache/"projects/ioant-clip/DerivedData" if cache.is_dir() and os.access(cache,os.W_OK) else root/"DerivedData"
 mac=base/"CloudKitCaptureExtensions/macOS/Build/Products/Debug/ioant-Clip-macOS.app"
-ios=base/"CloudKitCaptureExtensions/SimulatorCaptureEvidence/Build/Products/Debug-iphonesimulator/ioant-Clip-iOS.app"
+ios=base/"CloudKitCaptureExtensions/SimulatorPageLayout/Build/Products/Debug-iphonesimulator/ioant-Clip-iOS.app"
 udid="614FDA13-6198-452B-A6B2-94AA5591B30A"
 def run(*args):
     return subprocess.run(args,text=True,capture_output=True,timeout=30,check=True).stdout.strip()
