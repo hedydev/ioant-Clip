@@ -5,7 +5,13 @@ if (typeof document !== 'undefined') {
   const exportButton = document.querySelector('#export');
   let latestCapture = null;
   // Opening the popup verifies the native bridge without reading or sending a page.
-  try { Promise.resolve(chrome.runtime.sendNativeMessage('com.ioant.clip.capture', {version:1, action:'ping'})).catch(() => {}); } catch {}
+  let languageReady = Promise.resolve();
+  try {
+    languageReady = Promise.race([
+      Promise.resolve(chrome.runtime.sendNativeMessage('com.ioant.clip.capture', {version:1, action:'ping'})),
+      new Promise(resolve => setTimeout(() => resolve(null), 1500))
+    ]).then(reply => reply?.ok && reply.language ? applyAppLanguage(reply.language, document) : undefined).catch(() => {});
+  } catch {}
   function download(data) {
     const url = URL.createObjectURL(new Blob([JSON.stringify(data)],{type:'application/json'}));
     const a = document.createElement('a'); a.href = url;
@@ -13,7 +19,7 @@ if (typeof document !== 'undefined') {
     a.click(); setTimeout(() => URL.revokeObjectURL(url), 30000);
   }
   async function save(mode) {
-    buttons.forEach(b => b.disabled = true); status.textContent = message('status_capturing');
+    buttons.forEach(b => b.disabled = true); await languageReady; status.textContent = message('status_capturing');
     latestCapture = null;
     try {
       const [tab] = await chrome.tabs.query({active:true,currentWindow:true});

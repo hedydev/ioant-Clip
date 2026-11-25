@@ -52,6 +52,10 @@ class NativeHostTests(unittest.TestCase):
         self.assertEqual(result, {"ok": True, "state": "reachable", "version": 1})
         self.assertFalse(self.inbox.exists())
         self.assertEqual(set(json.loads(self.contact.read_text())), {"version", "unixSeconds"})
+        (self.root / "interface-language.json").write_text(json.dumps({"version":1,"language":"zh-Hans"}))
+        self.assertEqual(self.run_message(message, launch=fail_launch)["language"], "zh-Hans")
+        (self.root / "interface-language.json").write_text(json.dumps({"version":1,"language":"../../bad"}))
+        self.assertNotIn("language", self.run_message(message, launch=fail_launch))
         self.assertEqual(self.contact.stat().st_mode & 0o777, 0o600)
     def test_viewport_capture(self):
         self.capture["mode"] = "viewport"

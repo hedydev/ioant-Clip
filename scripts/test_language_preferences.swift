@@ -17,6 +17,17 @@ import SwiftUI
         }
         defaults.set("invalid",forKey:"ioant.clip.preferences.language.v1")
         precondition(LanguagePreferences(defaults:defaults).selection == .system)
-        print("Language preference persistence and fallback passed")
+        precondition(CaptureLanguage.resolve(selection: "system", preferred: ["zh-TW", "en-US"]) == "zh-Hant")
+        precondition(CaptureLanguage.resolve(selection: "system", preferred: ["zh-CN"]) == "zh-Hans")
+        precondition(CaptureLanguage.resolve(selection: "system", preferred: ["fr-FR", "ja-JP"]) == "ja")
+        precondition(CaptureLanguage.resolve(selection: "ko", preferred: ["en-US"]) == "ko")
+        let temporary = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: temporary) }
+        let receipt = temporary.appendingPathComponent("interface-language.json")
+        for code in CaptureLanguage.codes {
+            try! CaptureLanguage.write(code, to: receipt)
+            precondition(CaptureLanguage.read(from: receipt) == code)
+        }
+        print("Language preference persistence, canonical locale and extension language handoff passed")
     }
 }

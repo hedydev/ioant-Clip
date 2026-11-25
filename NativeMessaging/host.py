@@ -82,6 +82,18 @@ def record_contact(path):
         if os.path.exists(temporary):
             os.unlink(temporary)
 
+def read_language(path):
+    try:
+        if path is None or path.is_symlink() or not path.is_file() or path.stat().st_size > 256:
+            return None
+        value = json.loads(path.read_text())
+        language = value.get("language")
+        if value.get("version") == 1 and language in ("en", "zh-Hans", "zh-Hant", "ja", "ko"):
+            return language
+    except (OSError, ValueError, AttributeError, TypeError):
+        pass
+    return None
+
 def serve(input_stream, output_stream, origin, config, inbox, launch, contact_path=None):
     try:
         if origin not in config["allowed_origins"]:
@@ -89,7 +101,11 @@ def serve(input_stream, output_stream, origin, config, inbox, launch, contact_pa
         message = receive(input_stream)
         if message == {"version": 1, "action": "ping"}:
             record_contact(contact_path)
-            reply(output_stream, {"ok": True, "state": "reachable", "version": 1})
+            response = {"ok": True, "state": "reachable", "version": 1}
+            language = read_language(contact_path.with_name("interface-language.json") if contact_path else None)
+            if language:
+                response["language"] = language
+            reply(output_stream, response)
             return
         capture_id = queue(message, inbox)
         try:
@@ -102,9 +118,9 @@ def serve(input_stream, output_stream, origin, config, inbox, launch, contact_pa
             opened = False
         reply(output_stream, {"ok": True, "state": "queued", "id": capture_id, "opened": bool(opened)})
     except (ValueError, UnicodeError, KeyError, TypeError):
-        reply(output_stream, {"ok": False, "error": "Invalid or unauthorized capture request."})
+        reply(output_stream, {"ok": False, "error": "error_native"})
     except OSError:
-        reply(output_stream, {"ok": False, "error": "Unable to save to the local capture inbox."})
+        reply(output_stream, {"ok": False, "error": "error_native"})
 
 def launch(path):
     return subprocess.run(["/usr/bin/open", "-g", "-a", path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=8).returncode == 0
