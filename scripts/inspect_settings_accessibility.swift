@@ -88,7 +88,13 @@ guard found.count >= 5 && settingsKeys.allSatisfy({ found.contains($0) }) else {
 }
 print("PASS: actual running settings sheet contains expected localized section and control labels")
 
-let observed = labels(sheetNodes())
+var observed = labels(sheetNodes())
+// State query runs asynchronously; do not report its transient checking label as final.
+for _ in 0..<24 where observed.contains(text("settings.extensions.checking",code)) {
+    RunLoop.current.run(until: Date().addingTimeInterval(0.5))
+    observed = labels(sheetNodes())
+}
+print("Safari status settled:", !observed.contains(text("settings.extensions.checking",code)))
 let stateKeys = ["settings.extensions.checking","settings.extensions.notEmbedded","settings.extensions.manual","settings.extensions.enabled","settings.extensions.disabled","settings.extensions.unknown","settings.extensions.registered","settings.extensions.notRegistered","settings.extensions.noContact","settings.extensions.noActivity","settings.extensions.lastContact","settings.extensions.lastQueued"]
 for key in stateKeys where observed.contains(text(key,code)) {
     print("Live settings extension label:",key)
