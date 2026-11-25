@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "title": "Read-only diagnose generated extension project parse failure",
+  "steps": [
+    {
+      "name": "diagnose_project",
+      "runtime": "bash",
+      "script": "scripts/cloudkit/diagnose_capture_extension_project.sh",
+      "timeoutSeconds": 60
+    }
+  ],
+  "artifacts": []
+}
