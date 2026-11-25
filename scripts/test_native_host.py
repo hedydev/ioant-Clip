@@ -25,13 +25,14 @@ class NativeHostTests(unittest.TestCase):
         self.inbox = self.root / "inbox"
         self.origin = "chrome-extension://" + installer.extension_id() + "/"
         self.config = {"allowed_origins": [self.origin], "app_path": "/not/executed"}
+        self.contact = self.root / "last-contact.json"
         self.capture = {"version":1,"title":"测试","sourceURL":"https://example.com","mode":"page","html":"<b>样式</b>","text":"样式"}
     def run_message(self, value=None, origin=None, frame=None, launch=lambda path: True):
         if frame is None:
             body = json.dumps(value).encode()
             frame = struct.pack("=I", len(body)) + body
         result = io.BytesIO()
-        host.serve(io.BytesIO(frame), result, origin or self.origin, self.config, self.inbox, launch)
+        host.serve(io.BytesIO(frame), result, origin or self.origin, self.config, self.inbox, launch, self.contact)
         data = result.getvalue()
         self.assertEqual(struct.unpack("=I", data[:4])[0], len(data)-4)
         return json.loads(data[4:])
@@ -41,6 +42,17 @@ class NativeHostTests(unittest.TestCase):
         path = self.inbox / (result["id"] + ".json")
         self.assertEqual(json.loads(path.read_text()), self.capture)
         self.assertEqual(path.stat().st_mode & 0o777, 0o600)
+    def test_ping_is_authorized_and_does_not_capture_or_launch(self):
+        def fail_launch(path):
+            self.fail("ping launched application")
+        message = {"version":1,"action":"ping"}
+        self.assertFalse(self.run_message(message, origin="chrome-extension://unknown/")["ok"])
+        self.assertFalse(self.contact.exists())
+        result = self.run_message(message, launch=fail_launch)
+        self.assertEqual(result, {"ok": True, "state": "reachable", "version": 1})
+        self.assertFalse(self.inbox.exists())
+        self.assertEqual(set(json.loads(self.contact.read_text())), {"version", "unixSeconds"})
+        self.assertEqual(self.contact.stat().st_mode & 0o777, 0o600)
     def test_viewport_capture(self):
         self.capture["mode"] = "viewport"
         self.capture["html"] = '<img src="data:image/png;base64,AA==">'

@@ -21,6 +21,8 @@ struct AppSettingsView: View {
             }
             Divider()
             AppearanceSettingsSection()
+            Divider()
+            ExtensionSettingsSection()
         }
     }
 }

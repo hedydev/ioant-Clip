@@ -4,6 +4,8 @@ if (typeof document !== 'undefined') {
   const buttons = Array.from(document.querySelectorAll('button'));
   const exportButton = document.querySelector('#export');
   let latestCapture = null;
+  // Opening the popup verifies the native bridge without reading or sending a page.
+  try { Promise.resolve(chrome.runtime.sendNativeMessage('com.ioant.clip.capture', {version:1, action:'ping'})).catch(() => {}); } catch {}
   function download(data) {
     const url = URL.createObjectURL(new Blob([JSON.stringify(data)],{type:'application/json'}));
     const a = document.createElement('a'); a.href = url;

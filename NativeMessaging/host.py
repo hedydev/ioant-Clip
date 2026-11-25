@@ -8,6 +8,7 @@ import struct
 import subprocess
 import sys
 import tempfile
+import time
 import uuid
 
 MAX_CAPTURE = 32 * 1024 * 1024
@@ -68,11 +69,33 @@ def queue(message, inbox):
             os.unlink(temp)
     return capture_id
 
-def serve(input_stream, output_stream, origin, config, inbox, launch):
+def record_contact(path):
+    # Diagnostic evidence only; no capture data, URLs or account information.
+    if path is None:
+        return
+    fd, temporary = tempfile.mkstemp(prefix=".contact-", dir=path.parent)
+    try:
+        with os.fdopen(fd, "w") as stream:
+            json.dump({"version": 1, "unixSeconds": time.time()}, stream)
+        os.replace(temporary, path)
+    finally:
+        if os.path.exists(temporary):
+            os.unlink(temporary)
+
+def serve(input_stream, output_stream, origin, config, inbox, launch, contact_path=None):
     try:
         if origin not in config["allowed_origins"]:
             raise ValueError("Extension origin is not authorized.")
-        capture_id = queue(receive(input_stream), inbox)
+        message = receive(input_stream)
+        if message == {"version": 1, "action": "ping"}:
+            record_contact(contact_path)
+            reply(output_stream, {"ok": True, "state": "reachable", "version": 1})
+            return
+        capture_id = queue(message, inbox)
+        try:
+            record_contact(contact_path)
+        except OSError:
+            pass  # Diagnostics cannot invalidate a successfully queued capture.
         try:
             opened = launch(config["app_path"])
         except Exception:
@@ -91,7 +114,7 @@ def main():
     config = json.loads(pathlib.Path(__file__).with_name("config.json").read_text())
     # Single compatible daily inbox shared by the current and legacy host aliases.
     inbox = pathlib.Path.home() / "Library/Application Support/ioant-Note/CaptureInbox"
-    serve(sys.stdin.buffer, sys.stdout.buffer, sys.argv[1] if len(sys.argv) > 1 else "", config, inbox, launch)
+    serve(sys.stdin.buffer, sys.stdout.buffer, sys.argv[1] if len(sys.argv) > 1 else "", config, inbox, launch, pathlib.Path(__file__).with_name("last-contact.json"))
 
 if __name__ == "__main__":
     main()

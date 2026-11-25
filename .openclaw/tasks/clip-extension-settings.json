@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "title": "Validate extension settings and Chrome bridge diagnostics; update daily Mac client",
+  "steps": [
+    {
+      "name": "full_regression",
+      "runtime": "bash",
+      "script": "scripts/validate.sh",
+      "timeoutSeconds": 300
+    },
+    {
+      "name": "deploy_mac_development",
+      "runtime": "bash",
+      "script": "scripts/cloudkit/build_and_relaunch_development.sh",
+      "timeoutSeconds": 300
+    }
+  ],
+  "artifacts": []
+}
