@@ -7,7 +7,7 @@ export LOGNAME="$USER"
 echo "HEAD $(git rev-parse HEAD)"
 origin="$(git remote get-url origin)"
 case "$origin" in
-  git@github.com:hedydev/ioant-Note.git|ssh://git@github.com/hedydev/ioant-Note.git) echo "origin: expected SSH remote";;
+  git@github.com:hedydev/ioant-Clip.git|ssh://git@github.com/hedydev/ioant-Clip.git) echo "origin: expected SSH remote";;
   *) echo "origin: not expected SSH URL"; exit 1;;
 esac
 git diff --check || exit 1

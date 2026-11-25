@@ -29,7 +29,7 @@ project:
   targets:
     - id: note-core
       type: shared-library
-      source_roots: [Sources/NoteCore]
+      source_roots: [Sources/ClipCore]
     - id: macos-client
       type: macos-client
       source_roots: [App]
