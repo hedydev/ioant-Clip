@@ -12,6 +12,7 @@ struct LibraryView: View {
     @AppStorage("ioant.clip.library.search.v1") private var query = ""
     @State private var importing = false
     @State private var appSettings = false
+    @State private var storageSettings = false
     @State private var sheetParentSize = PresentationMetrics.mainDefault
     @State private var editing: Note?
     @State private var deleting = Set<UUID>()
@@ -29,7 +30,7 @@ struct LibraryView: View {
     var filtered: [Note] { store.library.filtered(query: query, filter: tagFilter) }
     var body: some View {
         NavigationSplitView(preferredCompactColumn: $compactColumn) {
-            LibrarySidebar(selected: $selected, compactColumn: $compactColumn, checked: $checked, selecting: $selecting, query: $query, importing: $importing, appSettings: $appSettings, deleting: $deleting, confirmDelete: $confirmDelete, tagFilter: filterBinding, paste: paste)
+            LibrarySidebar(selected: $selected, compactColumn: $compactColumn, checked: $checked, selecting: $selecting, query: $query, importing: $importing, appSettings: $appSettings, storageSettings: $storageSettings, deleting: $deleting, confirmDelete: $confirmDelete, tagFilter: filterBinding, paste: paste)
         } detail: {
             ClipDetailView(current: current, tags: tags, plainPreview: $plainPreview, copiedID: $copiedID, editing: $editing, deleting: $deleting, confirmDelete: $confirmDelete, importing: $importing, paste: paste)
         }
@@ -49,6 +50,11 @@ struct LibraryView: View {
         .sheet(isPresented: $appSettings) {
             ClipSheet(title: "settings.title", size: .large, parentSize: sheetParentSize) {
                 AppSettingsView()
+            }
+        }
+        .sheet(isPresented: $storageSettings) {
+            ClipSheet(title: "sync.title", size: .large, parentSize: sheetParentSize) {
+                SyncSettingsView()
             }
         }
         .sheet(item: $editing) { note in

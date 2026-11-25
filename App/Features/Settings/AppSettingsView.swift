@@ -21,12 +21,6 @@ struct AppSettingsView: View {
             }
             Divider()
             AppearanceSettingsSection()
-            Divider()
-            ModalSection(title: "sync.title") {
-                NavigationLink { SyncSettingsView() } label: {
-                    Label("sync.title", systemImage: "icloud")
-                }
-            }
         }
     }
 }

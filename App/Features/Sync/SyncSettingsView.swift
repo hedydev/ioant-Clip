@@ -7,12 +7,8 @@ struct SyncSettingsView: View {
     var body: some View {
         ModalScrollPage {
                 ModalSection(title: "sync.storage") {
-                    if store.library.syncEnrollment == nil {
-                        Label("sync.local", systemImage: "checkmark.circle.fill")
-                        ModalDescription(key: "sync.local.description")
-                    } else {
-                        ModalDescription(key: "sync.bound.description")
-                    }
+                    CloudStorageStatusRow()
+                    ModalDescription(key: store.library.syncEnrollment == nil ? "sync.local.description" : "sync.bound.description")
                 }
                 ModalSection(title: "sync.providers") {
                     CloudKitSettingsSection()

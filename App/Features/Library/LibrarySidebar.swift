@@ -13,6 +13,7 @@ struct LibrarySidebar: View {
     @Binding var query: String
     @Binding var importing: Bool
     @Binding var appSettings: Bool
+    @Binding var storageSettings: Bool
     @Binding var deleting: Set<UUID>
     @Binding var confirmDelete: Bool
     @Binding var tagFilter: TagFilter
@@ -54,6 +55,7 @@ struct LibrarySidebar: View {
         #endif
         .toolbar {
             ToolbarItemGroup {
+                CloudStorageToolbarButton { storageSettings = true }
                 Button { appSettings = true } label: { Label("settings.title", systemImage: "gearshape") }
                     .accessibilityIdentifier("clip-settings")
                 Button { selecting.toggle(); checked.removeAll() } label: {
