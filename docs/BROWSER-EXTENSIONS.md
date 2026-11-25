@@ -7,8 +7,8 @@
 - Safari macOS queries SFSafariExtensionManager.stateOfSafariExtension; iOS 26.2+ uses stateOfExtension; older iOS requires manual confirmation or a future shared receipt. Share sheet visibility isn't a global enabled flag. Chrome ping is diagnostic only, no page read, inbox write or app launch.
 - Native share and Safari extensions use an App Group durable inbox, never modify notes.json directly. Main app imports using existing CaptureInbox and then existing consent-bound cloud sync. Keep review lanes isolated. No automatic clipboard/background browser collection.
 
-## Proposed Apple configuration (not yet registered)
-App Group group.com.ioant.clip; target identifiers com.ioant.clip.macos.safari, com.ioant.clip.ios.safari, com.ioant.clip.ios.share. Confirm availability and team before registration. Attach group to both main App IDs and the new extension IDs. Preserve CloudKit entitlements on daily main targets; extensions use only required sandbox/group capabilities. Do not apply main app CloudKit Info.plist or entitlements globally to extension targets. Signed builds must verify each embedded extension and group. Use separate conditional XcodeGen targets until signatures ready; no loss of daily client functionality.
+## Registered Apple configuration (signed builds verified)
+App Group group.com.ioant.clip; target identifiers com.ioant.clip.macos.safari, com.ioant.clip.ios.safari, com.ioant.clip.ios.share. Existing team and registered identifiers verified in signed builds. Attach group to both main App IDs and the new extension IDs. Preserve CloudKit entitlements on daily main targets; extensions use only required sandbox/group capabilities. Do not apply main app CloudKit Info.plist or entitlements globally to extension targets. Signed builds must verify each embedded extension and group. The daily signed builds now include all applicable extension targets.
  
 ## Delivery stages
 1. Platform-specific settings and Chrome contact diagnostic.
@@ -18,3 +18,6 @@ App Group group.com.ioant.clip; target identifiers com.ioant.clip.macos.safari, 
 
 ## Signed daily extension build
 After both macOS and iOS signed extension builds passed, the daily Mac launcher targets CloudKitCaptureExtensions. The previous CloudKitDevelopment daily bundle is an explicitly recognized predecessor, with a verified backup and unchanged enrollment required at activation. `scripts/cloudkit/build_signed_development_mac.sh` now builds the extension-enabled artifact; unsigned regression remains separate. Simulator support uses its own extension artifact and verifies embedded entitlements before installation. No legacy user data is moved or deleted.
+
+## Capture diagnostics and shared input
+Safari ping records device-local activity without reading the page or creating a clip. A successful queue records only source, activity and timestamp; the share extension records only after explicit save. The settings page distinguishes these historical receipts from Safari's current enablement. Share accepts up to four supplied representations of text/HTTP(S) URLs and one image, de-duplicates repeated values, and rejects unsupported input rather than silently dropping it. The Chrome/Safari popup disables unsupported screenshot and clipboard actions. Synthetic protocol and import tests use a temporary library and never write the daily iCloud library. Actual browser permission and UI interaction remain separate acceptance gates.

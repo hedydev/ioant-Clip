@@ -49,24 +49,14 @@ final class ShareViewController: UIViewController {
             do {
                 let items = (extensionContext?.inputItems as? [NSExtensionItem]) ?? []
                 let providers = items.flatMap { $0.attachments ?? [] }
-                guard providers.count <= 1 else { throw WebCapture.ImportError.unsupported }
-                var text = items.compactMap { $0.attributedContentText?.string }.joined(separator: "\n")
-                var url = ""
-                var html = ""
-                if let provider = providers.first {
-                    if provider.hasItemConformingToTypeIdentifier(UTType.url.identifier) {
-                        let value = try await provider.loadItem(forTypeIdentifier: UTType.url.identifier)
-                        guard let link = value as? URL, ["http", "https"].contains(link.scheme?.lowercased() ?? "") else {
-                            throw WebCapture.ImportError.unsupported
-                        }
-                        url = link.absoluteString
-                        if text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { text = url }
-                        else if !text.contains(url) { text += "\n" + url }
-                    } else if provider.hasItemConformingToTypeIdentifier(UTType.plainText.identifier) {
-                        let value = try await provider.loadItem(forTypeIdentifier: UTType.plainText.identifier)
-                        guard let sharedText = value as? String else { throw WebCapture.ImportError.unsupported }
-                        text = sharedText
-                    } else if provider.hasItemConformingToTypeIdentifier(UTType.image.identifier) {
+                guard providers.count <= ShareCaptureComposer.maxProviders else { throw WebCapture.ImportError.unsupported }
+                var composer = ShareCaptureComposer()
+                for item in items {
+                    if let text = item.attributedContentText?.string { try composer.addText(text) }
+                }
+                for provider in providers {
+                    // A file URL offered by an image provider is not a web link.
+                    if provider.hasItemConformingToTypeIdentifier(UTType.image.identifier) {
                         let value = try await provider.loadItem(forTypeIdentifier: UTType.image.identifier)
                         let image: UIImage?
                         if let value = value as? UIImage { image = value }
@@ -76,13 +66,22 @@ final class ShareViewController: UIViewController {
                                 size <= WebCapture.maxBytes { image = UIImage(contentsOfFile: file.path) }
                         else { image = nil }
                         guard let image, image.size.width * image.size.height * image.scale * image.scale <= 24_000_000,
-                              let data = image.pngData(), data.count <= 22 * 1024 * 1024 else { throw WebCapture.ImportError.tooLarge }
-                        html = "<img src=\"data:image/png;base64,\(data.base64EncodedString())\">"
+                              let data = image.pngData() else { throw WebCapture.ImportError.tooLarge }
+                        try composer.addPNG(data)
+                    } else if provider.hasItemConformingToTypeIdentifier(UTType.url.identifier) {
+                        let value = try await provider.loadItem(forTypeIdentifier: UTType.url.identifier)
+                        guard let link = (value as? URL) ?? (value as? String).flatMap(URL.init(string:)) else {
+                            throw WebCapture.ImportError.unsupported
+                        }
+                        try composer.addURL(link)
+                    } else if provider.hasItemConformingToTypeIdentifier(UTType.plainText.identifier) {
+                        let value = try await provider.loadItem(forTypeIdentifier: UTType.plainText.identifier)
+                        guard let text = (value as? String) ?? (value as? NSAttributedString)?.string else { throw WebCapture.ImportError.unsupported }
+                        try composer.addText(text)
                     } else { throw WebCapture.ImportError.unsupported }
                 }
-                let title = String(text.split(whereSeparator: \.isNewline).first?.prefix(70) ?? "ioant-Clip")
-                let capture: [String: Any] = ["version": 1, "mode": "selection", "title": title, "sourceURL": url, "html": html, "text": text]
-                _ = try SharedCaptureInbox.enqueue(JSONSerialization.data(withJSONObject: capture))
+                _ = try SharedCaptureInbox.enqueue(composer.envelope())
+                try? SharedExtensionEvidence.record(.share, activity: .queued)
                 extensionContext?.completeRequest(returningItems: [], completionHandler: nil)
             } catch {
                 switch error {

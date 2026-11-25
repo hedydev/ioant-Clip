@@ -88,5 +88,8 @@
   },
   "error_snapshot_large": {
     "message": "Snapshot exceeds 32 MiB."
+  },
+  "error_viewport_unavailable": {
+    "message": "This browser does not support visible-page screenshots."
   }
 }

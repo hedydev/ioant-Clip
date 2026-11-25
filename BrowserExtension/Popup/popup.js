@@ -4,13 +4,25 @@ if (typeof document !== 'undefined') {
   const buttons = Array.from(document.querySelectorAll('button'));
   const exportButton = document.querySelector('#export');
   let latestCapture = null;
+  const viewportButton = document.querySelector('#viewport');
+  const copyToggle = document.querySelector('#copy');
+  function updateCapabilities() {
+    const canScreenshot = typeof chrome.tabs.captureVisibleTab === 'function';
+    viewportButton.disabled = !canScreenshot;
+    viewportButton.title = canScreenshot ? '' : message('error_viewport_unavailable');
+    const canCopy = typeof navigator.clipboard?.write === 'function' && typeof ClipboardItem !== 'undefined';
+    copyToggle.disabled = !canCopy;
+    if (!canCopy) copyToggle.checked = false;
+    copyToggle.title = canCopy ? '' : message('status_copy_unavailable');
+  }
+  updateCapabilities();
   // Opening the popup verifies the native bridge without reading or sending a page.
   let languageReady = Promise.resolve();
   try {
     languageReady = Promise.race([
       Promise.resolve(chrome.runtime.sendNativeMessage('com.ioant.clip.capture', {version:1, action:'ping'})),
       new Promise(resolve => setTimeout(() => resolve(null), 1500))
-    ]).then(reply => reply?.ok && reply.language ? applyAppLanguage(reply.language, document) : undefined).catch(() => {});
+    ]).then(reply => reply?.ok && reply.language ? applyAppLanguage(reply.language, document) : undefined).catch(() => {}).then(updateCapabilities);
   } catch {}
   function download(data) {
     const url = URL.createObjectURL(new Blob([JSON.stringify(data)],{type:'application/json'}));
@@ -26,6 +38,7 @@ if (typeof document !== 'undefined') {
       if (!tab?.id) throw new Error('error_no_tab');
       let data;
       if (mode === 'viewport') {
+        if (typeof chrome.tabs.captureVisibleTab !== 'function') throw new Error('error_viewport_unavailable');
         const [meta] = await chrome.scripting.executeScript({target:{tabId:tab.id},func:()=>({title:document.title,sourceURL:location.href,width:window.innerWidth})});
         const [before] = await chrome.tabs.query({active:true,windowId:tab.windowId});
         if (before?.id !== tab.id || before.url !== tab.url) throw new Error('error_tab_changed');
@@ -55,7 +68,7 @@ if (typeof document !== 'undefined') {
       }
       status.textContent = [resultMessage, data.truncated ? message('status_partial') : ''].filter(Boolean).join('\n');
     } catch(error) { status.textContent = localizedError(error); }
-    finally { buttons.forEach(b => b.disabled = false); exportButton.disabled = !latestCapture; }
+    finally { buttons.forEach(b => b.disabled = false); exportButton.disabled = !latestCapture; updateCapabilities(); }
   }
   document.querySelector('#viewport').addEventListener('click', () => save('viewport'));
   document.querySelector('#page').addEventListener('click', () => save('page'));

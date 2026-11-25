@@ -23,6 +23,8 @@ struct ExtensionSettingsSection: View {
     @State private var safari: SafariStatus = .checking
     @State private var checking = false
     @State private var safariIdentifier: String?
+    @State private var safariEvidence: SharedExtensionEvidence?
+    @State private var shareEvidence: SharedExtensionEvidence?
     #if os(macOS)
     @State private var chrome = ChromeExtensionEvidence(registration: .unknown, lastContact: nil)
     #else
@@ -55,10 +57,12 @@ struct ExtensionSettingsSection: View {
             details("settings.extensions.share", icon: "square.and.arrow.up",
                     status: shareEmbedded ? "settings.extensions.shareAvailable" : "settings.extensions.notEmbedded",
                     description: "settings.extensions.share.description")
+            if shareEmbedded { evidenceRow(shareEvidence) }
             #endif
             Divider()
             details("Safari", icon: "safari", status: safari.label,
                     description: "settings.extensions.safari.description")
+            if safariIdentifier != nil { evidenceRow(safariEvidence) }
             #if os(macOS)
             if let safariIdentifier {
                 Button {
@@ -92,10 +96,26 @@ struct ExtensionSettingsSection: View {
         }.padding(.vertical, 4)
     }
 
+    @ViewBuilder private func evidenceRow(_ evidence: SharedExtensionEvidence?) -> some View {
+        if let evidence {
+            LabeledContent {
+                Text(Date(timeIntervalSince1970: evidence.unixSeconds), format: .dateTime.month().day().hour().minute())
+            } label: {
+                Text(verbatim: language.localized(evidence.activity == .queued ? "settings.extensions.lastQueued" : "settings.extensions.lastContact"))
+            }.font(.caption)
+        } else {
+            Text(verbatim: language.localized("settings.extensions.noActivity")).font(.caption).foregroundStyle(.secondary)
+        }
+    }
+
     @MainActor private func refresh() async {
         guard !checking else { return }
         checking = true
         defer { checking = false }
+        #if CLIP_CAPTURE_EXTENSIONS
+        safariEvidence = SharedExtensionEvidence.read(.safari)
+        shareEvidence = SharedExtensionEvidence.read(.share)
+        #endif
         let embedded = (Bundle.main.builtInPlugInsURL.flatMap {
             try? FileManager.default.contentsOfDirectory(at: $0, includingPropertiesForKeys: nil)
         } ?? []).compactMap(Bundle.init(url:))

@@ -88,5 +88,8 @@
   },
   "error_snapshot_large": {
     "message": "화면 캡처가 32 MiB 제한을 초과합니다."
+  },
+  "error_viewport_unavailable": {
+    "message": "현재 브라우저는 보이는 페이지의 스크린샷을 지원하지 않습니다."
   }
 }

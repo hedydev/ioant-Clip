@@ -88,5 +88,8 @@
   },
   "error_snapshot_large": {
     "message": "截圖超過 32 MiB 限制。"
+  },
+  "error_viewport_unavailable": {
+    "message": "目前瀏覽器不支援可見網頁截圖。"
   }
 }

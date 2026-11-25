@@ -88,5 +88,8 @@
   },
   "error_snapshot_large": {
     "message": "スクリーンショットが 32 MiB の上限を超えています。"
+  },
+  "error_viewport_unavailable": {
+    "message": "このブラウザは表示ページのスクリーンショットに対応していません。"
   }
 }
