@@ -23,16 +23,33 @@ assert not (data / "Documents" / result_name).exists(), "existing stage receipt;
 if mode == "verify-resolution":
     assert "RESULT: PASS\n" in (data / "Documents/cloudkit-conflict-result.txt").read_text()
 subprocess.run(["/usr/bin/python3", str(root / "scripts/cloudkit/verify_simulator_smoke.py"), str(app), bundle], check=True)
-# Do not terminate a user-running application. Previous smoke was terminated.
-if mode == "conflict":
-    # Check exact owned smoke process is absent before installing the update.
-    jobs = sim("spawn", udid, "launchctl", "list").stdout
-    assert not any(bundle in line and line.split()[0].isdigit() for line in jobs.splitlines()), "smoke still running"
+# Check exact owned smoke process before any install or launch.
+jobs = sim("spawn", udid, "launchctl", "list").stdout
+assert not any(bundle in line and line.split()[0].isdigit() for line in jobs.splitlines()), "smoke still running"
+expected = plistlib.loads((app / "Info.plist").read_bytes())
+prior_bytes = prior.read_bytes()
+def exact_installed_binary(path):
+    return (path / info["CFBundleExecutable"]).read_bytes() == (app / expected["CFBundleExecutable"]).read_bytes()
+if not exact_installed_binary(installed):
+    assert mode == "conflict", "unexpected installed build"
     sim("install", udid, str(app), timeout=60)
-    print("Updated previously verified smoke app only, preserving container", flush=True)
-    assert pathlib.Path(sim("get_app_container", udid, bundle, "data").stdout.strip()) == data
+    print("Updated previously verified smoke app only", flush=True)
 else:
-    assert (installed / info["CFBundleExecutable"]).read_bytes() == (app / info["CFBundleExecutable"]).read_bytes(), "unexpected installed build"
+    print("Exact verified smoke executable already installed; no reinstall", flush=True)
+# CoreSimulator may relocate a data container during installation. Verify
+# preserved receipt contents, not the implementation-specific UUID path.
+installed = pathlib.Path(sim("get_app_container", udid, bundle, "app").stdout.strip())
+new_data = pathlib.Path(sim("get_app_container", udid, bundle, "data").stdout.strip())
+installed_info = plistlib.loads((installed / "Info.plist").read_bytes())
+assert installed_info.get("ClipCloudKitSmoke") == "YES" and installed_info.get("CFBundleIdentifier") == bundle
+assert installed_info.get("ClipCloudKitContainer") == "iCloud.com.ioant.clip" and installed_info.get("ClipCloudKitEnvironment") == "Development"
+assert (installed / installed_info["CFBundleExecutable"]).read_bytes() == (app / expected["CFBundleExecutable"]).read_bytes()
+assert (new_data / "Documents/cloudkit-smoke-result.txt").read_bytes() == prior_bytes, "prior receipt changed"
+assert not (new_data / "Documents" / result_name).exists(), "existing stage receipt; reconcile instead of replay"
+if mode == "verify-resolution":
+    assert "RESULT: PASS\n" in (new_data / "Documents/cloudkit-conflict-result.txt").read_text()
+print("Verified prior receipt preserved; container relocated:", new_data != data, flush=True)
+data = new_data
 launched = False
 try:
     print(sim("launch", udid, bundle, "--clip-simulator-" + mode, timeout=45).stdout.strip(), flush=True)
