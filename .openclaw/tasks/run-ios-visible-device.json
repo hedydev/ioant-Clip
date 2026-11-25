@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "title": "Install and launch Note on the existing visible iPhone 18 Pro",
+  "steps": [
+    {
+      "name": "launch_visible_device",
+      "runtime": "bash",
+      "script": "scripts/run_ios_visible_device.sh",
+      "timeoutSeconds": 150
+    }
+  ],
+  "artifacts": []
+}
