@@ -46,6 +46,12 @@ async function capture(mode) {
   }
   function createLayout({source,wholePage,stage,queueBackground}) {
   const css = 'display box-sizing visibility clip contain content-visibility overflow-anchor font-stretch font-feature-settings font-kerning font-variant-ligatures text-transform text-rendering text-size-adjust -webkit-text-size-adjust writing-mode unicode-bidi text-decoration-line text-decoration-style text-decoration-color text-decoration-thickness text-underline-offset text-shadow tab-size list-style-position column-count column-gap column-width column-span break-before break-after break-inside isolation mix-blend-mode filter backdrop-filter -webkit-line-clamp -webkit-box-orient -webkit-box-align -webkit-box-pack -webkit-box-flex cursor pointer-events border-top-left-radius border-top-right-radius border-bottom-left-radius border-bottom-right-radius display box-sizing color background-color background-image font-family font-size font-weight font-style font-variant-numeric line-height letter-spacing text-align text-decoration white-space overflow-wrap word-break list-style-type padding-top padding-right padding-bottom padding-left margin-top margin-right margin-bottom margin-left border-top border-right border-bottom border-left border-radius box-shadow opacity flex flex-direction flex-wrap flex-grow flex-shrink flex-basis justify-content align-items align-self gap row-gap column-gap grid-template-columns grid-template-rows grid-column grid-row vertical-align min-width max-width min-height max-height border-collapse border-spacing table-layout overflow-x overflow-y position top right bottom left transform transform-origin text-indent width height z-index object-fit object-position background-size background-position background-repeat background-origin background-clip box-decoration-break align-content justify-items justify-self grid-auto-flow grid-auto-columns grid-auto-rows order text-overflow direction aspect-ratio float clear overflow-wrap clip-path'.split(' ');
+  function nodeCanGrow(src, cs) {
+    return src.childNodes.length > 0 && /^(block|inline-block|flow-root|list-item)$/.test(cs.display) &&
+      /^(static|relative)$/.test(cs.position) && cs.overflowX === 'visible' &&
+      cs.overflowY === 'visible' && cs.maxHeight === 'none' &&
+      !/\b(size|strict|inline-size)\b/.test(cs.contain);
+  }
   function applyStyles(src, dst, cs) {
     for (const prop of css) {
       const value = cs.getPropertyValue(prop);
@@ -70,6 +76,14 @@ async function capture(mode) {
         dst.style.minHeight = cs.minHeight;
         dst.style.height = cs.height;
         dst.style.position = 'relative';
+      }
+      // Preserve the original minimum footprint, but let visible block content
+      // grow when an offline fallback font wraps text onto extra lines.
+      const height = Number.parseFloat(cs.height);
+      if (!tablePart && nodeCanGrow(src, cs) && Number.isFinite(height)) {
+        dst.style.minHeight = cs.minHeight.endsWith('px')
+          ? Math.max(height, Number.parseFloat(cs.minHeight)) + 'px' : cs.height;
+        dst.style.height = 'auto';
       }
       if (cs.position === 'fixed') {
         // Fixed overlays are captured at their actual current viewport position,

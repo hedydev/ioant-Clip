@@ -59,6 +59,25 @@ import WebKit
         for key in ["titles","paragraphs"] {
             guard let a=original[key] as? [[String:Double]],let b=actual[key] as? [[String:Double]],a.count==b.count,zip(a,b).allSatisfy({close($0.0,$0.1)}) else { throw NSError(domain:"GeometryMismatch-\(key)",code:1,userInfo:["original":String(describing:original[key]),"actual":String(describing:actual[key])]) }
         }
+        let expandedObserver = Observer()
+        preview.navigationDelegate = expandedObserver
+        let expanded = Note.document(for: part).replacingOccurrences(
+            of: "</style></head>",
+            with: "h2{letter-spacing:12px!important}</style></head>"
+        )
+        preview.loadHTMLString(expanded,baseURL:nil)
+        try await wait(expandedObserver)
+        let separated = try await preview.evaluateJavaScript("""
+        (() => {
+            const heading = document.querySelector('h2');
+            const summary = heading.nextElementSibling;
+            const range = document.createRange();
+            range.selectNodeContents(heading);
+            return range.getClientRects().length > 2 &&
+                range.getBoundingClientRect().bottom <= summary.getBoundingClientRect().top;
+        })()
+        """) as? Bool
+        guard separated == true else { throw NSError(domain:"WrappedTitleOverlapsSummary",code:1) }
         print("PASS: WebKit source-to-production-reader layout, hidden labels, inert input, pseudo-elements and result text geometry")
     }
     @MainActor private static func wait(_ observer:Observer) async throws {
