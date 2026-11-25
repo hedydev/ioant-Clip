@@ -2,6 +2,8 @@
 set -u
 cd "$(dirname "$0")/.." || exit 1
 export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
+export USER="$(id -un)"
+export LOGNAME="$USER"
 echo "HEAD $(git rev-parse HEAD)"
 origin="$(git remote get-url origin)"
 case "$origin" in
