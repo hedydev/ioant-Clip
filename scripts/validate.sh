@@ -15,6 +15,7 @@ xcodebuild -version || exit 1
 swift --version
 status=0
 swift test || status=1
+/usr/bin/python3 scripts/test_localization.py || status=1
 bash scripts/test_webkit_render.sh || status=1
 PYTHONDONTWRITEBYTECODE=1 /usr/bin/python3 scripts/test_native_host.py || status=1
 if command -v node >/dev/null; then
@@ -51,6 +52,9 @@ for platform in macOS iOS; do
   rc=$?
   grep -E 'error:|warning:|BUILD (SUCCEEDED|FAILED)' "$derived/$platform.log" | tail -n 35 || true
   echo "END BUILD $platform exit=$rc"
-  if [ "$rc" -ne 0 ]; then tail -n 35 "$derived/$platform.log"; status=1; fi
+  if [ "$rc" -ne 0 ]; then tail -n 35 "$derived/$platform.log"; status=1; else
+    case "$platform" in macOS) app="$derived/macOS/Build/Products/Debug/ioant-Note-macOS.app";; iOS) app="$derived/iOS/Build/Products/Debug-iphonesimulator/ioant-Note-iOS.app";; esac
+    /usr/bin/python3 scripts/test_localization.py "$app" || status=1
+  fi
 done
 exit "$status"

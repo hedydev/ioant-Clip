@@ -8,18 +8,18 @@ struct SyncSettingsView: View {
     var body: some View {
         NavigationStack {
             List {
-                Section("Storage") {
-                    Label("Local only", systemImage: "checkmark.circle.fill")
-                    Text("All clips stay on this device. Cloud providers are not connected.").font(.caption).foregroundStyle(.secondary)
+                Section("sync.storage") {
+                    Label("sync.local", systemImage: "checkmark.circle.fill")
+                    Text("sync.local.description").font(.caption).foregroundStyle(.secondary)
                 }
-                Section("Cloud providers") {
-                    provider("iCloud", icon: "icloud", status: "Requires signed CloudKit configuration")
-                    provider("Google Drive", icon: "externaldrive", status: "Requires Google OAuth configuration")
+                Section("sync.providers") {
+                    provider("iCloud", icon: "icloud", status: "sync.cloudkit.required")
+                    provider("Google Drive", icon: "externaldrive", status: "sync.google.required")
                 }
-                Section("Local sync history") {
-                    LabeledContent("Recorded revisions", value: (journal?.revisions.count ?? 0).formatted())
-                    LabeledContent("Conflicts", value: (journal?.conflictKeys.count ?? 0).formatted())
-                    Text("Version history is local. Nothing has been uploaded.").font(.caption).foregroundStyle(.secondary)
+                Section("sync.history") {
+                    LabeledContent { Text(journal?.revisions.count ?? 0, format: .number) } label: { Text("sync.revisions") }
+                    LabeledContent { Text(journal?.conflictKeys.count ?? 0, format: .number) } label: { Text("sync.conflicts") }
+                    Text("sync.history.description").font(.caption).foregroundStyle(.secondary)
                 }
                 if let journal {
                     ForEach(Array(journal.conflictKeys).sorted(by: { String(describing: $0) < String(describing: $1) }), id: \.self) { key in
@@ -34,23 +34,23 @@ struct SyncSettingsView: View {
                                     case .tagColor(let color):
                                         Label(color.label, systemImage: "circle.fill").foregroundStyle(color.swiftUIColor)
                                     case .deleted:
-                                        Label("Deleted version", systemImage: "trash").foregroundStyle(.secondary)
+                                        Label("sync.conflict.deleted", systemImage: "trash").foregroundStyle(.secondary)
                                     }
-                                    Button("Keep this version") { pending = revision }.buttonStyle(.bordered)
+                                    Button("sync.conflict.keep") { pending = revision }.buttonStyle(.bordered)
                                 }.padding(.vertical, 4)
                             }
-                        } header: { Text("Conflicting versions") }
+                        } header: { Text("sync.conflict.versions") }
                     }
                 }
             }
-            .navigationTitle("Cloud sync")
-            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
-            .confirmationDialog("Resolve this conflict?", isPresented: Binding(get: { pending != nil }, set: { if !$0 { pending = nil } }), titleVisibility: .visible) {
-                Button("Keep selected version") {
+            .navigationTitle("sync.title")
+            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("common.done") { dismiss() } } }
+            .confirmationDialog("sync.conflict.confirm", isPresented: Binding(get: { pending != nil }, set: { if !$0 { pending = nil } }), titleVisibility: .visible) {
+                Button("sync.conflict.keepSelected") {
                     if let revision = pending { store.resolveConflict(revision.key, revision: revision.id) }
                     pending = nil
                 }
-                Button("Cancel", role: .cancel) { pending = nil }
+                Button("common.cancel", role: .cancel) { pending = nil }
             }
         }
         #if os(macOS)
@@ -65,7 +65,7 @@ struct SyncSettingsView: View {
                 Text(status).font(.caption).foregroundStyle(.secondary)
             }
             Spacer()
-            Text("Not connected").font(.caption).foregroundStyle(.secondary)
+            Text("sync.disconnected").font(.caption).foregroundStyle(.secondary)
         }.padding(.vertical, 4)
     }
 }

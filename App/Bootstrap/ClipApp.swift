@@ -2,9 +2,10 @@ import SwiftUI
 
 @main struct ClipApp: App {
     @StateObject private var store = LibraryStore()
+    @StateObject private var language = LanguagePreferences()
     var body: some Scene {
         WindowGroup {
-            LibraryView().environmentObject(store)
+            AppLocaleScope(preferences: language) { LibraryView().environmentObject(store) }
             #if os(macOS)
                 .task {
                     while !Task.isCancelled {

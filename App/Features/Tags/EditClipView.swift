@@ -30,13 +30,13 @@ struct EditClipView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
                     VStack(alignment: .leading, spacing: 7) {
-                        Text("Title").font(.headline)
-                        TextField("Title", text: $title).textFieldStyle(.roundedBorder)
+                        Text("editor.title").font(.headline)
+                        TextField("editor.title", text: $title).textFieldStyle(.roundedBorder)
                     }
                     Divider()
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("Tags").font(.headline)
-                        if tags.isEmpty { Text("No tags yet").font(.subheadline).foregroundStyle(.secondary) }
+                        Text("tags.title").font(.headline)
+                        if tags.isEmpty { Text("tags.empty").font(.subheadline).foregroundStyle(.secondary) }
                         ForEach(tags, id: \.self) { tag in
                             HStack {
                                 TagChip(tag: tag, color: color(tag))
@@ -50,28 +50,28 @@ struct EditClipView: View {
                                 } label: {
                                     HStack(spacing: 5) {
                                         Circle().fill(color(tag).swiftUIColor).frame(width: 14, height: 14)
-                                        Text("Color")
+                                        Text("tags.color")
                                     }
                                 }
                                 Button {
                                     tags.removeAll { TagColor.key($0) == TagColor.key(tag) }
                                 } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary) }
                                 .buttonStyle(.plain)
-                                .accessibilityLabel(Text("Remove tag") + Text(" \(tag)"))
+                                .accessibilityLabel(Text("tags.remove \(tag)"))
                             }
                         }
-                        Text("Tag colors are shared across clips.").font(.caption).foregroundStyle(.secondary)
+                        Text("tags.shared").font(.caption).foregroundStyle(.secondary)
                     }
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("New tag").font(.headline)
+                        Text("tags.new").font(.headline)
                         HStack {
-                            TextField("Tag name", text: $newTag).textFieldStyle(.roundedBorder)
+                            TextField("tags.name", text: $newTag).textFieldStyle(.roundedBorder)
                                 #if os(iOS)
                                 .textInputAutocapitalization(.never)
                                 #endif
                                 .autocorrectionDisabled()
                                 .onSubmit { add(name, chosen: library.allTags.contains { TagColor.key($0) == TagColor.key(name) } ? nil : newColor) }
-                            Button("Add") { add(name, chosen: library.allTags.contains { TagColor.key($0) == TagColor.key(name) } ? nil : newColor) }.disabled(name.isEmpty)
+                            Button("common.add") { add(name, chosen: library.allTags.contains { TagColor.key($0) == TagColor.key(name) } ? nil : newColor) }.disabled(name.isEmpty)
                         }
                         LazyVGrid(columns: [GridItem(.adaptive(minimum: 28, maximum: 36), spacing: 7)], alignment: .leading, spacing: 8) {
                             ForEach(TagColor.allCases, id: \.self) { item in
@@ -86,17 +86,17 @@ struct EditClipView: View {
                         }
                     }
                     if !suggestions.isEmpty {
-                        choices("Suggested tags", values: suggestions)
-                        Text("Suggestions are local rules. Nothing is added automatically.").font(.caption).foregroundStyle(.secondary)
+                        choices("tags.suggested", values: suggestions)
+                        Text("tags.rules").font(.caption).foregroundStyle(.secondary)
                     }
-                    if !available.isEmpty { choices("Existing tags", values: available) }
+                    if !available.isEmpty { choices("tags.existing", values: available) }
                 }.padding(20)
             }
-            .navigationTitle("Edit clip")
+            .navigationTitle("editor.edit")
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) { Button("common.cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
+                    Button("common.save") {
                         if !name.isEmpty {
                             add(name, chosen: library.allTags.contains { TagColor.key($0) == TagColor.key(name) } ? nil : newColor)
                         }

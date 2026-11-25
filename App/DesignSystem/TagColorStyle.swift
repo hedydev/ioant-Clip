@@ -16,15 +16,15 @@ extension TagColor {
     }
     var label: LocalizedStringKey {
         switch self {
-        case .gray: "Gray"
-        case .red: "Red"
-        case .orange: "Orange"
-        case .yellow: "Yellow"
-        case .green: "Green"
-        case .teal: "Teal"
-        case .blue: "Blue"
-        case .purple: "Purple"
-        case .pink: "Pink"
+        case .gray: "color.gray"
+        case .red: "color.red"
+        case .orange: "color.orange"
+        case .yellow: "color.yellow"
+        case .green: "color.green"
+        case .teal: "color.teal"
+        case .blue: "color.blue"
+        case .purple: "color.purple"
+        case .pink: "color.pink"
         }
     }
 }

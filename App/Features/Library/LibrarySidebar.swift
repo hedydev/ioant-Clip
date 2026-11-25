@@ -9,6 +9,7 @@ struct LibrarySidebar: View {
     @Binding var query: String
     @Binding var importing: Bool
     @Binding var syncSettings: Bool
+    @Binding var appSettings: Bool
     @Binding var deleting: Set<UUID>
     @Binding var confirmDelete: Bool
     @Binding var tagFilter: TagFilter
@@ -18,14 +19,14 @@ struct LibrarySidebar: View {
     var filtered: [Note] { store.library.filtered(query: query, filter: tagFilter) }
     var body: some View {
             List {
-                Section("Tags") {
-                    filterRow("All clips", icon: "tray.full", filter: .all, count: store.library.notes.count)
-                    filterRow("Untagged", icon: "tag.slash", filter: .untagged, count: store.library.notes.filter { $0.tags.isEmpty }.count)
+                Section("tags.title") {
+                    filterRow("library.all", icon: "tray.full", filter: .all, count: store.library.notes.count)
+                    filterRow("library.untagged", icon: "tag.slash", filter: .untagged, count: store.library.notes.filter { $0.tags.isEmpty }.count)
                     ForEach(tags, id: \.self) { tag in
                         filterRow(tag, color: store.library.color(for: tag), filter: .tag(tag), count: store.library.notes.filter { TagFilter.tag(tag).includes($0) }.count)
                     }
                 }
-                Section("Clips · \(filtered.count)") {
+                Section("library.count \(filtered.count)") {
                     ForEach(filtered) { note in
                         Button { if selecting { if checked.contains(note.id) { checked.remove(note.id) } else { checked.insert(note.id) } } else { selected = note.id; compactColumn = .detail } } label: {
                             HStack(alignment: .top, spacing: 9) {
@@ -41,11 +42,12 @@ struct LibrarySidebar: View {
                         }.buttonStyle(.plain).listRowBackground(selected == note.id ? Color.accentColor.opacity(0.12) : Color.clear)
                     }
                 }
-            }.navigationTitle("ioant-Clip").searchable(text: $query)
+            }.navigationTitle("ioant-Clip").searchable(text: $query, prompt: Text("library.search"))
                 .toolbar {
                     ToolbarItemGroup {
-                        Button { syncSettings = true } label: { Label("Cloud sync", systemImage: "icloud") }
-                        Button { selecting.toggle(); checked.removeAll() } label: { Label(selecting ? "Done" : "Select", systemImage: selecting ? "checkmark" : "checkmark.circle") }
+                        Button { appSettings = true } label: { Label("settings.title", systemImage: "gearshape") }
+                        Button { syncSettings = true } label: { Label("sync.title", systemImage: "icloud") }
+                        Button { selecting.toggle(); checked.removeAll() } label: { Label(LocalizedStringKey(selecting ? "common.done" : "common.select"), systemImage: selecting ? "checkmark" : "checkmark.circle") }
                     }
                 }
                 #if os(macOS)
@@ -55,7 +57,7 @@ struct LibrarySidebar: View {
                     VStack(spacing: 8) {
                         pasteButton
                         Button { importing = true } label: {
-                            Label("Import web capture", systemImage: "square.and.arrow.down")
+                            Label("library.import", systemImage: "square.and.arrow.down")
                                 .frame(maxWidth: .infinity)
                         }
                         .buttonStyle(.bordered)
@@ -64,7 +66,7 @@ struct LibrarySidebar: View {
                     .background(.regularMaterial)
                 }
                 .safeAreaInset(edge: .bottom) {
-                    if selecting { HStack { Text("\(checked.count) selected"); Spacer(); Button("Merge clips") { if let id = store.change({ $0.merge(checked) }) ?? nil { selected = id; compactColumn = .detail; selecting = false; checked.removeAll() } }.disabled(checked.count < 2); Button(role: .destructive) { deleting = checked; confirmDelete = true } label: { Image(systemName: "trash") }.disabled(checked.isEmpty) }.padding().background(.regularMaterial) }
+                    if selecting { HStack { Text("library.selected \(checked.count)"); Spacer(); Button("Merge clips") { if let id = store.change({ $0.merge(checked) }) ?? nil { selected = id; compactColumn = .detail; selecting = false; checked.removeAll() } }.disabled(checked.count < 2); Button(role: .destructive) { deleting = checked; confirmDelete = true } label: { Image(systemName: "trash").accessibilityLabel(Text("common.delete")) }.disabled(checked.isEmpty) }.padding().background(.regularMaterial) }
                 }
     }
     private func filterRow(_ name: String, icon: String = "tag.fill", color: TagColor? = nil, filter: TagFilter, count: Int) -> some View {
@@ -75,18 +77,22 @@ struct LibrarySidebar: View {
         } label: {
             HStack(spacing: 9) {
                 Image(systemName: icon).foregroundStyle(color?.swiftUIColor ?? Color.secondary)
-                Text(LocalizedStringKey(name)).lineLimit(1)
+                filterLabel(name, filter: filter).lineLimit(1)
                 Spacer()
-                Text(count.formatted()).font(.caption).foregroundStyle(.secondary).monospacedDigit()
+                Text(count, format: .number).font(.caption).foregroundStyle(.secondary).monospacedDigit()
             }.contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .listRowBackground(tagFilter == filter ? Color.accentColor.opacity(0.15) : Color.clear)
         .accessibilityAddTraits(tagFilter == filter ? [.isSelected] : [])
     }
+    private func filterLabel(_ name: String, filter: TagFilter) -> Text {
+        if case .tag = filter { return Text(verbatim: name) }
+        return Text(LocalizedStringKey(name))
+    }
     private var pasteButton: some View {
         Button(action: paste) {
-            Label("Save from clipboard", systemImage: "doc.on.clipboard")
+            Label("library.paste", systemImage: "doc.on.clipboard")
                 .frame(maxWidth: .infinity)
                 .labelStyle(.titleAndIcon)
         }
@@ -94,6 +100,6 @@ struct LibrarySidebar: View {
         .controlSize(.large)
         .keyboardShortcut("v", modifiers: .command)
         .accessibilityIdentifier("paste-new-note")
-        .help("Save content from clipboard")
+        .help("library.empty.title")
     }
 }
