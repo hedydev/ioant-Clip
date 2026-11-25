@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "title": "Read-only inspect Clip app paths before daily activation",
+  "steps": [
+    {
+      "name": "inspect_clip_processes",
+      "runtime": "bash",
+      "script": "scripts/cloudkit/inspect_clip_mac_processes.sh",
+      "timeoutSeconds": 60
+    }
+  ],
+  "artifacts": []
+}
