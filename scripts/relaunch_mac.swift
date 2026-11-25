@@ -30,10 +30,10 @@ guard NSRunningApplication.runningApplications(withBundleIdentifier: legacyID).i
 }
 let old = NSRunningApplication.runningApplications(withBundleIdentifier: id).filter { !$0.isTerminated }
 for proc in old {
-    guard let url = proc.bundleURL?.resolvingSymlinksInPath(), [path, oldUnsigned, oldReview].contains(url) else {
+    guard let url = proc.bundleURL?.resolvingSymlinksInPath(), [path.path, oldUnsigned.path, oldReview.path].contains(url.path) else {
         fatalError("Unknown Clip installation running; no process terminated")
     }
-    if url == oldReview {
+    if url.path == oldReview.path {
         guard Bundle(url: url)?.object(forInfoDictionaryKey: "ClipCloudKitUIReview") as? String == "YES" else {
             fatalError("Unknown review process")
         }
@@ -76,7 +76,7 @@ guard process.terminationStatus == 0 else { fatalError("Launch failed") }
 let launchDeadline = Date().addingTimeInterval(20)
 while Date() < launchDeadline {
     let live = NSRunningApplication.runningApplications(withBundleIdentifier: id).filter { !$0.isTerminated }
-    if live.count == 1, let app = live.first, app.bundleURL?.resolvingSymlinksInPath() == path, app.isFinishedLaunching {
+    if live.count == 1, let app = live.first, app.bundleURL?.resolvingSymlinksInPath().path == path.path, app.isFinishedLaunching {
         let (after, afterData) = try readLibrary()
         guard existingIDs.isSubset(of: ids(after)) else { fatalError("Daily notes missing after launch") }
         if firstActivation {
