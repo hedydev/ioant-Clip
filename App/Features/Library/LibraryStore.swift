@@ -68,10 +68,18 @@ import SwiftUI
             library = next
         } catch { self.error = LibraryIssue(error) }
     }
-    #if os(macOS)
     func receivePendingCaptures() {
         guard ready else { return }
-        let inbox = url.deletingLastPathComponent().appending(path: "CaptureInbox")
+        #if os(macOS)
+        drainCaptureInbox(url.deletingLastPathComponent().appending(path: "CaptureInbox"))
+        #endif
+        #if CLIP_CAPTURE_EXTENSIONS
+        if !LibraryLocation.isCloudReview, let inbox = SharedCaptureInbox.directory {
+            drainCaptureInbox(inbox)
+        }
+        #endif
+    }
+    private func drainCaptureInbox(_ inbox: URL) {
         do {
             var next = library
             let result = try CaptureInbox.drain(directory: inbox, libraryURL: url, library: &next)
@@ -84,7 +92,6 @@ import SwiftUI
             if reportedInboxFailures.insert("directory").inserted { self.error = LibraryIssue("error.inbox.read") }
         }
     }
-    #endif
     func importFile(_ url: URL) -> UUID? {
         let access = url.startAccessingSecurityScopedResource()
         defer { if access { url.stopAccessingSecurityScopedResource() } }

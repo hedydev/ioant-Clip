@@ -17,6 +17,7 @@ import SwiftUI
             #if os(macOS)
                 .frame(minWidth: PresentationMetrics.mainMinimum.width, minHeight: PresentationMetrics.mainMinimum.height)
                 .background(MainWindowSizing())
+            #endif
                 .task {
                     while !Task.isCancelled {
                         store.receivePendingCaptures()
@@ -24,7 +25,6 @@ import SwiftUI
                         catch { break }
                     }
                 }
-            #endif
         }
         #if os(macOS)
         .defaultSize(width: PresentationMetrics.mainDefault.width, height: PresentationMetrics.mainDefault.height)

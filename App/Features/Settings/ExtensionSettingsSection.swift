@@ -44,7 +44,7 @@ struct ExtensionSettingsSection: View {
             Button("settings.extensions.openChrome") {
                 if let chromeURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.google.Chrome"),
                    let target = URL(string: "chrome://extensions/") {
-                    NSWorkspace.shared.open([target], withApplicationAt: chromeURL, configuration: .init())
+                    NSWorkspace.shared.open([target], withApplicationAt: chromeURL, configuration: NSWorkspace.OpenConfiguration(), completionHandler: nil)
                 }
             }.buttonStyle(.bordered)
             #else

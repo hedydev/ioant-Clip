@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "title": "Build and verify app group Safari and share extension targets without replacing daily clients",
+  "steps": [
+    {
+      "name": "mac_extensions",
+      "runtime": "bash",
+      "script": "scripts/cloudkit/build_capture_extensions_mac.sh",
+      "timeoutSeconds": 300
+    },
+    {
+      "name": "ios_extensions",
+      "runtime": "bash",
+      "script": "scripts/cloudkit/build_capture_extensions_ios.sh",
+      "timeoutSeconds": 300
+    }
+  ],
+  "artifacts": []
+}
