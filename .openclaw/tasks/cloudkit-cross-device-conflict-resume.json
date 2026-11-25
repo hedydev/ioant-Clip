@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "title": "Resume verified cross-device conflict after Mac edit",
+  "steps": [
+    {
+      "name": "phone_conflict",
+      "runtime": "bash",
+      "script": "scripts/cloudkit/phone_conflict.sh",
+      "timeoutSeconds": 300
+    },
+    {
+      "name": "mac_resolve",
+      "runtime": "bash",
+      "script": "scripts/cloudkit/mac_conflict_resolve.sh",
+      "timeoutSeconds": 120
+    },
+    {
+      "name": "phone_verify_resolution",
+      "runtime": "bash",
+      "script": "scripts/cloudkit/phone_verify_resolution.sh",
+      "timeoutSeconds": 300
+    }
+  ],
+  "artifacts": []
+}
