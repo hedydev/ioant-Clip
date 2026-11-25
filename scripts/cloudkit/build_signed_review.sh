@@ -8,9 +8,12 @@ platform="$1"
 mode="${2:-review}"
 cacheLane=CloudKitReview
 smoke=NO
+ui=NO
 conditions='$(inherited) CLIP_CLOUDKIT_REVIEW'
 case "$mode" in
   review) ;;
+  ui) [ "$platform" = macOS ] || exit 2
+    cacheLane=CloudKitUIReview; ui=YES; conditions="$conditions CLIP_CLOUDKIT_UI_REVIEW";;
   smoke) [ "$platform" = macOS ] || exit 2
     cacheLane=CloudKitSmoke; smoke=YES; conditions="$conditions CLIP_CLOUDKIT_SMOKE";;
   *) exit 2;;
@@ -46,7 +49,7 @@ if xcodebuild -project ioant-Clip.xcodeproj -scheme "ioant-Clip-$platform" -conf
   CODE_SIGNING_ALLOWED=YES CODE_SIGNING_REQUIRED=YES \
   "CLIP_CLOUDKIT_CONTAINER=$container" "CODE_SIGN_ENTITLEMENTS=$root/Config/CloudKitReview.entitlements" \
   "INFOPLIST_FILE=$root/Config/CloudKitReview-Info.plist" \
-  "CLIP_CLOUDKIT_SMOKE=$smoke" "SWIFT_ACTIVE_COMPILATION_CONDITIONS=$conditions" \
+  "CLIP_CLOUDKIT_SMOKE=$smoke" "CLIP_CLOUDKIT_UI_REVIEW=$ui" "SWIFT_ACTIVE_COMPILATION_CONDITIONS=$conditions" \
   build > "$log" 2>&1; then
   echo "BUILD SUCCEEDED $platform"
 else
@@ -58,5 +61,9 @@ app="$derived/Build/Products/$product"
 PYTHONDONTWRITEBYTECODE=1 /usr/bin/python3 scripts/cloudkit/verify_signed_review.py "$platform" "$app" "$team" "$container"
 if [ "$mode" = smoke ]; then
   [ "$(/usr/libexec/PlistBuddy -c 'Print :ClipCloudKitSmoke' "$app/Contents/Info.plist")" = YES ]
+fi
+if [ "$mode" = ui ]; then
+  [ "$(/usr/libexec/PlistBuddy -c 'Print :ClipCloudKitUIReview' "$app/Contents/Info.plist")" = YES ]
+  [ "$(/usr/libexec/PlistBuddy -c 'Print :ClipCloudKitSmoke' "$app/Contents/Info.plist")" = NO ]
 fi
 echo "Signed $mode artifact verified; not installed or launched"

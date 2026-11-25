@@ -4,4 +4,5 @@
 <key>ClipCloudKitContainer</key><string>$(CLIP_CLOUDKIT_CONTAINER)</string>
 <key>ClipCloudKitEnvironment</key><string>Development</string>
 <key>ClipCloudKitSmoke</key><string>$(CLIP_CLOUDKIT_SMOKE)</string>
+<key>ClipCloudKitUIReview</key><string>$(CLIP_CLOUDKIT_UI_REVIEW)</string>
 </dict></plist>

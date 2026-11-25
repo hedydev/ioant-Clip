@@ -2,12 +2,16 @@ import pathlib, plistlib, struct, subprocess, sys, tempfile
 
 app = pathlib.Path(sys.argv[1])
 info = plistlib.loads((app / "Info.plist").read_bytes())
-bundle = sys.argv[2] if len(sys.argv) == 3 else "com.ioant.clip.ios.simsmoke"
+bundle = sys.argv[2] if len(sys.argv) >= 3 else "com.ioant.clip.ios.simsmoke"
+mode = sys.argv[3] if len(sys.argv) == 4 else "isolated"
+assert mode in ("isolated", "registered", "ui")
 assert bundle in ("com.ioant.clip.ios.simsmoke", "com.ioant.clip.ios")
 assert info["CFBundleIdentifier"] == bundle
 assert info["ClipCloudKitContainer"] == "iCloud.com.ioant.clip"
 assert info["ClipCloudKitEnvironment"] == "Development"
-assert info["ClipCloudKitSmoke"] == "YES"
+assert info["ClipCloudKitSmoke"] == ("NO" if mode == "ui" else "YES")
+if mode == "ui":
+    assert bundle == "com.ioant.clip.ios" and info["ClipCloudKitUIReview"] == "YES"
 subprocess.run(["/usr/bin/codesign", "--verify", "--strict", str(app)], check=True)
 
 def simulator_entitlements(executable):

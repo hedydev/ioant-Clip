@@ -13,7 +13,11 @@ enum LibraryLocation {
     // Keep the original daily directory so Mac data and old queued captures
     // remain available. On iOS the bundle ID still determines the sandbox.
     static var directoryName: String {
+        #if CLIP_CLOUDKIT_UI_REVIEW
+        "ioant-Clip-CloudKit-UI-Review"
+        #else
         isCloudReview ? "ioant-Clip-CloudKit-Review" : "ioant-Note"
+        #endif
     }
     static var notesURL: URL {
         URL.applicationSupportDirectory.appending(path: directoryName).appending(path: "notes.json")

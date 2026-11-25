@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "title": "Diagnose Chrome registration and build isolated signed native UI review",
+  "steps": [
+    {
+      "name": "diagnose_chrome",
+      "runtime": "bash",
+      "script": "scripts/diagnose_chrome_registration.sh",
+      "timeoutSeconds": 60
+    },
+    {
+      "name": "validate_isolation",
+      "runtime": "bash",
+      "script": "scripts/test_cloudkit_review.sh",
+      "timeoutSeconds": 180
+    },
+    {
+      "name": "build_mac_ui",
+      "runtime": "bash",
+      "script": "scripts/cloudkit/build_ui_review_mac.sh",
+      "timeoutSeconds": 300
+    },
+    {
+      "name": "build_phone_ui",
+      "runtime": "bash",
+      "script": "scripts/cloudkit/build_ui_review_simulator.sh",
+      "timeoutSeconds": 300
+    }
+  ],
+  "artifacts": []
+}

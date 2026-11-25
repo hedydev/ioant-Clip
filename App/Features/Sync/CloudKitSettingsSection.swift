@@ -20,9 +20,11 @@ struct CloudKitSettingsSection: View {
                             controller.setPaused(!enrollment.isPaused, store: store)
                         }
                         .disabled(controller.busy)
+                        .accessibilityIdentifier("clip-sync-pause-resume")
                         Button("sync.now") { Task { await controller.syncNow(store: store) } }
                             .buttonStyle(.borderedProminent)
                             .disabled(controller.busy || enrollment.isPaused)
+                            .accessibilityIdentifier("clip-sync-now")
                     }
                 }
             } else if controller.available {
@@ -30,6 +32,7 @@ struct CloudKitSettingsSection: View {
                 Button("sync.connect") { Task { await controller.prepareEnrollment(store: store) } }
                     .buttonStyle(.borderedProminent)
                     .disabled(controller.busy)
+                    .accessibilityIdentifier("clip-sync-connect")
             } else {
                 Text("sync.disconnected").foregroundStyle(.secondary)
             }
@@ -51,6 +54,7 @@ struct CloudKitSettingsSection: View {
         }
         .confirmationDialog("sync.consent.title", isPresented: Binding(get: { controller.pendingAccount != nil }, set: { if !$0 { controller.cancelEnrollment() } }), titleVisibility: .visible) {
             Button("sync.consent.confirm") { controller.approveEnrollment(store: store) }
+                .accessibilityIdentifier("clip-sync-confirm")
             Button("common.cancel", role: .cancel) { controller.cancelEnrollment() }
         } message: {
             Text("sync.consent.description")
