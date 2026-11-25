@@ -1,5 +1,5 @@
 import XCTest
-@testable import NoteCore
+@testable import ClipCore
 
 final class SyncJournalTests: XCTestCase {
     func testOfflineConcurrentEditsAndExplicitResolution() throws {

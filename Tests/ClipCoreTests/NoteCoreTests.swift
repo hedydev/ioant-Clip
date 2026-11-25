@@ -1,6 +1,6 @@
 import XCTest
-@testable import NoteCore
-final class NoteCoreTests: XCTestCase {
+@testable import ClipCore
+final class ClipCoreTests: XCTestCase {
     func testPasteCreatesDistinctItemsAndRejectsEmpty() {
         var library = NoteLibrary()
         XCTAssertNil(library.add(.init(text: "  ")))

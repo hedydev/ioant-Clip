@@ -16,7 +16,7 @@ targets:
   ioant-Clip-macOS:
     type: application
     platform: macOS
-    sources: [App, Sources/NoteCore]
+    sources: [App, Sources/ClipCore]
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.ioant.clip.macos
@@ -24,7 +24,7 @@ targets:
   ioant-Clip-iOS:
     type: application
     platform: iOS
-    sources: [App, Sources/NoteCore]
+    sources: [App, Sources/ClipCore]
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.ioant.clip.ios

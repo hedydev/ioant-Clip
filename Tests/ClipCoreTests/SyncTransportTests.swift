@@ -1,5 +1,5 @@
 import XCTest
-@testable import NoteCore
+@testable import ClipCore
 
 private actor MemoryRevisionTransport: RevisionTransport {
     var account: SyncAccount

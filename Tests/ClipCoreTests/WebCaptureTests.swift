@@ -1,5 +1,5 @@
 import XCTest
-@testable import NoteCore
+@testable import ClipCore
 final class WebCaptureTests: XCTestCase {
     func testImportPreservesSourceAndMarkup() throws {
         let json = #"{"version":1,"title":"Chat","sourceURL":"https://example.com/chat","mode":"page","html":"<b>Answer</b>","text":"Answer","truncated":false}"#

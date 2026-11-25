@@ -1,5 +1,5 @@
 import XCTest
-@testable import NoteCore
+@testable import ClipCore
 final class TagTests: XCTestCase {
     func testLegacyLibraryAndSharedColors() throws {
         let data = Data(#"{"notes":[{"id":"00000000-0000-0000-0000-000000000001","title":"old","createdAt":0,"tags":["Work"],"parts":[{"text":"legacy"}]}]}"#.utf8)

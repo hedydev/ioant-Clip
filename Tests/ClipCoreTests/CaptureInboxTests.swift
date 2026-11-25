@@ -1,5 +1,5 @@
 import XCTest
-@testable import NoteCore
+@testable import ClipCore
 
 final class CaptureInboxTests: XCTestCase {
     let fixture = #"{"version":1,"title":"Browser capture","sourceURL":"https://example.com/","mode":"page","html":"<h1>Hello</h1>","text":"Hello"}"#
