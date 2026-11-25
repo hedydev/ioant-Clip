@@ -33,7 +33,7 @@ struct LibraryView: View {
         NavigationSplitView(preferredCompactColumn: $compactColumn) {
             LibrarySidebar(selected: $selected, compactColumn: $compactColumn, checked: $checked, selecting: $selecting, query: $query, importing: $importing, appSettings: $appSettings, storageSettings: $storageSettings, deleting: $deleting, confirmDelete: $confirmDelete, tagFilter: filterBinding, paste: paste)
         } detail: {
-            ClipDetailView(current: current, tags: tags, plainPreview: $plainPreview, copiedID: $copiedID, editing: $editing, deleting: $deleting, confirmDelete: $confirmDelete, importing: $importing, paste: paste)
+            ClipDetailView(current: current, sheetParentSize: sheetParentSize, tags: tags, plainPreview: $plainPreview, copiedID: $copiedID, editing: $editing, deleting: $deleting, confirmDelete: $confirmDelete, importing: $importing, paste: paste)
         }
         .safeAreaInset(edge: .top, spacing: 0) {
             if let issue = store.captureInboxIssue {

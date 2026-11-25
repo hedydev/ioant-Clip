@@ -257,13 +257,21 @@ async function capture(mode) {
       });
     }
     }
+    function queuePoster(url, marker) {
+      pendingImages.push(async () => {
+        const data = await assetData(url);
+        if (!data || state.imageBytes + data.length > maxImage) return;
+        state.imageBytes += data.length;
+        marker.setAttribute('data-ioant-media-poster', data);
+      });
+    }
     async function finish() {
       let cursor=0;
       await Promise.all(Array.from({length:Math.min(4,pendingImages.length)},async()=>{
         while(cursor<pendingImages.length) { const i=cursor++; await pendingImages[i](); }
       }));
     }
-    return {attachData,snapshotImage,queueBackground,finish};
+    return {attachData,snapshotImage,queueBackground,queuePoster,finish};
   }
 /* Offline vector snapshot with restricted SVG elements and local references. */
   function createSVG(state,attachData) {
@@ -331,14 +339,44 @@ async function capture(mode) {
   }
   if (!source) throw new Error('error_empty');
   const wholePage = mode === 'page';
-  const skip = new Set('SCRIPT STYLE LINK META NOSCRIPT IFRAME OBJECT EMBED INPUT TEXTAREA SELECT OPTION VIDEO AUDIO TEMPLATE HEAD FORM BUTTON'.split(' '));
+  const skip = new Set('SCRIPT STYLE LINK META NOSCRIPT OBJECT EMBED INPUT TEXTAREA SELECT OPTION TEMPLATE HEAD FORM BUTTON'.split(' '));
   if (wholePage) { skip.delete('FORM'); skip.delete('BUTTON'); skip.delete('INPUT'); skip.delete('TEXTAREA'); skip.delete('SELECT'); }
   const allowed = new Set('A ABBR ARTICLE ASIDE B BLOCKQUOTE BR CAPTION CODE DD DEL DETAILS DIV DL DT EM FIGCAPTION FIGURE FOOTER H1 H2 H3 H4 H5 H6 HEADER HR I IMG KBD LI MAIN MARK NAV OL P PRE Q S SAMP SECTION SMALL SPAN STRONG SUB SUMMARY SUP TABLE TBODY TD TH THEAD TFOOT TR U UL VAR WBR MATH COL COLGROUP'.split(' '));
   const state={nodes:0,svgNodes:0,imageBytes:0,truncated:false,missing:0};
   const {root,stage}=createSurface(source,wholePage);
-  const {attachData,snapshotImage,queueBackground,finish}=createAssets(state);
+  const {attachData,snapshotImage,queueBackground,queuePoster,finish}=createAssets(state);
   const {applyStyles,isVisuallyClipped,appendPseudo}=createLayout({source,wholePage,stage,queueBackground});
   const {snapshotSVG}=createSVG(state,attachData);
+  function recordMedia(node, tag, parent) {
+    let kind = tag.toLowerCase();
+    let url = node.currentSrc || node.getAttribute('src') || node.querySelector('source[src]')?.getAttribute('src');
+    if (tag === 'IFRAME') {
+      let host;
+      try { host = new URL(url, document.baseURI).hostname; } catch { return; }
+      if (/(^|\.)(youtube(?:-nocookie)?\.com|vimeo\.com|bilibili\.com|dailymotion\.com)$/i.test(host)) kind = 'video';
+      else if (/(^|\.)(soundcloud\.com|spotify\.com|mixcloud\.com)$/i.test(host)) kind = 'audio';
+      else return;
+      url = location.href;
+    }
+    const marker = document.createElement('span');
+    marker.hidden = true;
+    marker.setAttribute('data-ioant-media', kind);
+    marker.title = (node.getAttribute('aria-label') || node.title || '').slice(0, 500);
+    if (url) {
+      try {
+        const source = new URL(url, document.baseURI);
+        const web = ['https:', 'http:'].includes(source.protocol) && source.href.length <= 8192;
+        const local = source.href.startsWith('data:' + kind + '/') && source.href.length <= 512 * 1024 &&
+          state.imageBytes + source.href.length <= 12 * 1024 * 1024;
+        if (web || local) {
+          if (local) state.imageBytes += source.href.length;
+          marker.setAttribute('data-ioant-media-src', source.href);
+        }
+      } catch { /* Use the captured page as the source. */ }
+    }
+    if (tag === 'VIDEO' && node.poster) queuePoster(node.poster, marker);
+    parent.append(marker);
+  }
   function visit(node, parent) {
     if (++state.nodes > 18000) { state.truncated = true; return; }
     if (range && !range.intersectsNode(node)) return;
@@ -352,6 +390,10 @@ async function capture(mode) {
     if (skip.has(tag) || node.isContentEditable || node.hidden || !wholePage && node.getAttribute('aria-hidden') === 'true' && tag !== 'SVG') return;
     const cs = getComputedStyle(node);
     if (isVisuallyClipped(node,cs)) return;
+    if (['VIDEO', 'AUDIO', 'IFRAME'].includes(tag)) {
+      recordMedia(node, tag, parent);
+      return;
+    }
     // Keep empty, inert geometry for visible controls rather than removing a
     // flex/grid item. Do not copy current field values (passwords, tokens,
     // personal inputs), form actions, names, or interactive behavior.
@@ -382,7 +424,13 @@ async function capture(mode) {
     }
     const dst = document.createElement(allowed.has(tag) ? tag.toLowerCase() : 'div');
     applyStyles(node,dst,cs);
-    if (tag === 'IMG') snapshotImage(node,dst);
+    if (tag === 'IMG') {
+      snapshotImage(node,dst);
+      const original = node.currentSrc || node.src;
+      if (/^https?:\/\//i.test(original) && original.length <= 8192) {
+        dst.setAttribute('data-ioant-image-origin', original);
+      }
+    }
     if (tag === 'TD' || tag === 'TH') { dst.colSpan = node.colSpan; dst.rowSpan = node.rowSpan; }
     if (tag === 'OL' && node.start !== 1) dst.start = node.start;
     if (tag === 'A' && /^https?:\/\//i.test(node.href)) dst.setAttribute('data-source-href',node.href);
@@ -401,13 +449,13 @@ async function capture(mode) {
   function capturedText(node) {
     if (node.nodeType === Node.TEXT_NODE) return node.nodeValue || '';
     if (node.nodeType !== Node.ELEMENT_NODE) return '';
-    if (node.hasAttribute('data-ioant-control')) return '';
+    if (node.hasAttribute('data-ioant-control') || node.hasAttribute('data-ioant-media')) return '';
     const value = Array.from(node.childNodes,capturedText).join('');
     const block = /^(block|flex|grid|table|list-item|flow-root)/.test(node.style.display);
     return block || node.tagName === 'BR' ? '\n'+value+'\n' : value;
   }
   const text = (range ? range.toString() : wholePage ? capturedText(root).replace(/\n{3,}/g,'\n\n').trim() : source.innerText || root.textContent).slice(0,2_000_000);
-  if (!text.trim() && !root.querySelector('img[src]')) throw new Error('error_empty');
+  if (!text.trim() && !root.querySelector('img[src], [data-ioant-media]')) throw new Error('error_empty');
   const title = mode === 'answer' ? (text.split(/\n/).find(s=>s.trim()) || 'ChatGPT answer').trim().slice(0,100) : document.title || 'Web capture';
   const result = {version:1,title,sourceURL:location.href,mode,html,text,truncated:state.truncated || state.missing>0};
   if (new TextEncoder().encode(JSON.stringify(result)).length > 32*1024*1024) throw new Error('error_large');

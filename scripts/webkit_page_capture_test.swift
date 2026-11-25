@@ -26,7 +26,7 @@ import WebKit
         .marker::before{content:"◆ ";color:#acf}.marker::after{content:"";display:inline-block;width:8px;height:8px;background:#acf}
         .clip{position:absolute;width:1px;height:1px;clip-path:inset(50%);overflow:hidden}
         </style><div class="head"><a class="sr">Skip to main content</a><a class="sr">Accessibility help</a><span class="brand">Search brand</span><input class="search" type="search" placeholder="Search" value="private field value"><button>Search</button></div>
-        <main><article><h2>A long result title wrapping correctly over multiple words in the original search results</h2><p class="marker">First description with ordinary line wrapping.</p></article><article><h2>Second result title</h2><p>Second description</p></article><a class="clip">Hidden clipped help</a></main>
+        <main><article><h2>A long result title wrapping correctly over multiple words in the original search results</h2><p class="marker">First description with ordinary line wrapping.</p></article><article><h2>Second result title</h2><p>Second description</p></article><a class="clip">Hidden clipped help</a><video title="Fixture video" src="data:video/mp4;base64,AA=="></video><audio title="Fixture audio" src="data:audio/mpeg;base64,AA=="></audio></main>
         """,baseURL:nil)
         try await wait(observer)
         let result = try await view.callAsyncJavaScript(js + "\nreturn await capture('page');",arguments:[:],in:nil,contentWorld:.page)
@@ -35,6 +35,11 @@ import WebKit
               !text.contains("Skip to main content"), !html.contains("Hidden clipped help"),
               html.contains("data-ioant-control"),html.contains("data-ioant-pseudo"),html.contains("data-ioant-layout-version") else {
             throw NSError(domain:"CaptureStructure",code:1)
+        }
+        guard html.contains("data-ioant-media=\"video\""),
+              html.contains("data-ioant-media=\"audio\""),
+              !html.contains("<video"), !html.contains("<audio") else {
+            throw NSError(domain:"MediaMetadata",code:1)
         }
         let original = try await view.evaluateJavaScript("""
         (()=>{const r=e=>({x:e.getBoundingClientRect().x,y:e.getBoundingClientRect().y,w:e.getBoundingClientRect().width,h:e.getBoundingClientRect().height});return {head:r(document.querySelector('.head')),input:r(document.querySelector('input')),titles:[...document.querySelectorAll('h2')].map(r),paragraphs:[...document.querySelectorAll('p')].map(r)}})()

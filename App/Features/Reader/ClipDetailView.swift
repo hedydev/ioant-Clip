@@ -3,6 +3,7 @@ import SwiftUI
 struct ClipDetailView: View {
     @EnvironmentObject var store: LibraryStore
     let current: Note?
+    let sheetParentSize: CGSize
     let tags: [String]
     @Binding var plainPreview: Bool
     @Binding var copiedID: UUID?
@@ -11,6 +12,7 @@ struct ClipDetailView: View {
     @Binding var confirmDelete: Bool
     @Binding var importing: Bool
     let paste: () -> Void
+    @State private var showingMedia = false
     var body: some View {
             if let note = current {
                 VStack(alignment: .leading, spacing: 0) {
@@ -34,8 +36,18 @@ struct ClipDetailView: View {
                         }
                         if let source = note.parts.first?.sourceURL { Text(verbatim: source).font(.caption).foregroundStyle(.secondary).lineLimit(1).textSelection(.enabled) }
                     }.padding(LayoutMetrics.large)
+                    Picker("reader.media", selection: $showingMedia) {
+                        Text("reader.original").tag(false)
+                        Text("reader.media").tag(true)
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                    .padding(.horizontal, LayoutMetrics.large)
+                    .padding(.bottom, 8)
                     Divider()
-                    if plainPreview && !note.plainText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    if showingMedia {
+                        ClipMediaView(items: note.media, parentSize: sheetParentSize).id(note.id)
+                    } else if plainPreview && !note.plainText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                         ScrollView {
                             Text(note.plainText)
                                 .frame(maxWidth: .infinity, alignment: .leading)

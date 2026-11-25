@@ -97,11 +97,19 @@
       });
     }
     }
+    function queuePoster(url, marker) {
+      pendingImages.push(async () => {
+        const data = await assetData(url);
+        if (!data || state.imageBytes + data.length > maxImage) return;
+        state.imageBytes += data.length;
+        marker.setAttribute('data-ioant-media-poster', data);
+      });
+    }
     async function finish() {
       let cursor=0;
       await Promise.all(Array.from({length:Math.min(4,pendingImages.length)},async()=>{
         while(cursor<pendingImages.length) { const i=cursor++; await pendingImages[i](); }
       }));
     }
-    return {attachData,snapshotImage,queueBackground,finish};
+    return {attachData,snapshotImage,queueBackground,queuePoster,finish};
   }
