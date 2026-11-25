@@ -1,6 +1,6 @@
 # ioant-Clip architecture
 
-Hero Skills baseline: 62f7b2ac062e62de41f8fe8565583d761aeabb0f. Product is a high-fidelity content collection library, not a note editor. UI terminology: clip / collection. Product identity is ioant-Clip; bundle IDs and package renamed in the approved identity migration. Legacy repository registration, capture envelope, persisted field names and daily paths are deliberately preserved.
+Hero Skills baseline: 62f7b2ac062e62de41f8fe8565583d761aeabb0f. Product is a high-fidelity content collection library, not a note editor. UI terminology: clip / collection. Product identity is ioant-Clip; bundle IDs and package renamed in the approved identity migration. The GitHub repository was renamed in place to hedydev/ioant-Clip; local MCP binding migration is separate. Preserve prior handoff and receipt history, legacy capture envelope, persisted field names and daily paths.
 
 | Module | Responsibility and contract |
 |---|---|

@@ -33,7 +33,7 @@ The extension has no persistent host permissions. It operates on the active tab 
 
 ## Git
 
-SSH remote: git@github.com:hedydev/ioant-Note.git.
+SSH remote: git@github.com:hedydev/ioant-Clip.git.
 
 ## High-fidelity capture (0.3)
 On ChatGPT use Latest ChatGPT answer to capture the last loaded assistant message, or Selected content to capture an explicit range. Entire page remains available. For ordinary copy/paste workflow choose Copy styled content only, then paste in Clip; direct native import retains the complete capture envelope and is recommended for diagrams. Capture uses computed styles, measured layout widths, SVG diagrams as restricted offline image documents, and available canvas/raster images. It is a static snapshot, not pixel-identical or interactive; cross-origin assets, unmounted messages and embedded external frames may be missing. An incomplete-assets warning is reported. Existing plain clipboard notes cannot recover data never copied.
@@ -47,4 +47,4 @@ Entire page layout preserves the source CSS viewport, grid/flex used sizes and n
 ### Colored tags
 New notes remain untagged. Optional suggestions use only deterministic local domain/title/text rules shared on macOS and iOS; no AI model, network or inference service. Assign tags explicitly in the note header or edit sheet. Colors are shared by case-insensitive tag name; legacy libraries decode without migration. Sidebar filters all notes, untagged, and each used tag, combined with search.
 
-The product is ioant-Clip. Native bundle IDs are com.ioant.clip.macos and com.ioant.clip.ios; package ClipCore; native host com.ioant.clip.capture. The legacy repository URL remains registered until a separate repository/MCP migration. The persisted notes.json schema, daily storage directory, extension key and legacy host alias remain compatible. A changed iOS bundle ID creates a new sandbox: review scripts copy the old library only if the new library is absent; physical-device migration requires explicit export/import. See docs/ARCHITECTURE.md.
+The product is ioant-Clip. Native bundle IDs are com.ioant.clip.macos and com.ioant.clip.ios; package ClipCore; native host com.ioant.clip.capture. The GitHub repository is hedydev/ioant-Clip (renamed in place from ioant-Note). Local checkout and MCP bindings are migrated separately; keep existing handoff and receipt history. The persisted notes.json schema, daily storage directory, extension key and legacy host alias remain compatible. A changed iOS bundle ID creates a new sandbox: review scripts copy the old library only if the new library is absent; physical-device migration requires explicit export/import. See docs/ARCHITECTURE.md.
