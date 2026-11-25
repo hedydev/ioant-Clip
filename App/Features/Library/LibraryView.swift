@@ -3,6 +3,7 @@ import UniformTypeIdentifiers
 
 struct LibraryView: View {
     @EnvironmentObject var store: LibraryStore
+    @EnvironmentObject private var language: LanguagePreferences
     @State private var selected: UUID?
     @State private var copiedID: UUID?
     @AppStorage("ioant.clip.library.plainPreview.v1") private var plainPreview = false
@@ -33,6 +34,22 @@ struct LibraryView: View {
             LibrarySidebar(selected: $selected, compactColumn: $compactColumn, checked: $checked, selecting: $selecting, query: $query, importing: $importing, appSettings: $appSettings, storageSettings: $storageSettings, deleting: $deleting, confirmDelete: $confirmDelete, tagFilter: filterBinding, paste: paste)
         } detail: {
             ClipDetailView(current: current, tags: tags, plainPreview: $plainPreview, copiedID: $copiedID, editing: $editing, deleting: $deleting, confirmDelete: $confirmDelete, importing: $importing, paste: paste)
+        }
+        .safeAreaInset(edge: .top, spacing: 0) {
+            if let issue = store.captureInboxIssue {
+                HStack(alignment: .top, spacing: LayoutMetrics.small) {
+                    Image(systemName: "exclamationmark.triangle")
+                    Text(verbatim: language.localized(issue))
+                        .font(.callout)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Spacer(minLength: 0)
+                }
+                .foregroundStyle(.secondary)
+                .padding(LayoutMetrics.medium)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(.regularMaterial)
+                .accessibilityIdentifier("clip-inbox-warning")
+            }
         }
         .background { GeometryReader { geometry in
             Color.clear.preference(key: SheetParentSizeKey.self, value: geometry.size)

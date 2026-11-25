@@ -47,3 +47,22 @@ for bundle in [app,*((app/"Contents/PlugIns").glob("*.appex"))]:
     print(bundle.name,"profile group permissions",p.get("Entitlements",{}).get("com.apple.security.application-groups"),flush=True)
     e=subprocess.check_output(["/usr/bin/codesign","-d","--entitlements",":-",str(bundle)],stderr=subprocess.DEVNULL)
     print(bundle.name,"signed group permissions",plistlib.loads(e).get("com.apple.security.application-groups"),flush=True)
+
+# Scan only relevant locally cached profiles; never change/revoke profiles.
+import datetime
+from profile_inventory import parse_profile, matching_profile
+count=0
+for folder in (home/"Library/Developer/Xcode/UserData/Provisioning Profiles",home/"Library/MobileDevice/Provisioning Profiles"):
+    if not folder.is_dir(): continue
+    for item in folder.iterdir():
+        if item.suffix not in (".provisionprofile",".mobileprovision") or not item.is_file(): continue
+        try:
+            p=parse_profile(item)
+            if not p: continue
+            match=matching_profile(p,"macOS",datetime.datetime.now(datetime.timezone.utc))
+            if not match or match[0]!="64RS366WKG" or "iCloud.com.ioant.clip" not in match[1]: continue
+            authorized="group.com.ioant.clip" in p.get("Entitlements",{}).get("com.apple.security.application-groups",[])
+            print("Cached Mac main profile group authorized:",authorized,flush=True)
+            if authorized: count+=1
+        except Exception: pass
+print("Eligible cached Mac main profiles with both CloudKit and App Group:",count,flush=True)

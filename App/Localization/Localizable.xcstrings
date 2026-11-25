@@ -2387,31 +2387,31 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Some incoming captures could not be imported. The files have been retained."
+            "value": "Some captures could not be imported. They remain in the inbox for retry."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "部分网页采集无法导入，原文件已保留。"
+            "value": "部分采集内容尚未导入，已保留在收件箱中等待重试。"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "部分網頁擷取無法匯入，原始檔案已保留。"
+            "value": "部分擷取內容尚未匯入，已保留在收件匣中等待重試。"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "一部のキャプチャを読み込めませんでした。ファイルは保持されています。"
+            "value": "一部のクリップを取り込めませんでした。再試行のため受信箱に保持します。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "일부 캡처를 가져오지 못했습니다. 파일은 보존되었습니다."
+            "value": "일부 캡처를 가져오지 못했습니다. 재시도를 위해 받은 편지함에 보존됩니다."
           }
         }
       }
@@ -2422,31 +2422,31 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Cannot read incoming captures."
+            "value": "Unable to read the capture inbox. Existing captures are retained; retrying automatically."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "无法读取待导入的网页采集。"
+            "value": "无法读取待导入的网页采集。已保留待处理内容，将自动重试。"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "無法讀取待匯入的網頁擷取。"
+            "value": "無法讀取待匯入的網頁擷取。已保留待處理內容，將自動重試。"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "受信したキャプチャを読み取れません。"
+            "value": "取り込み待ちのクリップを読み込めません。内容は保持し、自動で再試行します。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "수신한 캡처를 읽을 수 없습니다."
+            "value": "가져올 캡처를 읽을 수 없습니다. 대기 중인 콘텐츠는 보존되며 자동으로 다시 시도합니다."
           }
         }
       }

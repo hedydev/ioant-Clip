@@ -41,7 +41,22 @@ def entitlements(path):
             pos+=size
         raise AssertionError("missing simulator entitlements")
     return plistlib.loads(p.stdout)
+def profile_group_authorized(bundle):
+    if platform == "simulator": return True
+    directory = bundle/"Contents" if mac else bundle
+    profile = directory/("embedded.provisionprofile" if mac else "embedded.mobileprovision")
+    if not profile.is_file(): return False
+    result = subprocess.run(["/usr/bin/security","cms","-D","-i",str(profile)],capture_output=True,check=True)
+    groups = plistlib.loads(result.stdout).get("Entitlements",{}).get("com.apple.security.application-groups",[])
+    return "group.com.ioant.clip" in groups
+
 assert entitlements(app)["com.apple.security.application-groups"] == ["group.com.ioant.clip"]
+# A development build with an unauthorized existing main profile can still
+# ship the non-modal error hotfix. Report separately; never claim authorization.
+main_authorized = profile_group_authorized(app)
+print("Main App Group embedded profile authorized:",main_authorized)
+if not main_authorized:
+    print("WARNING: main app profile lacks group.com.ioant.clip; runtime group access may be denied")
 expected = {"com.ioant.clip."+("macos" if mac else "ios")+".safari":"com.apple.Safari.web-extension"}
 if not mac: expected["com.ioant.clip.ios.share"]="com.apple.share-services"
 seen = set()
@@ -54,10 +69,12 @@ for extension in (base/"PlugIns").glob("*.appex"):
     ent = entitlements(extension)
     assert ent["com.apple.security.application-groups"] == ["group.com.ioant.clip"]
     assert "com.apple.developer.icloud-services" not in ent
+    assert profile_group_authorized(extension), "extension profile lacks registered group"
     if bundle.endswith(".safari"):
         resources = extbase/"Resources" if mac else extbase
         assert (resources/"manifest.json").is_file() and (resources/"Popup/popup.html").is_file() and (resources/"CaptureEngine/injected.js").is_file()
     seen.add(bundle)
     print("Verified signed extension:",bundle)
 assert seen == set(expected)
-print("PASS: containing app and all expected extensions share the registered group")
+print("PASS: signed group entitlement and all extension profiles verified")
+if main_authorized: print("PASS: main app group profile authorization verified")

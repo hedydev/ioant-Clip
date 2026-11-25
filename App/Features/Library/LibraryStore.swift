@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import OSLog
 
 @MainActor final class LibraryStore: ObservableObject, SyncLibraryAccess {
     @Published private(set) var library = NoteLibrary()
@@ -7,7 +8,9 @@ import SwiftUI
     private let url: URL
     private var ready = false
     @Published private(set) var lastIncoming: UUID?
-    private var reportedInboxFailures = Set<String>()
+    private var inboxHealth = InboxHealth()
+    @Published private(set) var captureInboxIssue: String?
+    private let inboxLogger = Logger(subsystem: "com.ioant.clip.capture", category: "inbox")
     init(url: URL = LibraryLocation.notesURL) {
         self.url = url
         do {
@@ -71,26 +74,43 @@ import SwiftUI
     func receivePendingCaptures() {
         guard ready else { return }
         #if os(macOS)
-        drainCaptureInbox(url.deletingLastPathComponent().appending(path: "CaptureInbox"))
+        drainCaptureInbox(url.deletingLastPathComponent().appending(path: "CaptureInbox"), source: .local)
         #endif
         #if CLIP_CAPTURE_EXTENSIONS
-        if !LibraryLocation.isCloudReview, let inbox = SharedCaptureInbox.directory {
-            drainCaptureInbox(inbox)
+        if !LibraryLocation.isCloudReview {
+            if let inbox = SharedCaptureInbox.directory {
+                drainCaptureInbox(inbox, source: .shared)
+            } else if inboxHealth.isDue(.shared) {
+                updateInboxHealth(.shared, state: .unreadable(domain: "AppGroupUnavailable", code: 1))
+            }
         }
         #endif
     }
-    private func drainCaptureInbox(_ inbox: URL) {
+    private func drainCaptureInbox(_ inbox: URL, source: InboxHealth.Source) {
+        guard inboxHealth.isDue(source) else { return }
         do {
             var next = library
             let result = try CaptureInbox.drain(directory: inbox, libraryURL: url, library: &next)
             if !result.imported.isEmpty { library = next }
             if let id = result.imported.last { lastIncoming = id }
-            let newFailures = Set(result.failures).subtracting(reportedInboxFailures)
-            if !newFailures.isEmpty { error = LibraryIssue("error.inbox.partial") }
-            reportedInboxFailures = Set(result.failures)
+            updateInboxHealth(source, state: result.failures.isEmpty ? .healthy : .partial(result.failures.count))
         } catch {
-            if reportedInboxFailures.insert("directory").inserted { self.error = LibraryIssue("error.inbox.read") }
+            let failure = error as NSError
+            updateInboxHealth(source, state: .unreadable(domain: failure.domain, code: failure.code))
         }
+    }
+    private func updateInboxHealth(_ source: InboxHealth.Source, state: InboxHealth.State) {
+        let changed = inboxHealth.update(source, state: state)
+        if changed {
+            // No capture title, URL, content, file name or account identifier in logs.
+            switch state {
+            case .healthy: inboxLogger.info("Inbox \(source.rawValue, privacy: .public) readable")
+            case .partial(let count): inboxLogger.error("Inbox \(source.rawValue, privacy: .public) retained \(count, privacy: .public) failed files")
+            case .unreadable(let domain, let code): inboxLogger.error("Inbox \(source.rawValue, privacy: .public) read failed \(domain, privacy: .public) \(code, privacy: .public)")
+            }
+        }
+        let issue = inboxHealth.hasUnreadable ? "error.inbox.read" : (inboxHealth.hasPartial ? "error.inbox.partial" : nil)
+        if captureInboxIssue != issue { captureInboxIssue = issue }
     }
     func importFile(_ url: URL) -> UUID? {
         let access = url.startAccessingSecurityScopedResource()

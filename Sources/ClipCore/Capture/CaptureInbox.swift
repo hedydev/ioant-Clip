@@ -9,9 +9,20 @@ public enum CaptureInbox {
     }
     public static func drain(directory: URL, libraryURL: URL, library: inout NoteLibrary) throws -> Result {
         let fm = FileManager.default
-        guard fm.fileExists(atPath: directory.path) else { return Result() }
+        // fileExists conflates a missing inbox with permission denial. Only
+        // an actual not-found error is treated as an empty queue.
         let keys: Set<URLResourceKey> = [.isRegularFileKey, .isSymbolicLinkKey, .fileSizeKey, .creationDateKey]
-        let pending = try fm.contentsOfDirectory(at: directory, includingPropertiesForKeys: Array(keys), options: [.skipsHiddenFiles])
+        let files: [URL]
+        do {
+            let attributes = try directory.resourceValues(forKeys: [.isDirectoryKey,.isSymbolicLinkKey])
+            guard attributes.isDirectory == true, attributes.isSymbolicLink != true else {
+                throw CocoaError(.fileReadInvalidFileName)
+            }
+            files = try fm.contentsOfDirectory(at: directory, includingPropertiesForKeys: Array(keys), options: [.skipsHiddenFiles])
+        } catch let error as CocoaError where error.code == .fileReadNoSuchFile || error.code == .fileNoSuchFile {
+            return Result()
+        }
+        let pending = files
             .filter { $0.pathExtension == "json" && UUID(uuidString: $0.deletingPathExtension().lastPathComponent) != nil }
             .sorted {
                 let a = (try? $0.resourceValues(forKeys: [.creationDateKey]).creationDate) ?? .distantPast

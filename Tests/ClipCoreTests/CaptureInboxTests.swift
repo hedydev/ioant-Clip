@@ -38,6 +38,17 @@ final class CaptureInboxTests: XCTestCase {
         XCTAssertEqual(library.notes.count, 1)
         XCTAssertFalse(FileManager.default.fileExists(atPath: file.path))
     }
+    func testMissingAndNonDirectoryInbox() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let inbox = root.appendingPathComponent("CaptureInbox")
+        var library = NoteLibrary()
+        let url = root.appendingPathComponent("notes.json")
+        XCTAssertTrue(try CaptureInbox.drain(directory: inbox,libraryURL:url,library:&library).imported.isEmpty)
+        try FileManager.default.createDirectory(at:root,withIntermediateDirectories:true)
+        try Data("not a directory".utf8).write(to:inbox)
+        XCTAssertThrowsError(try CaptureInbox.drain(directory:inbox,libraryURL:url,library:&library))
+    }
     func testInvalidAndFailedSaveRetainFile() throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }
