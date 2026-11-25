@@ -12,7 +12,7 @@ conditions='$(inherited) CLIP_CLOUDKIT_REVIEW CLIP_CLOUDKIT_SIM_SMOKE'
 case "$mode" in
   isolated) bundle=com.ioant.clip.ios.simsmoke; lane=Simulator;;
   registered) bundle=com.ioant.clip.ios; lane=SimulatorRegistered;;
-  ui) bundle=com.ioant.clip.ios; lane=SimulatorUIReview; smoke=NO; ui=YES; conditions='$(inherited) CLIP_CLOUDKIT_REVIEW CLIP_CLOUDKIT_UI_REVIEW';;
+  ui) bundle=com.ioant.clip.ios; lane=SimulatorUIReviewScene; smoke=NO; ui=YES; conditions='$(inherited) CLIP_CLOUDKIT_REVIEW CLIP_CLOUDKIT_UI_REVIEW';;
   *) exit 2;;
 esac
 cache=/Volumes/LunaDrive/DeveloperCache
@@ -29,7 +29,7 @@ if ! xcodebuild -project ioant-Clip.xcodeproj -scheme ioant-Clip-iOS -configurat
   -destination 'generic/platform=iOS Simulator' -derivedDataPath "$derived" \
   "PRODUCT_BUNDLE_IDENTIFIER=$bundle" \
   CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY=- CODE_SIGNING_ALLOWED=YES CODE_SIGNING_REQUIRED=YES \
-  DEVELOPMENT_TEAM=64RS366WKG \
+  DEVELOPMENT_TEAM=64RS366WKG INFOPLIST_KEY_UIApplicationSceneManifest_Generation=YES \
   CLIP_CLOUDKIT_CONTAINER=iCloud.com.ioant.clip "CLIP_CLOUDKIT_SMOKE=$smoke" "CLIP_CLOUDKIT_UI_REVIEW=$ui" \
   "CODE_SIGN_ENTITLEMENTS=$root/Config/CloudKitReview.entitlements" \
   "INFOPLIST_FILE=$root/Config/CloudKitReview-Info.plist" \

@@ -12,6 +12,7 @@ assert info["ClipCloudKitEnvironment"] == "Development"
 assert info["ClipCloudKitSmoke"] == ("NO" if mode == "ui" else "YES")
 if mode == "ui":
     assert bundle == "com.ioant.clip.ios" and info["ClipCloudKitUIReview"] == "YES"
+    assert isinstance(info.get("UIApplicationSceneManifest"), dict), "missing iOS scene manifest"
 subprocess.run(["/usr/bin/codesign", "--verify", "--strict", str(app)], check=True)
 
 def simulator_entitlements(executable):

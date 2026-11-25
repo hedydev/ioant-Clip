@@ -4,8 +4,8 @@ import json, os, pathlib, plistlib, subprocess, hashlib, time
 root = pathlib.Path(__file__).resolve().parents[2]
 cache = pathlib.Path("/Volumes/LunaDrive/DeveloperCache")
 derived = (cache / "projects/ioant-clip/DerivedData" if cache.is_dir() and os.access(cache, os.W_OK) else root / "DerivedData") / "CloudKitSmoke"
-app = derived / "SimulatorUIReview/Build/Products/Debug-iphonesimulator/ioant-Clip-iOS.app"
-previous = derived / "SimulatorRegistered/Build/Products/Debug-iphonesimulator/ioant-Clip-iOS.app"
+app = derived / "SimulatorUIReviewScene/Build/Products/Debug-iphonesimulator/ioant-Clip-iOS.app"
+previous = derived / "SimulatorUIReview/Build/Products/Debug-iphonesimulator/ioant-Clip-iOS.app"
 bundle = "com.ioant.clip.ios"
 udid = "614FDA13-6198-452B-A6B2-94AA5591B30A"
 def sim(*args, timeout=30, check=True):
@@ -20,8 +20,8 @@ assert any(d["udid"] == udid and d["state"] == "Booted" for ds in devices.values
 installed = pathlib.Path(sim("get_app_container", udid, bundle, "app").stdout.strip())
 data = pathlib.Path(sim("get_app_container", udid, bundle, "data").stdout.strip())
 old_info = info(installed)
-assert old_info.get("ClipCloudKitSmoke") == "YES" and old_info.get("CFBundleIdentifier") == bundle, "refuse to replace normal or existing review app"
-assert binary_digest(installed) == binary_digest(previous), "installed smoke differs from last completed owned build"
+assert old_info.get("ClipCloudKitSmoke") == "NO" and old_info.get("ClipCloudKitUIReview") == "YES" and old_info.get("CFBundleIdentifier") == bundle, "refuse to replace normal app"
+assert binary_digest(installed) == binary_digest(previous), "installed review differs from last verified owned build"
 receipts = {}
 for name in ("cloudkit-smoke-result.txt", "cloudkit-conflict-result.txt", "cloudkit-resolution-result.txt"):
     payload = (data / "Documents" / name).read_bytes()
@@ -46,11 +46,14 @@ try:
     result = sim("launch", udid, bundle, timeout=45)
     launched = True
     print(result.stdout.strip(), flush=True)
-    time.sleep(3)
+    for _ in range(15):
+        data = pathlib.Path(sim("get_app_container", udid, bundle, "data").stdout.strip())
+        if (data / ui_dir / "notes.json").is_file(): break
+        time.sleep(1)
     jobs = sim("spawn", udid, "launchctl", "list").stdout
     assert any(bundle in line and line.split()[0].isdigit() for line in jobs.splitlines()), "UI process not running"
     notes = data / ui_dir / "notes.json"
-    assert notes.is_file(), "isolated UI library not initialized"
+    assert notes.is_file(), "isolated UI library not initialized after bounded wait"
     local = json.loads(notes.read_text())
     assert not local.get("notes") and local.get("syncEnrollment") is None, "unexpected initial library or enrollment"
     print("PASS: real iPhone UI process running, isolated empty local library and no enrollment; left open for interactive review", flush=True)
