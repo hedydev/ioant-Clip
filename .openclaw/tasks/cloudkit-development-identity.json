@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "title": "Verify reusable Apple Development signing identity",
+  "steps": [
+    {
+      "name": "existing_development_identity",
+      "runtime": "bash",
+      "script": "scripts/cloudkit/check_development_identity.sh",
+      "timeoutSeconds": 180
+    }
+  ],
+  "artifacts": []
+}
