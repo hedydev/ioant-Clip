@@ -1,0 +1,92 @@
+{
+  "extension_name": {
+    "message": "ioant-Clip ウェブキャプチャ"
+  },
+  "extension_description": {
+    "message": "ウェブページや選択範囲をスタイル付きでオフライン保存します。"
+  },
+  "extension_action": {
+    "message": "ioant-Clip に保存"
+  },
+  "popup_description": {
+    "message": "ウェブページの内容をスタイル付きで保存します。"
+  },
+  "popup_answer": {
+    "message": "ChatGPT の最新回答"
+  },
+  "popup_page": {
+    "message": "ページ全体 · レイアウト"
+  },
+  "popup_viewport": {
+    "message": "表示範囲 · スクリーンショット"
+  },
+  "popup_selection": {
+    "message": "選択した内容"
+  },
+  "popup_export": {
+    "message": "キャプチャを書き出す"
+  },
+  "popup_copy": {
+    "message": "書式付きコピーのみ（Clip にペースト）"
+  },
+  "status_capturing": {
+    "message": "キャプチャ中…"
+  },
+  "status_copied": {
+    "message": "書式付き HTML をコピーしました。ioant-Clip にペーストして保存できます。"
+  },
+  "status_copy_unavailable": {
+    "message": "コピーできません。キャプチャを書き出してください。"
+  },
+  "status_sent": {
+    "message": "ioant-Clip に送信しました。アプリが読み込みます。"
+  },
+  "status_queued": {
+    "message": "端末内のキューに追加しました。ioant-Clip を開いてください。"
+  },
+  "status_import_unconfirmed": {
+    "message": "直接読み込みを確認できません。下から書き出せます。"
+  },
+  "status_partial": {
+    "message": "一部の内容や画像を保存できませんでした。"
+  },
+  "status_exported": {
+    "message": "書き出しました。必要な場合のみ手動で読み込んでください。"
+  },
+  "error_no_tab": {
+    "message": "アクティブなタブがありません。"
+  },
+  "error_tab_changed": {
+    "message": "表示中のページが変わりました。もう一度キャプチャしてください。"
+  },
+  "error_capture": {
+    "message": "このページをキャプチャできません。"
+  },
+  "error_native": {
+    "message": "ネイティブアプリの応答が不正です。"
+  },
+  "error_selection": {
+    "message": "先にページの内容を選択してください。"
+  },
+  "error_mode": {
+    "message": "対応していないキャプチャモードです。"
+  },
+  "error_answer_site": {
+    "message": "最新回答モードは ChatGPT のみ対応しています。"
+  },
+  "error_answer_missing": {
+    "message": "読み込み済みの回答がありません。内容を選択してお試しください。"
+  },
+  "error_empty": {
+    "message": "キャプチャできる内容がありません。"
+  },
+  "error_large": {
+    "message": "キャプチャが大きすぎます。選択範囲を小さくしてください。"
+  },
+  "error_snapshot": {
+    "message": "有効なスクリーンショットを取得できません。"
+  },
+  "error_snapshot_large": {
+    "message": "スクリーンショットが 32 MiB の上限を超えています。"
+  }
+}

@@ -1,0 +1,92 @@
+{
+  "extension_name": {
+    "message": "ioant-Clip 網頁擷取"
+  },
+  "extension_description": {
+    "message": "保留網頁或選取內容的樣式，離線收藏。"
+  },
+  "extension_action": {
+    "message": "收藏至 ioant-Clip"
+  },
+  "popup_description": {
+    "message": "擷取網頁內容並保留樣式。"
+  },
+  "popup_answer": {
+    "message": "最新 ChatGPT 回答"
+  },
+  "popup_page": {
+    "message": "整頁 · 保留版面"
+  },
+  "popup_viewport": {
+    "message": "可見頁面 · 原貌截圖"
+  },
+  "popup_selection": {
+    "message": "選取內容"
+  },
+  "popup_export": {
+    "message": "匯出擷取檔案"
+  },
+  "popup_copy": {
+    "message": "僅複製帶樣式內容（在 Clip 中貼上）"
+  },
+  "status_capturing": {
+    "message": "正在擷取…"
+  },
+  "status_copied": {
+    "message": "已複製帶樣式內容，在 ioant-Clip 中貼上即可收藏。"
+  },
+  "status_copy_unavailable": {
+    "message": "無法複製，請匯出擷取檔案。"
+  },
+  "status_sent": {
+    "message": "已傳送至 ioant-Clip，應用程式將自動匯入。"
+  },
+  "status_queued": {
+    "message": "已在本機排隊，開啟 ioant-Clip 即可匯入。"
+  },
+  "status_import_unconfirmed": {
+    "message": "尚未確認直接匯入，可在下方匯出擷取檔案。"
+  },
+  "status_partial": {
+    "message": "部分內容或圖片未能擷取。"
+  },
+  "status_exported": {
+    "message": "已匯出擷取檔案，僅在需要時手動匯入。"
+  },
+  "error_no_tab": {
+    "message": "沒有作用中的分頁。"
+  },
+  "error_tab_changed": {
+    "message": "作用中的網頁已變更，請重新擷取。"
+  },
+  "error_capture": {
+    "message": "無法擷取此網頁。"
+  },
+  "error_native": {
+    "message": "本機通訊回應異常。"
+  },
+  "error_selection": {
+    "message": "請先選取網頁內容。"
+  },
+  "error_mode": {
+    "message": "不支援的擷取模式。"
+  },
+  "error_answer_site": {
+    "message": "最新回答模式僅適用於 ChatGPT。"
+  },
+  "error_answer_missing": {
+    "message": "找不到已載入的回答，請嘗試選取內容後擷取。"
+  },
+  "error_empty": {
+    "message": "沒有可擷取的內容。"
+  },
+  "error_large": {
+    "message": "擷取內容過大，請縮小選取範圍。"
+  },
+  "error_snapshot": {
+    "message": "無法取得有效的網頁截圖。"
+  },
+  "error_snapshot_large": {
+    "message": "截圖超過 32 MiB 限制。"
+  }
+}

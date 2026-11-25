@@ -1,0 +1,92 @@
+{
+  "extension_name": {
+    "message": "ioant-Clip 网页采集"
+  },
+  "extension_description": {
+    "message": "保留网页或选区的样式，离线收藏。"
+  },
+  "extension_action": {
+    "message": "收藏到 ioant-Clip"
+  },
+  "popup_description": {
+    "message": "采集网页内容并保留样式。"
+  },
+  "popup_answer": {
+    "message": "最新 ChatGPT 回答"
+  },
+  "popup_page": {
+    "message": "整页 · 保留布局"
+  },
+  "popup_viewport": {
+    "message": "可见页面 · 原貌截图"
+  },
+  "popup_selection": {
+    "message": "选中内容"
+  },
+  "popup_export": {
+    "message": "导出采集文件"
+  },
+  "popup_copy": {
+    "message": "仅复制带样式内容（在 Clip 中粘贴）"
+  },
+  "status_capturing": {
+    "message": "正在采集…"
+  },
+  "status_copied": {
+    "message": "已复制带样式内容，在 ioant-Clip 中粘贴即可收藏。"
+  },
+  "status_copy_unavailable": {
+    "message": "无法复制，请导出采集文件。"
+  },
+  "status_sent": {
+    "message": "已发送到 ioant-Clip，应用将自动导入。"
+  },
+  "status_queued": {
+    "message": "已在本地排队，打开 ioant-Clip 即可导入。"
+  },
+  "status_import_unconfirmed": {
+    "message": "未确认直接导入，可在下方导出采集文件。"
+  },
+  "status_partial": {
+    "message": "部分内容或图片未能采集。"
+  },
+  "status_exported": {
+    "message": "已导出采集文件，仅在需要时手动导入。"
+  },
+  "error_no_tab": {
+    "message": "没有活动标签页。"
+  },
+  "error_tab_changed": {
+    "message": "活动网页已改变，请重新采集。"
+  },
+  "error_capture": {
+    "message": "无法采集此网页。"
+  },
+  "error_native": {
+    "message": "本地通信返回异常。"
+  },
+  "error_selection": {
+    "message": "请先选择网页内容。"
+  },
+  "error_mode": {
+    "message": "不支持的采集模式。"
+  },
+  "error_answer_site": {
+    "message": "最新回答模式仅适用于 ChatGPT。"
+  },
+  "error_answer_missing": {
+    "message": "未找到已加载的回答，请尝试选择内容后采集。"
+  },
+  "error_empty": {
+    "message": "没有可采集的内容。"
+  },
+  "error_large": {
+    "message": "采集内容过大，请缩小选区。"
+  },
+  "error_snapshot": {
+    "message": "无法获取有效的网页截图。"
+  },
+  "error_snapshot_large": {
+    "message": "截图超过 32 MiB 限制。"
+  }
+}

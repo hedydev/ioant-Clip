@@ -1,0 +1,92 @@
+{
+  "extension_name": {
+    "message": "ioant-Clip Web Capture"
+  },
+  "extension_description": {
+    "message": "Save a page or selection as a styled, offline clip."
+  },
+  "extension_action": {
+    "message": "Save to ioant-Clip"
+  },
+  "popup_description": {
+    "message": "Capture visible page content with its styles."
+  },
+  "popup_answer": {
+    "message": "Latest ChatGPT answer"
+  },
+  "popup_page": {
+    "message": "Entire page · layout"
+  },
+  "popup_viewport": {
+    "message": "Visible page · exact image"
+  },
+  "popup_selection": {
+    "message": "Selected content"
+  },
+  "popup_export": {
+    "message": "Export capture file"
+  },
+  "popup_copy": {
+    "message": "Copy styled content only (paste in Clip)"
+  },
+  "status_capturing": {
+    "message": "Capturing…"
+  },
+  "status_copied": {
+    "message": "Styled HTML copied. Paste in ioant-Clip to create a new clip."
+  },
+  "status_copy_unavailable": {
+    "message": "Clipboard copy unavailable. Export this capture instead."
+  },
+  "status_sent": {
+    "message": "Sent to ioant-Clip. The app will import it."
+  },
+  "status_queued": {
+    "message": "Queued locally. Open ioant-Clip to import."
+  },
+  "status_import_unconfirmed": {
+    "message": "Direct import not confirmed. You can export this capture below."
+  },
+  "status_partial": {
+    "message": "Some content or images could not be captured."
+  },
+  "status_exported": {
+    "message": "Exported capture file. Import manually only if needed."
+  },
+  "error_no_tab": {
+    "message": "No active tab."
+  },
+  "error_tab_changed": {
+    "message": "Active page changed. Capture again."
+  },
+  "error_capture": {
+    "message": "Unable to capture this page."
+  },
+  "error_native": {
+    "message": "Unexpected native response."
+  },
+  "error_selection": {
+    "message": "Select some page content first."
+  },
+  "error_mode": {
+    "message": "Unsupported capture mode."
+  },
+  "error_answer_site": {
+    "message": "Latest answer is available on ChatGPT only."
+  },
+  "error_answer_missing": {
+    "message": "No loaded assistant answer found. Try selecting the content instead."
+  },
+  "error_empty": {
+    "message": "No capturable content."
+  },
+  "error_large": {
+    "message": "Capture too large. Try a smaller selection."
+  },
+  "error_snapshot": {
+    "message": "No valid page snapshot."
+  },
+  "error_snapshot_large": {
+    "message": "Snapshot exceeds 32 MiB."
+  }
+}

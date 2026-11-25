@@ -3,19 +3,19 @@ async function capture(mode) {
   /* @capture-modules */
   const selection = window.getSelection();
   const range = mode === 'selection' && selection && !selection.isCollapsed && selection.rangeCount ? selection.getRangeAt(0) : null;
-  if (mode === 'selection' && !range) throw new Error('Select some page content first.');
-  if (!['page','selection','answer'].includes(mode)) throw new Error('Unsupported capture mode.');
+  if (mode === 'selection' && !range) throw new Error('error_selection');
+  if (!['page','selection','answer'].includes(mode)) throw new Error('error_mode');
   let source = document.body;
   if (range) {
     source = range.commonAncestorContainer;
     if (source.nodeType !== Node.ELEMENT_NODE) source = source.parentElement;
   } else if (mode === 'answer') {
-    if (location.hostname !== 'chatgpt.com' && location.hostname !== 'chat.openai.com') throw new Error('Latest answer is available on ChatGPT only.');
+    if (location.hostname !== 'chatgpt.com' && location.hostname !== 'chat.openai.com') throw new Error('error_answer_site');
     const answers = [...document.querySelectorAll('[data-message-author-role="assistant"]')].filter(e => e.getClientRects().length && e.textContent.trim());
     source = answers[answers.length - 1];
-    if (!source) throw new Error('No loaded assistant answer found. Try selecting the content instead.');
+    if (!source) throw new Error('error_answer_missing');
   }
-  if (!source) throw new Error('No capturable content.');
+  if (!source) throw new Error('error_empty');
   const wholePage = mode === 'page';
   const skip = new Set('SCRIPT STYLE LINK META NOSCRIPT IFRAME OBJECT EMBED INPUT TEXTAREA SELECT OPTION VIDEO AUDIO TEMPLATE HEAD FORM BUTTON'.split(' '));
   if (wholePage) { skip.delete('FORM'); skip.delete('BUTTON'); }
@@ -61,9 +61,9 @@ async function capture(mode) {
   const html = root.outerHTML;
   // innerText of the attached original is not used for selections: it could include text outside the selection.
   const text = (range ? range.toString() : source.innerText || root.textContent).slice(0,2_000_000);
-  if (!text.trim() && !root.querySelector('img[src]')) throw new Error('No capturable content.');
+  if (!text.trim() && !root.querySelector('img[src]')) throw new Error('error_empty');
   const title = mode === 'answer' ? (text.split(/\n/).find(s=>s.trim()) || 'ChatGPT answer').trim().slice(0,100) : document.title || 'Web capture';
   const result = {version:1,title,sourceURL:location.href,mode,html,text,truncated:state.truncated || state.missing>0};
-  if (new TextEncoder().encode(JSON.stringify(result)).length > 32*1024*1024) throw new Error('Capture too large. Try a smaller selection.');
+  if (new TextEncoder().encode(JSON.stringify(result)).length > 32*1024*1024) throw new Error('error_large');
   return result;
 }

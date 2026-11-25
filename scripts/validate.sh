@@ -16,10 +16,12 @@ swift --version
 status=0
 swift test || status=1
 /usr/bin/python3 scripts/test_localization.py || status=1
+bash scripts/test_language_preferences.sh || status=1
+/usr/bin/python3 scripts/test_extension_localization.py || status=1
 bash scripts/test_webkit_render.sh || status=1
 PYTHONDONTWRITEBYTECODE=1 /usr/bin/python3 scripts/test_native_host.py || status=1
 if command -v node >/dev/null; then
-  node --check BrowserExtension/Popup/popup.js || status=1
+  for source in BrowserExtension/Popup/*.js; do node --check "$source" || status=1; done
   /usr/bin/python3 scripts/build_capture_bundle.py --check || status=1
   for source in BrowserExtension/CaptureEngine/*.js; do node --check "$source" || status=1; done
   node --check BrowserExtension/CaptureEngine/viewport.js || status=1

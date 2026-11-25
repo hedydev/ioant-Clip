@@ -1,0 +1,92 @@
+{
+  "extension_name": {
+    "message": "ioant-Clip 웹 캡처"
+  },
+  "extension_description": {
+    "message": "웹 페이지 또는 선택 영역을 서식을 유지해 오프라인으로 저장합니다."
+  },
+  "extension_action": {
+    "message": "ioant-Clip에 저장"
+  },
+  "popup_description": {
+    "message": "웹 페이지 콘텐츠를 서식과 함께 캡처합니다."
+  },
+  "popup_answer": {
+    "message": "최신 ChatGPT 답변"
+  },
+  "popup_page": {
+    "message": "전체 페이지 · 레이아웃"
+  },
+  "popup_viewport": {
+    "message": "보이는 페이지 · 화면 캡처"
+  },
+  "popup_selection": {
+    "message": "선택한 콘텐츠"
+  },
+  "popup_export": {
+    "message": "캡처 파일 내보내기"
+  },
+  "popup_copy": {
+    "message": "서식 있는 콘텐츠만 복사(Clip에 붙여넣기)"
+  },
+  "status_capturing": {
+    "message": "캡처 중…"
+  },
+  "status_copied": {
+    "message": "서식 있는 HTML을 복사했습니다. ioant-Clip에 붙여넣어 저장하세요."
+  },
+  "status_copy_unavailable": {
+    "message": "복사할 수 없습니다. 캡처 파일을 내보내세요."
+  },
+  "status_sent": {
+    "message": "ioant-Clip에 전송했습니다. 앱에서 가져옵니다."
+  },
+  "status_queued": {
+    "message": "로컬 대기열에 추가했습니다. ioant-Clip을 열어 가져오세요."
+  },
+  "status_import_unconfirmed": {
+    "message": "직접 가져오기를 확인하지 못했습니다. 아래에서 내보낼 수 있습니다."
+  },
+  "status_partial": {
+    "message": "일부 콘텐츠나 이미지를 캡처하지 못했습니다."
+  },
+  "status_exported": {
+    "message": "캡처 파일을 내보냈습니다. 필요한 경우에만 직접 가져오세요."
+  },
+  "error_no_tab": {
+    "message": "활성 탭이 없습니다."
+  },
+  "error_tab_changed": {
+    "message": "활성 페이지가 변경되었습니다. 다시 캡처하세요."
+  },
+  "error_capture": {
+    "message": "이 페이지를 캡처할 수 없습니다."
+  },
+  "error_native": {
+    "message": "로컬 앱 응답이 올바르지 않습니다."
+  },
+  "error_selection": {
+    "message": "먼저 페이지 콘텐츠를 선택하세요."
+  },
+  "error_mode": {
+    "message": "지원되지 않는 캡처 모드입니다."
+  },
+  "error_answer_site": {
+    "message": "최신 답변 모드는 ChatGPT에서만 사용할 수 있습니다."
+  },
+  "error_answer_missing": {
+    "message": "로드된 답변이 없습니다. 콘텐츠를 선택한 후 다시 시도하세요."
+  },
+  "error_empty": {
+    "message": "캡처할 콘텐츠가 없습니다."
+  },
+  "error_large": {
+    "message": "캡처 크기가 너무 큽니다. 선택 범위를 줄이세요."
+  },
+  "error_snapshot": {
+    "message": "유효한 화면 캡처를 가져올 수 없습니다."
+  },
+  "error_snapshot_large": {
+    "message": "화면 캡처가 32 MiB 제한을 초과합니다."
+  }
+}
