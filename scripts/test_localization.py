@@ -1,4 +1,4 @@
-import json, pathlib, re, sys
+import json, pathlib, plistlib, re, sys
 root = pathlib.Path(__file__).resolve().parents[1]
 catalog = json.loads((root / "App/Localization/Localizable.xcstrings").read_text())
 keys = catalog["strings"]
@@ -23,4 +23,11 @@ for arg in sys.argv[1:]:
     for locale in locales:
         path=base/(locale+".lproj")/"Localizable.strings"
         assert path.is_file(), str(path)
+        # Verify actual compiled text, not just presence of .lproj directories.
+        # Xcode compiles .strings to binary plists.
+        compiled=plistlib.loads(path.read_bytes())
+        for key, entry in keys.items():
+            if key.startswith(("settings.", "common.", "color.", "sync.")) and "%" not in key:
+                expected=entry["localizations"][locale]["stringUnit"]["value"]
+                assert compiled.get(key) == expected, (bundle.name, locale, key, compiled.get(key), expected)
     print("Compiled locale resources:",bundle.name)

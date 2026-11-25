@@ -1,12 +1,12 @@
 import SwiftUI
 
 private extension StoragePresentation.Provider {
-    var title: Text {
+    @MainActor func title(language: LanguagePreferences) -> Text {
         switch self {
-        case .local: Text("sync.local")
+        case .local: Text(verbatim: language.localized("sync.local"))
         case .iCloud: Text(verbatim: "iCloud")
         case .googleDrive: Text(verbatim: "Google Drive")
-        case .unknown: Text("sync.provider.unknown")
+        case .unknown: Text(verbatim: language.localized("sync.provider.unknown"))
         }
     }
     var symbol: String {
@@ -19,7 +19,7 @@ private extension StoragePresentation.Provider {
     }
 }
 private extension StoragePresentation.State {
-    var title: LocalizedStringKey {
+    var title: String {
         switch self {
         case .local: "sync.disconnected"
         case .checking: "sync.checking"
@@ -90,6 +90,7 @@ private struct CloudStorageSymbol: View {
 /// Native toolbar entry. Provider and status are distinguishable without color.
 struct CloudStorageToolbarButton: View {
     @EnvironmentObject private var store: LibraryStore
+    @EnvironmentObject private var language: LanguagePreferences
     @EnvironmentObject private var controller: CloudSyncController
     let action: () -> Void
     var body: some View {
@@ -97,25 +98,26 @@ struct CloudStorageToolbarButton: View {
         Button(action: action) {
             CloudStorageSymbol(status: status)
         }
-        .accessibilityLabel(status.provider.title)
-        .accessibilityValue(Text(status.state.title))
-        .accessibilityHint(Text("sync.title"))
+        .accessibilityLabel(status.provider.title(language: language))
+        .accessibilityValue(Text(verbatim: language.localized(status.state.title)))
+        .accessibilityHint(Text(verbatim: language.localized("sync.title")))
         .accessibilityIdentifier("clip-cloud-storage")
         #if os(macOS)
-        .help(status.provider.title + Text(verbatim: " · ") + Text(status.state.title))
+        .help(status.provider.title(language: language) + Text(verbatim: " · ") + Text(verbatim: language.localized(status.state.title)))
         #endif
     }
 }
 struct CloudStorageStatusRow: View {
     @EnvironmentObject private var store: LibraryStore
+    @EnvironmentObject private var language: LanguagePreferences
     @EnvironmentObject private var controller: CloudSyncController
     var body: some View {
         let status = controller.presentation(for: store.library)
         HStack(spacing: LayoutMetrics.medium) {
             CloudStorageSymbol(status: status)
             VStack(alignment: .leading, spacing: 4) {
-                status.provider.title.font(.headline)
-                Text(status.state.title).font(.caption).foregroundStyle(.secondary)
+                status.provider.title(language: language).font(.headline)
+                Text(verbatim: language.localized(status.state.title)).font(.caption).foregroundStyle(.secondary)
             }
             Spacer(minLength: 0)
         }

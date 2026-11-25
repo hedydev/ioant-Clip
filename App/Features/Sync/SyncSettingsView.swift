@@ -2,6 +2,7 @@ import SwiftUI
 
 struct SyncSettingsView: View {
     @EnvironmentObject private var store: LibraryStore
+    @EnvironmentObject private var language: LanguagePreferences
     @State private var pending: SyncRevision?
     private var journal: SyncJournal? { store.library.syncJournal }
     var body: some View {
@@ -16,8 +17,8 @@ struct SyncSettingsView: View {
                     provider("Google Drive", icon: "externaldrive", status: "sync.google.required")
                 }
                 ModalSection(title: "sync.history") {
-                    LabeledContent { Text(journal?.revisions.count ?? 0, format: .number) } label: { Text("sync.revisions") }
-                    LabeledContent { Text(journal?.conflictKeys.count ?? 0, format: .number) } label: { Text("sync.conflicts") }
+                    LabeledContent { Text(journal?.revisions.count ?? 0, format: .number) } label: { Text(verbatim: language.localized("sync.revisions")) }
+                    LabeledContent { Text(journal?.conflictKeys.count ?? 0, format: .number) } label: { Text(verbatim: language.localized("sync.conflicts")) }
                     ModalDescription(key: store.library.syncEnrollment == nil ? "sync.history.description" : "sync.history.cloudDescription")
                 }
                 if let journal {
@@ -33,43 +34,43 @@ struct SyncSettingsView: View {
                                     case .tagColor(let color):
                                         Label(color.label, systemImage: "circle.fill").foregroundStyle(color.swiftUIColor)
                                     case .deleted:
-                                        Label("sync.conflict.deleted", systemImage: "trash").foregroundStyle(.secondary)
+                                        Label { Text(verbatim: language.localized("sync.conflict.deleted")) } icon: { Image(systemName: "trash") }.foregroundStyle(.secondary)
                                     }
-                                    Button("sync.conflict.keep") { pending = revision }.buttonStyle(.bordered)
+                                    Button { pending = revision } label: { Text(verbatim: language.localized("sync.conflict.keep")) }.buttonStyle(.bordered)
                                 }.padding(.vertical, 4)
                             }
                         }
                     }
                 }
             }
-            .navigationTitle("sync.title")
-            .confirmationDialog("sync.conflict.confirm", isPresented: Binding(get: { pending != nil }, set: { if !$0 { pending = nil } }), titleVisibility: .visible) {
-                Button("sync.conflict.keepSelected") {
+            .navigationTitle(Text(verbatim: language.localized("sync.title")))
+            .confirmationDialog(Text(verbatim: language.localized("sync.conflict.confirm")), isPresented: Binding(get: { pending != nil }, set: { if !$0 { pending = nil } }), titleVisibility: .visible) {
+                Button {
                     if let revision = pending { store.resolveConflict(revision.key, revision: revision.id) }
                     pending = nil
-                }
-                Button("common.cancel", role: .cancel) { pending = nil }
+                } label: { Text(verbatim: language.localized("sync.conflict.keepSelected")) }
+                Button(role: .cancel) { pending = nil } label: { Text(verbatim: language.localized("common.cancel")) }
             }
     }
-    private func provider(_ name: String, icon: String, status: LocalizedStringKey) -> some View {
+    private func provider(_ name: String, icon: String, status: String) -> some View {
         ViewThatFits(in: .horizontal) {
             HStack {
                 providerDetails(name, icon: icon, status: status)
                 Spacer(minLength: LayoutMetrics.small)
-                Text("sync.disconnected").font(.caption).foregroundStyle(.secondary)
+                Text(verbatim: language.localized("sync.disconnected")).font(.caption).foregroundStyle(.secondary)
             }
             VStack(alignment: .leading, spacing: LayoutMetrics.small) {
                 providerDetails(name, icon: icon, status: status)
-                Text("sync.disconnected").font(.caption).foregroundStyle(.secondary)
+                Text(verbatim: language.localized("sync.disconnected")).font(.caption).foregroundStyle(.secondary)
             }
         }.padding(.vertical, 4)
     }
-    private func providerDetails(_ name: String, icon: String, status: LocalizedStringKey) -> some View {
+    private func providerDetails(_ name: String, icon: String, status: String) -> some View {
         HStack(alignment: .top) {
             Image(systemName: icon).font(.title2).foregroundStyle(.secondary)
             VStack(alignment: .leading, spacing: 4) {
                 Text(name).font(.headline)
-                Text(status).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                Text(verbatim: language.localized(status)).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             }
         }
     }

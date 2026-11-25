@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "title": "Validate explicit settings localization against actual signed bundle and restart daily clients",
+  "steps": [
+    {
+      "name": "regression",
+      "runtime": "bash",
+      "script": "scripts/cloudkit/validate_localization_update.sh",
+      "timeoutSeconds": 300
+    },
+    {
+      "name": "build_mac",
+      "runtime": "bash",
+      "script": "scripts/cloudkit/build_capture_extensions_mac.sh",
+      "timeoutSeconds": 300
+    },
+    {
+      "name": "verify_settings_strings",
+      "runtime": "bash",
+      "script": "scripts/cloudkit/verify_settings_locale.sh",
+      "timeoutSeconds": 90
+    },
+    {
+      "name": "build_simulator",
+      "runtime": "bash",
+      "script": "scripts/cloudkit/build_capture_extensions_simulator.sh",
+      "timeoutSeconds": 300
+    },
+    {
+      "name": "activate_mac",
+      "runtime": "bash",
+      "script": "scripts/cloudkit/activate_capture_extensions_mac.sh",
+      "timeoutSeconds": 120
+    },
+    {
+      "name": "activate_simulator",
+      "runtime": "bash",
+      "script": "scripts/cloudkit/activate_capture_extensions_simulator.sh",
+      "timeoutSeconds": 120
+    }
+  ],
+  "artifacts": []
+}
