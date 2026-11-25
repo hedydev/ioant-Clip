@@ -254,10 +254,12 @@ struct LibraryView: View {
         }
         .sheet(item: $editing) { note in
             EditNote(note: note, library: store.library) { title, tags, colors in
-                store.change {
-                    $0.update(note.id, title: title, tags: tags)
-                    for (tag, color) in colors { $0.setColor(color, for: tag) }
-                } != nil
+                let saved: Bool? = store.change { library in
+                    library.update(note.id, title: title, tags: tags)
+                    for (tag, color) in colors { library.setColor(color, for: tag) }
+                    return true
+                }
+                return saved == true
             }
         }
         .onChange(of: tags) { _, available in
