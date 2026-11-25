@@ -4,7 +4,7 @@ import json, os, pathlib, plistlib, subprocess, hashlib, time, uuid
 root = pathlib.Path(__file__).resolve().parents[2]
 cache = pathlib.Path("/Volumes/LunaDrive/DeveloperCache")
 base = cache / "projects/ioant-clip/DerivedData" if cache.is_dir() and os.access(cache, os.W_OK) else root / "DerivedData"
-app = base / "CloudKitCaptureExtensions/SimulatorInboxHealth/Build/Products/Debug-iphonesimulator/ioant-Clip-iOS.app"
+app = base / "CloudKitCaptureExtensions/SimulatorPageLayout/Build/Products/Debug-iphonesimulator/ioant-Clip-iOS.app"
 prior = base / "CloudKitCaptureExtensions/SimulatorSyncSchedule/Build/Products/Debug-iphonesimulator/ioant-Clip-iOS.app"
 bundle = "com.ioant.clip.ios"
 udid = "614FDA13-6198-452B-A6B2-94AA5591B30A"

@@ -24,6 +24,7 @@ PYTHONDONTWRITEBYTECODE=1 /usr/bin/python3 scripts/cloudkit/test_profile_invento
 PYTHONDONTWRITEBYTECODE=1 /usr/bin/python3 scripts/test_ios_library_migration.py || status=1
 /usr/bin/python3 scripts/test_extension_localization.py || status=1
 bash scripts/test_webkit_render.sh || status=1
+bash scripts/test_webkit_page_capture.sh || status=1
 PYTHONDONTWRITEBYTECODE=1 /usr/bin/python3 scripts/test_native_host.py || status=1
 if command -v node >/dev/null; then
   for source in BrowserExtension/Popup/*.js; do node --check "$source" || status=1; done

@@ -14,6 +14,7 @@
   root.style.width = (Math.max(1, Math.min(sourceWidth || 768, wholePage ? 8192 : 1800)) + 50) + 'px';
   if (wholePage) {
     root.setAttribute('data-ioant-layout','page');
+    root.setAttribute('data-ioant-layout-version','2');
     root.style.width = (Math.max(1,Math.min(document.documentElement.clientWidth || sourceWidth,8192)) + 50) + 'px';
     root.style.maxWidth = 'none';
     root.style.overflow = 'hidden';
@@ -41,11 +42,19 @@
     return {root,stage};
   }
   function createLayout({source,wholePage,stage,queueBackground}) {
-  const css = 'display box-sizing color background-color background-image font-family font-size font-weight font-style font-variant-numeric line-height letter-spacing text-align text-decoration white-space overflow-wrap word-break list-style-type padding-top padding-right padding-bottom padding-left margin-top margin-right margin-bottom margin-left border-top border-right border-bottom border-left border-radius box-shadow opacity flex flex-direction flex-wrap flex-grow flex-shrink flex-basis justify-content align-items align-self gap row-gap column-gap grid-template-columns grid-template-rows grid-column grid-row vertical-align min-width max-width min-height max-height border-collapse border-spacing table-layout overflow-x overflow-y position top right bottom left transform transform-origin text-indent width height z-index object-fit object-position background-size background-position background-repeat background-origin background-clip box-decoration-break align-content justify-items justify-self grid-auto-flow grid-auto-columns grid-auto-rows order text-overflow direction aspect-ratio float clear overflow-wrap clip-path'.split(' ');
+  const css = 'display box-sizing visibility clip contain content-visibility overflow-anchor font-stretch font-feature-settings font-kerning font-variant-ligatures text-transform text-rendering text-size-adjust -webkit-text-size-adjust writing-mode unicode-bidi text-decoration-line text-decoration-style text-decoration-color text-decoration-thickness text-underline-offset text-shadow tab-size list-style-position column-count column-gap column-width column-span break-before break-after break-inside isolation mix-blend-mode filter backdrop-filter -webkit-line-clamp -webkit-box-orient -webkit-box-align -webkit-box-pack -webkit-box-flex cursor pointer-events border-top-left-radius border-top-right-radius border-bottom-left-radius border-bottom-right-radius display box-sizing color background-color background-image font-family font-size font-weight font-style font-variant-numeric line-height letter-spacing text-align text-decoration white-space overflow-wrap word-break list-style-type padding-top padding-right padding-bottom padding-left margin-top margin-right margin-bottom margin-left border-top border-right border-bottom border-left border-radius box-shadow opacity flex flex-direction flex-wrap flex-grow flex-shrink flex-basis justify-content align-items align-self gap row-gap column-gap grid-template-columns grid-template-rows grid-column grid-row vertical-align min-width max-width min-height max-height border-collapse border-spacing table-layout overflow-x overflow-y position top right bottom left transform transform-origin text-indent width height z-index object-fit object-position background-size background-position background-repeat background-origin background-clip box-decoration-break align-content justify-items justify-self grid-auto-flow grid-auto-columns grid-auto-rows order text-overflow direction aspect-ratio float clear overflow-wrap clip-path'.split(' ');
   function applyStyles(src, dst, cs) {
     for (const prop of css) {
       const value = cs.getPropertyValue(prop);
       if (safeCSS(value)) dst.style.setProperty(prop,value);
+    }
+    // CSS clip and clip-path are part of the visual layout. In particular,
+    // accessibility-only labels frequently have 1px absolute boxes with clip.
+    // Preserve visible text wrapping and inherited computed typography.
+    if (wholePage) {
+      dst.style.setProperty('overflow-wrap', cs.overflowWrap || 'normal');
+      dst.style.setProperty('word-break', cs.wordBreak || 'normal');
+      dst.style.setProperty('white-space', cs.whiteSpace || 'normal');
     }
     const rect = src.getBoundingClientRect();
     const tag = src.tagName;
@@ -59,7 +68,11 @@
         dst.style.height = cs.height;
         dst.style.position = 'relative';
       }
-      if (cs.position === 'fixed') dst.style.position = 'absolute';
+      if (cs.position === 'fixed') {
+        // Fixed overlays are captured at their actual current viewport position,
+        // not repositioned relative to an arbitrary cloned containing block.
+        dst.style.position = 'absolute';
+      }
       if (cs.position === 'sticky') dst.style.position = 'relative';
       if (cs.display === 'contents') { dst.style.width = 'auto'; dst.style.height = 'auto'; }
     } else {
@@ -99,5 +112,32 @@
     }
     queueBackground(cs.backgroundImage,dst);
   }
-    return {applyStyles};
+    function isVisuallyClipped(node, cs) {
+      if (cs.display === 'none' || cs.visibility === 'hidden' || cs.visibility === 'collapse') return true;
+      if (cs.opacity === '0' && ['absolute','fixed'].includes(cs.position)) return true;
+      const r = node.getBoundingClientRect();
+      const clipped = cs.clip && cs.clip !== 'auto' && /^rect\(/i.test(cs.clip);
+      const hiddenOverflow = /hidden|clip/.test(cs.overflowX) && /hidden|clip/.test(cs.overflowY);
+      return ['absolute','fixed'].includes(cs.position) && r.width <= 2 && r.height <= 2 &&
+        (clipped || hiddenOverflow || /^inset\(\s*50%/.test(cs.clipPath || ''));
+    }
+    function appendPseudo(src, dst, position) {
+      if (!wholePage) return;
+      const cs = getComputedStyle(src, position);
+      const content = cs.content;
+      if (!content || content === 'none' || content === 'normal' || cs.display === 'none' || cs.visibility === 'hidden') return;
+      // Only literal generated text/empty decorative boxes. Never copy URL,
+      // counter(), attr(), or arbitrary stylesheet/HTML.
+      if (!/^"(?:[^"\\]|\\.)*"$/.test(content) && !/^'(?:[^'\\]|\\.)*'$/.test(content)) return;
+      const pseudo = document.createElement('span');
+      pseudo.setAttribute('data-ioant-pseudo', position === '::before' ? 'before' : 'after');
+      for (const prop of css) {
+        const value = cs.getPropertyValue(prop);
+        if (safeCSS(value)) pseudo.style.setProperty(prop,value);
+      }
+      pseudo.textContent = content.slice(1,-1).replace(/\\(["'\\])/g,'$1');
+      queueBackground(cs.backgroundImage,pseudo);
+      dst.append(pseudo);
+    }
+    return {applyStyles,isVisuallyClipped,appendPseudo};
   }

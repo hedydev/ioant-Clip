@@ -17,6 +17,7 @@ async function capture(mode) {
   root.style.width = (Math.max(1, Math.min(sourceWidth || 768, wholePage ? 8192 : 1800)) + 50) + 'px';
   if (wholePage) {
     root.setAttribute('data-ioant-layout','page');
+    root.setAttribute('data-ioant-layout-version','2');
     root.style.width = (Math.max(1,Math.min(document.documentElement.clientWidth || sourceWidth,8192)) + 50) + 'px';
     root.style.maxWidth = 'none';
     root.style.overflow = 'hidden';
@@ -44,11 +45,19 @@ async function capture(mode) {
     return {root,stage};
   }
   function createLayout({source,wholePage,stage,queueBackground}) {
-  const css = 'display box-sizing color background-color background-image font-family font-size font-weight font-style font-variant-numeric line-height letter-spacing text-align text-decoration white-space overflow-wrap word-break list-style-type padding-top padding-right padding-bottom padding-left margin-top margin-right margin-bottom margin-left border-top border-right border-bottom border-left border-radius box-shadow opacity flex flex-direction flex-wrap flex-grow flex-shrink flex-basis justify-content align-items align-self gap row-gap column-gap grid-template-columns grid-template-rows grid-column grid-row vertical-align min-width max-width min-height max-height border-collapse border-spacing table-layout overflow-x overflow-y position top right bottom left transform transform-origin text-indent width height z-index object-fit object-position background-size background-position background-repeat background-origin background-clip box-decoration-break align-content justify-items justify-self grid-auto-flow grid-auto-columns grid-auto-rows order text-overflow direction aspect-ratio float clear overflow-wrap clip-path'.split(' ');
+  const css = 'display box-sizing visibility clip contain content-visibility overflow-anchor font-stretch font-feature-settings font-kerning font-variant-ligatures text-transform text-rendering text-size-adjust -webkit-text-size-adjust writing-mode unicode-bidi text-decoration-line text-decoration-style text-decoration-color text-decoration-thickness text-underline-offset text-shadow tab-size list-style-position column-count column-gap column-width column-span break-before break-after break-inside isolation mix-blend-mode filter backdrop-filter -webkit-line-clamp -webkit-box-orient -webkit-box-align -webkit-box-pack -webkit-box-flex cursor pointer-events border-top-left-radius border-top-right-radius border-bottom-left-radius border-bottom-right-radius display box-sizing color background-color background-image font-family font-size font-weight font-style font-variant-numeric line-height letter-spacing text-align text-decoration white-space overflow-wrap word-break list-style-type padding-top padding-right padding-bottom padding-left margin-top margin-right margin-bottom margin-left border-top border-right border-bottom border-left border-radius box-shadow opacity flex flex-direction flex-wrap flex-grow flex-shrink flex-basis justify-content align-items align-self gap row-gap column-gap grid-template-columns grid-template-rows grid-column grid-row vertical-align min-width max-width min-height max-height border-collapse border-spacing table-layout overflow-x overflow-y position top right bottom left transform transform-origin text-indent width height z-index object-fit object-position background-size background-position background-repeat background-origin background-clip box-decoration-break align-content justify-items justify-self grid-auto-flow grid-auto-columns grid-auto-rows order text-overflow direction aspect-ratio float clear overflow-wrap clip-path'.split(' ');
   function applyStyles(src, dst, cs) {
     for (const prop of css) {
       const value = cs.getPropertyValue(prop);
       if (safeCSS(value)) dst.style.setProperty(prop,value);
+    }
+    // CSS clip and clip-path are part of the visual layout. In particular,
+    // accessibility-only labels frequently have 1px absolute boxes with clip.
+    // Preserve visible text wrapping and inherited computed typography.
+    if (wholePage) {
+      dst.style.setProperty('overflow-wrap', cs.overflowWrap || 'normal');
+      dst.style.setProperty('word-break', cs.wordBreak || 'normal');
+      dst.style.setProperty('white-space', cs.whiteSpace || 'normal');
     }
     const rect = src.getBoundingClientRect();
     const tag = src.tagName;
@@ -62,7 +71,11 @@ async function capture(mode) {
         dst.style.height = cs.height;
         dst.style.position = 'relative';
       }
-      if (cs.position === 'fixed') dst.style.position = 'absolute';
+      if (cs.position === 'fixed') {
+        // Fixed overlays are captured at their actual current viewport position,
+        // not repositioned relative to an arbitrary cloned containing block.
+        dst.style.position = 'absolute';
+      }
       if (cs.position === 'sticky') dst.style.position = 'relative';
       if (cs.display === 'contents') { dst.style.width = 'auto'; dst.style.height = 'auto'; }
     } else {
@@ -102,7 +115,34 @@ async function capture(mode) {
     }
     queueBackground(cs.backgroundImage,dst);
   }
-    return {applyStyles};
+    function isVisuallyClipped(node, cs) {
+      if (cs.display === 'none' || cs.visibility === 'hidden' || cs.visibility === 'collapse') return true;
+      if (cs.opacity === '0' && ['absolute','fixed'].includes(cs.position)) return true;
+      const r = node.getBoundingClientRect();
+      const clipped = cs.clip && cs.clip !== 'auto' && /^rect\(/i.test(cs.clip);
+      const hiddenOverflow = /hidden|clip/.test(cs.overflowX) && /hidden|clip/.test(cs.overflowY);
+      return ['absolute','fixed'].includes(cs.position) && r.width <= 2 && r.height <= 2 &&
+        (clipped || hiddenOverflow || /^inset\(\s*50%/.test(cs.clipPath || ''));
+    }
+    function appendPseudo(src, dst, position) {
+      if (!wholePage) return;
+      const cs = getComputedStyle(src, position);
+      const content = cs.content;
+      if (!content || content === 'none' || content === 'normal' || cs.display === 'none' || cs.visibility === 'hidden') return;
+      // Only literal generated text/empty decorative boxes. Never copy URL,
+      // counter(), attr(), or arbitrary stylesheet/HTML.
+      if (!/^"(?:[^"\\]|\\.)*"$/.test(content) && !/^'(?:[^'\\]|\\.)*'$/.test(content)) return;
+      const pseudo = document.createElement('span');
+      pseudo.setAttribute('data-ioant-pseudo', position === '::before' ? 'before' : 'after');
+      for (const prop of css) {
+        const value = cs.getPropertyValue(prop);
+        if (safeCSS(value)) pseudo.style.setProperty(prop,value);
+      }
+      pseudo.textContent = content.slice(1,-1).replace(/\\(["'\\])/g,'$1');
+      queueBackground(cs.backgroundImage,pseudo);
+      dst.append(pseudo);
+    }
+    return {applyStyles,isVisuallyClipped,appendPseudo};
   }
 /* Bounded asset embedding and raster fallback. Shared capture budget. */
   function createAssets(state) {
@@ -278,12 +318,12 @@ async function capture(mode) {
   if (!source) throw new Error('error_empty');
   const wholePage = mode === 'page';
   const skip = new Set('SCRIPT STYLE LINK META NOSCRIPT IFRAME OBJECT EMBED INPUT TEXTAREA SELECT OPTION VIDEO AUDIO TEMPLATE HEAD FORM BUTTON'.split(' '));
-  if (wholePage) { skip.delete('FORM'); skip.delete('BUTTON'); }
-  const allowed = new Set('A ABBR ARTICLE ASIDE B BLOCKQUOTE BR CAPTION CODE DD DEL DETAILS DIV DL DT EM FIGCAPTION FIGURE FOOTER H1 H2 H3 H4 H5 H6 HEADER HR I IMG KBD LI MAIN MARK NAV OL P PRE Q S SAMP SECTION SMALL SPAN STRONG SUB SUMMARY SUP TABLE TBODY TD TH THEAD TFOOT TR U UL VAR WBR MATH'.split(' '));
+  if (wholePage) { skip.delete('FORM'); skip.delete('BUTTON'); skip.delete('INPUT'); skip.delete('TEXTAREA'); skip.delete('SELECT'); }
+  const allowed = new Set('A ABBR ARTICLE ASIDE B BLOCKQUOTE BR CAPTION CODE DD DEL DETAILS DIV DL DT EM FIGCAPTION FIGURE FOOTER H1 H2 H3 H4 H5 H6 HEADER HR I IMG KBD LI MAIN MARK NAV OL P PRE Q S SAMP SECTION SMALL SPAN STRONG SUB SUMMARY SUP TABLE TBODY TD TH THEAD TFOOT TR U UL VAR WBR MATH COL COLGROUP'.split(' '));
   const state={nodes:0,svgNodes:0,imageBytes:0,truncated:false,missing:0};
   const {root,stage}=createSurface(source,wholePage);
   const {attachData,snapshotImage,queueBackground,finish}=createAssets(state);
-  const {applyStyles}=createLayout({source,wholePage,stage,queueBackground});
+  const {applyStyles,isVisuallyClipped,appendPseudo}=createLayout({source,wholePage,stage,queueBackground});
   const {snapshotSVG}=createSVG(state,attachData);
   function visit(node, parent) {
     if (++state.nodes > 18000) { state.truncated = true; return; }
@@ -297,7 +337,27 @@ async function capture(mode) {
     const tag = node.tagName.toUpperCase();
     if (skip.has(tag) || node.isContentEditable || node.hidden || !wholePage && node.getAttribute('aria-hidden') === 'true' && tag !== 'SVG') return;
     const cs = getComputedStyle(node);
-    if (cs.display === 'none' || cs.visibility === 'hidden' || cs.visibility === 'collapse') return;
+    if (isVisuallyClipped(node,cs)) return;
+    // Keep empty, inert geometry for visible controls rather than removing a
+    // flex/grid item. Do not copy current field values (passwords, tokens,
+    // personal inputs), form actions, names, or interactive behavior.
+    if (wholePage && ['INPUT','TEXTAREA','SELECT'].includes(tag)) {
+      if (tag === 'INPUT' && node.type === 'hidden') return;
+      const dst = document.createElement('span');
+      dst.setAttribute('data-ioant-control', tag.toLowerCase());
+      applyStyles(node,dst,cs);
+      if (cs.display === 'inline') dst.style.display = 'inline-block';
+      const rect=node.getBoundingClientRect();
+      dst.style.boxSizing='border-box';
+      dst.style.width=Math.max(0,rect.width)+'px';
+      dst.style.height=Math.max(0,rect.height)+'px';
+      dst.style.overflow='hidden';
+      dst.style.verticalAlign=cs.verticalAlign;
+      // Placeholder is public page UI, never the typed value.
+      if (tag !== 'SELECT' && node.type !== 'password') dst.textContent=node.placeholder || '';
+      parent.append(dst);
+      return;
+    }
     if (tag === 'SVG' || tag === 'CANVAS') {
       const dst = document.createElement('img');
       applyStyles(node,dst,cs);
@@ -312,15 +372,27 @@ async function capture(mode) {
     if (tag === 'TD' || tag === 'TH') { dst.colSpan = node.colSpan; dst.rowSpan = node.rowSpan; }
     if (tag === 'OL' && node.start !== 1) dst.start = node.start;
     if (tag === 'A' && /^https?:\/\//i.test(node.href)) dst.setAttribute('data-source-href',node.href);
-    if (tag === 'DETAILS') dst.open = true;
+    if (tag === 'DETAILS') dst.open = wholePage ? node.open : true;
     parent.append(dst);
+    if (wholePage && !['IMG','BR','HR','WBR','COL'].includes(tag)) appendPseudo(node,dst,'::before');
     for (const child of node.childNodes) { if (state.nodes >= 18000) { state.truncated = true; break; } visit(child,dst); }
+    if (wholePage && !['IMG','BR','HR','WBR','COL'].includes(tag)) appendPseudo(node,dst,'::after');
   }
   visit(source,stage);
   await finish();
   const html = root.outerHTML;
   // innerText of the attached original is not used for selections: it could include text outside the selection.
-  const text = (range ? range.toString() : source.innerText || root.textContent).slice(0,2_000_000);
+  // Whole page text comes from the captured, filtered structure, not the
+  // original innerText (which may contain clipped accessibility labels).
+  function capturedText(node) {
+    if (node.nodeType === Node.TEXT_NODE) return node.nodeValue || '';
+    if (node.nodeType !== Node.ELEMENT_NODE) return '';
+    if (node.hasAttribute('data-ioant-control')) return '';
+    const value = Array.from(node.childNodes,capturedText).join('');
+    const block = /^(block|flex|grid|table|list-item|flow-root)/.test(node.style.display);
+    return block || node.tagName === 'BR' ? '\n'+value+'\n' : value;
+  }
+  const text = (range ? range.toString() : wholePage ? capturedText(root).replace(/\n{3,}/g,'\n\n').trim() : source.innerText || root.textContent).slice(0,2_000_000);
   if (!text.trim() && !root.querySelector('img[src]')) throw new Error('error_empty');
   const title = mode === 'answer' ? (text.split(/\n/).find(s=>s.trim()) || 'ChatGPT answer').trim().slice(0,100) : document.title || 'Web capture';
   const result = {version:1,title,sourceURL:location.href,mode,html,text,truncated:state.truncated || state.missing>0};

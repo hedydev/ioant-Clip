@@ -5,12 +5,12 @@ js=(root/"BrowserExtension/CaptureEngine/injected.js").read_text()
 fixture=r"""<!doctype html><meta charset=utf-8><style>
 *{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden}body{background:#10151b;color:#eee;font:16px Arial}
 .shell{height:100%;display:flex;flex-direction:column;gap:8px;padding:8px}
-.top{height:48px;flex:none}.columns{display:grid;grid-template-columns:220px 1fr 200px;gap:8px;flex:1;min-height:0}
+.top{height:48px;flex:none}.search{display:flex;align-items:center;gap:10px}.search input{width:240px;height:30px;box-sizing:border-box}.sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}.badge::before{content:"★ ";color:gold}.badge::after{content:"";display:inline-block;width:6px;height:6px;background:red}.columns{display:grid;grid-template-columns:220px 1fr 200px;gap:8px;flex:1;min-height:0}
 .panel{background:#232a33;border-radius:8px;overflow:auto;padding:12px;min-width:0}
 .cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
 .card{background:#345369;min-height:100px;padding:12px}.row{display:flex;gap:10px;align-items:center}.badge{flex:none;width:70px}.description{flex:1;min-width:0}
 .hero{height:90px;background-image:url('data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2210%22%20height%3D%2210%22%3E%3Crect%20width%3D%2210%22%20height%3D%2210%22%20fill%3D%22red%22%2F%3E%3C%2Fsvg%3E');background-size:cover}
-</style><div class="shell"><div class="top">Top bar <button>Play</button></div><div class="columns"><aside class="panel">Library</aside><main class="panel"><div class="hero">Hero</div><div class="cards"><article class="card"><div class="row"><span class="badge">Badge</span><span class="description">First card description</span></div></article><article class="card">Second card</article></div><div style="height:950px">Scrollable content</div></main><aside class="panel">Player</aside></div></div><pre id="result" hidden></pre>"""
+</style><div class="shell"><div class="top search">Top bar <span class="sr">Invisible accessibility help</span><input type="search" placeholder="Search" value="private typed value"><button>Play</button></div><div class="columns"><aside class="panel">Library</aside><main class="panel"><div class="hero">Hero</div><div class="cards"><article class="card"><div class="row"><span class="badge">Badge</span><span class="description">First card description</span></div></article><article class="card">Second card</article></div><div style="height:950px">Scrollable content</div></main><aside class="panel">Player</aside></div></div><pre id="result" hidden></pre>"""
 checks=r"""
 (async()=>{try {
  const measure=e=>Math.round(e.getBoundingClientRect().width);
@@ -20,6 +20,10 @@ checks=r"""
  const parsed=new DOMParser().parseFromString(data.html,'text/html');
  const snapshot=parsed.querySelector('[data-ioant-layout=page]');
  if(!snapshot || !data.text.includes('Library') || !data.text.includes('Player') || !data.text.includes('Scrollable content') || !snapshot.textContent.includes('Play'))throw new Error('missing page content');
+ if(snapshot.textContent.includes('Invisible accessibility help') || data.text.includes('Invisible accessibility help') || data.html.includes('private typed value'))throw new Error('hidden text or typed field leaked');
+ const control=snapshot.querySelector('[data-ioant-control=input]');
+ if(!control || control.style.width!=='240px' || control.style.height!=='30px' || control.textContent!=='Search')throw new Error('missing inert input geometry');
+ if(!snapshot.querySelector('[data-ioant-pseudo=before]')?.textContent.includes('★') || !snapshot.querySelector('[data-ioant-pseudo=after]'))throw new Error('generated content missing');
  const frame=document.createElement('iframe');frame.style.cssText='position:fixed;left:0;top:0;width:1200px;height:900px;border:0';
  document.body.append(frame);
  frame.contentDocument.open();frame.contentDocument.write('<!doctype html><style>body{margin:16px}</style>'+data.html);frame.contentDocument.close();
