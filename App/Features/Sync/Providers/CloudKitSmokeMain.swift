@@ -26,7 +26,7 @@ import Darwin
         let arguments = Array(CommandLine.arguments.dropFirst())
         let resumeZone = arguments.count == 2 && arguments.first == "--clip-cloudkit-resume" &&
             arguments[1].hasPrefix("ioantClipSmoke-") && UUID(uuidString: String(arguments[1].dropFirst("ioantClipSmoke-".count))) != nil ? arguments[1] : nil
-        guard arguments == ["--clip-cloudkit-smoke"] || arguments == ["--clip-cloudkit-account-check"] || resumeZone != nil || arguments == ["--clip-cloudkit-verify-simulator"],
+        guard arguments == ["--clip-cloudkit-smoke"] || arguments == ["--clip-cloudkit-account-check"] || resumeZone != nil || arguments == ["--clip-cloudkit-verify-simulator"] || arguments == ["--clip-cloudkit-mac-modify"] || arguments == ["--clip-cloudkit-mac-resolve"],
               Bundle.main.object(forInfoDictionaryKey: "ClipCloudKitSmoke") as? String == "YES",
               let config = CloudKitReviewConfiguration.current(),
               config.environment == "Development", config.container == "iCloud.com.ioant.clip" else {
@@ -47,9 +47,11 @@ import Darwin
             log("FAIL: account status query; " + ns.domain + " code " + String(ns.code))
             exit(1)
         }
-        if arguments == ["--clip-cloudkit-verify-simulator"] {
+        if arguments == ["--clip-cloudkit-verify-simulator"] || arguments == ["--clip-cloudkit-mac-modify"] || arguments == ["--clip-cloudkit-mac-resolve"] {
             do {
-                try await CloudKitCrossDeviceFixture.verifyMac(config: config, log: log)
+                if arguments == ["--clip-cloudkit-mac-modify"] { try await CloudKitCrossDeviceFixture.macModify(config: config, log: log) }
+                else if arguments == ["--clip-cloudkit-mac-resolve"] { try await CloudKitCrossDeviceFixture.macResolve(config: config, log: log) }
+                else { try await CloudKitCrossDeviceFixture.verifyMac(config: config, log: log) }
                 return
             } catch {
                 let ns = error as NSError

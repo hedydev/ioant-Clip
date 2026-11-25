@@ -71,5 +71,95 @@ enum CloudKitCrossDeviceFixture {
         try await readBack(t, account: account)
         log("PASS: Mac independently read exact iPhone synthetic rich text, tag and PNG; four-revision graph")
     }
+    // A deterministic stale edit and concurrent delete, each with the same
+    // parent. Fixed IDs allow exact reconciliation without duplicate writes.
+    static let editID = UUID(uuidString: "3D319BFC-1E67-4D52-8C55-CAC278ACD0A3")!
+    static let deleteID = UUID(uuidString: "3D319BFC-1E67-4D52-8C55-CAC278ACD0A4")!
+    static let resolutionID = UUID(uuidString: "3D319BFC-1E67-4D52-8C55-CAC278ACD0A5")!
+    static var macEdit: SyncRevision {
+        guard case .note(var note) = fixture.value else { preconditionFailure() }
+        note.title = "Synthetic Mac edited iPhone note"
+        note.tags = ["Synthetic cross-device", "Mac edit"]
+        return .init(id: editID, key: .note(noteID), parents: [revisionID], value: .note(note))
+    }
+    static var phoneDelete: SyncRevision {
+        .init(id: deleteID, key: .note(noteID), parents: [revisionID], value: .deleted)
+    }
+    static var resolution: SyncRevision {
+        .init(id: resolutionID, key: .note(noteID), parents: [editID, deleteID], value: .deleted)
+    }
+    static func exactGraph(_ records: [SyncRevision], extra: [SyncRevision]) throws -> SyncJournal {
+        let expected = [fixture] + extra
+        let ids = Set(expected.map(\.id))
+        let originals = records.filter { !ids.contains($0.id) }
+        var graph = try baseline(originals)
+        guard records.count == 3 + expected.count,
+              Set(records.map(\.id)).count == records.count,
+              expected.allSatisfy({ records.contains($0) }) else { throw Failure.unexpectedGraph }
+        try graph.ingest(expected)
+        return graph
+    }
+    static func awaitGraph(_ t: any RevisionTransport, account: SyncAccount, extra: [SyncRevision]) async throws -> SyncJournal {
+        for attempt in 0..<10 {
+            let records = try await t.fetchRevisions(expected: account)
+            if records.count == 4 + extra.count { return try exactGraph(records, extra: extra) }
+            guard records.count < 4 + extra.count else { throw Failure.unexpectedGraph }
+            if attempt < 9 { try await Task.sleep(for: .seconds(2)) }
+        }
+        throw Failure.propagationTimeout
+    }
+    static func macModify(config: CloudKitReviewConfiguration, log: (String) -> Void) async throws {
+        let t = try transport(config); let account = try await t.identity()
+        var graph = try await awaitGraph(t, account: account, extra: [])
+        let remote = Array(graph.revisions.values)
+        try graph.ingest([macEdit])
+        let plan = try SyncExchange.plan(local: graph, remote: remote)
+        guard plan.outgoing == [macEdit] else { throw Failure.unexpectedGraph }
+        try await SyncExchange.send(plan, transport: t, expected: account)
+        _ = try await awaitGraph(t, account: account, extra: [macEdit])
+        log("PASS: Mac changed iPhone note title and tags; exact five revisions")
+    }
+    static func phoneConflict(config: CloudKitReviewConfiguration, log: (String) -> Void) async throws {
+        let t = try transport(config); let account = try await t.identity()
+        let remote = try await awaitGraph(t, account: account, extra: [macEdit])
+        guard remote.heads(for: .note(noteID)) == [macEdit] else { throw Failure.unexpectedGraph }
+        log("PASS: iPhone received Mac title/tag edit with original HTML and PNG")
+        // Model a local deletion made from the stale parent before reconnect.
+        // This is deterministic stale-state testing, not airplane-mode testing.
+        var stale = try exactGraph(Array(remote.revisions.values).filter { $0.id != editID }, extra: [])
+        try stale.ingest([phoneDelete])
+        let plan = try SyncExchange.plan(local: stale, remote: Array(remote.revisions.values))
+        guard plan.outgoing == [phoneDelete] else { throw Failure.unexpectedGraph }
+        try await SyncExchange.send(plan, transport: t, expected: account)
+        let merged = try await awaitGraph(t, account: account, extra: [macEdit, phoneDelete])
+        guard merged.conflictKeys == [.note(noteID)],
+              Set(merged.heads(for: .note(noteID)).map(\.id)) == [editID, deleteID] else { throw Failure.unexpectedGraph }
+        log("PASS: iPhone stale deletion and concurrent Mac edit both preserved")
+    }
+    static func macResolve(config: CloudKitReviewConfiguration, log: (String) -> Void) async throws {
+        let t = try transport(config); let account = try await t.identity()
+        var graph = try await awaitGraph(t, account: account, extra: [macEdit, phoneDelete])
+        guard graph.conflictKeys == [.note(noteID)] else { throw Failure.unexpectedGraph }
+        let remote = Array(graph.revisions.values)
+        // Validate the product's explicit conflict resolution semantics before
+        // emitting a deterministic fixture with the same parents and value.
+        var trial = graph
+        guard let generated = try trial.resolve(.deleted, for: .note(noteID)),
+              generated.parents == resolution.parents, generated.value == resolution.value,
+              trial.conflictKeys.isEmpty else { throw Failure.unexpectedGraph }
+        try graph.ingest([resolution])
+        let plan = try SyncExchange.plan(local: graph, remote: remote)
+        guard plan.outgoing == [resolution] else { throw Failure.unexpectedGraph }
+        try await SyncExchange.send(plan, transport: t, expected: account)
+        let final = try await awaitGraph(t, account: account, extra: [macEdit, phoneDelete, resolution])
+        guard final.conflictKeys.isEmpty, final.heads(for: .note(noteID)) == [resolution] else { throw Failure.unexpectedGraph }
+        log("PASS: Mac resolved edit/delete conflict explicitly; all seven revisions retained")
+    }
+    static func phoneVerifyResolution(config: CloudKitReviewConfiguration, log: (String) -> Void) async throws {
+        let t = try transport(config); let account = try await t.identity()
+        let final = try await awaitGraph(t, account: account, extra: [macEdit, phoneDelete, resolution])
+        guard final.conflictKeys.isEmpty, final.heads(for: .note(noteID)) == [resolution] else { throw Failure.unexpectedGraph }
+        log("PASS: iPhone received resolved deletion and preserved all seven revisions")
+    }
 }
 #endif
