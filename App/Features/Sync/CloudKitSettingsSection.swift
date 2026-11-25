@@ -26,6 +26,7 @@ struct CloudKitSettingsSection: View {
                     }
                 }
             } else if controller.available {
+                ModalDescription(key: "sync.consent.description")
                 Button("sync.connect") { Task { await controller.prepareEnrollment(store: store) } }
                     .buttonStyle(.borderedProminent)
                     .disabled(controller.busy)

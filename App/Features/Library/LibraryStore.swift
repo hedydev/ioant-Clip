@@ -4,7 +4,7 @@ import SwiftUI
 @MainActor final class LibraryStore: ObservableObject, SyncLibraryAccess {
     @Published private(set) var library = NoteLibrary()
     @Published var error: LibraryIssue?
-    private let url = URL.applicationSupportDirectory.appending(path: "ioant-Note/notes.json")
+    private let url = LibraryLocation.notesURL
     private var ready = false
     @Published private(set) var lastIncoming: UUID?
     private var reportedInboxFailures = Set<String>()
