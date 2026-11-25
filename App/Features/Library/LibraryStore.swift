@@ -1,7 +1,7 @@
 import Foundation
 import SwiftUI
 
-@MainActor final class LibraryStore: ObservableObject {
+@MainActor final class LibraryStore: ObservableObject, SyncLibraryAccess {
     @Published private(set) var library = NoteLibrary()
     @Published var error: LibraryIssue?
     private let url = URL.applicationSupportDirectory.appending(path: "ioant-Note/notes.json")
@@ -30,6 +30,33 @@ import SwiftUI
             return result
         }
         catch { self.error = LibraryIssue(error); return nil }
+    }
+    var syncSnapshot: NoteLibrary { library }
+    /// These entry points are not called by unsigned builds. Keep enrollment,
+    /// remote projection and notes in the same atomic persistence boundary.
+    func enrollSync(account: SyncAccount, replaceLocalHistory: Bool) throws {
+        guard ready else { throw SyncSessionError.persistenceFailed }
+        var next = library
+        try next.enrollSync(account: account, replaceLocalHistory: replaceLocalHistory)
+        try next.save(to: url)
+        library = next
+    }
+    func setSyncPaused(_ paused: Bool, account: SyncAccount) throws {
+        guard ready else { throw SyncSessionError.persistenceFailed }
+        var next = library
+        try next.setSyncPaused(paused, account: account)
+        try next.save(to: url)
+        library = next
+    }
+    func commitRemoteRevisions(_ revisions: [SyncRevision], account: SyncAccount) throws {
+        guard ready else { throw SyncSessionError.persistenceFailed }
+        try library.requireSyncAccount(account)
+        var next = library
+        try next.ingestSyncRevisions(revisions)
+        if next != library {
+            try next.save(to: url)
+            library = next
+        }
     }
     func resolveConflict(_ key: SyncKey, revision: UUID) {
         guard ready else { return }

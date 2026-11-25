@@ -5,6 +5,9 @@ extension NoteLibrary {
         guard FileManager.default.fileExists(atPath: url.path) else { return Self() }
         let library = try JSONDecoder().decode(Self.self, from: Data(contentsOf: url))
         guard Set(library.notes.map(\.id)).count == library.notes.count else { throw SyncJournal.JournalError.conflictingIdentity }
+        if let enrollment = library.syncEnrollment {
+            guard library.syncJournal != nil, !enrollment.account.provider.isEmpty, !enrollment.account.namespace.isEmpty, !enrollment.account.accountID.isEmpty else { throw SyncSessionError.persistenceFailed }
+        }
         if let journal = library.syncJournal {
             try journal.validate()
         }

@@ -59,8 +59,20 @@ actor CloudKitRevisionTransport: RevisionTransport {
         let query = CKQuery(recordType: Self.recordType, predicate: NSPredicate(value: true))
         var page = try await database.records(matching: query, inZoneWith: zone.zoneID, desiredKeys: ["payload", "sha256"], resultsLimit: 100)
         var values: [SyncRevision] = []
+        var receivedBytes = 0
+        let limits = SyncLimits.review
         while true {
-            for (_, result) in page.matchResults { values.append(try decode(result.get())) }
+            for (_, result) in page.matchResults {
+                try Task.checkCancellation()
+                let record = try result.get()
+                guard let asset = record["payload"] as? CKAsset, let url = asset.fileURL,
+                      let bytes = try url.resourceValues(forKeys: [.fileSizeKey]).fileSize,
+                      bytes >= 0, bytes <= limits.payloadBytes,
+                      bytes <= limits.totalBytes - receivedBytes,
+                      values.count < limits.revisionCount else { throw SyncSessionError.historyLimit }
+                receivedBytes += bytes
+                values.append(try decode(record))
+            }
             guard let cursor = page.queryCursor else { break }
             try await require(expected)
             page = try await database.records(continuingMatchFrom: cursor, desiredKeys: ["payload", "sha256"], resultsLimit: 100)
@@ -70,6 +82,8 @@ actor CloudKitRevisionTransport: RevisionTransport {
     }
     func upload(_ revisions: [SyncRevision], expected: SyncAccount) async throws {
         guard !revisions.isEmpty else { return }
+        try SyncLimits.review.validate(revisions)
+        try Task.checkCancellation()
         try await require(expected)
         do { _ = try await database.recordZone(for: zone.zoneID) }
         catch let error as CKError where error.code == .zoneNotFound || error.code == .unknownItem {

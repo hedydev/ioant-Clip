@@ -4,6 +4,7 @@ public struct NoteLibrary: Codable, Equatable, Sendable {
     public private(set) var notes: [Note]
     private var tagPalette: [String: TagColor]?
     public private(set) var syncJournal: SyncJournal?
+    public private(set) var syncEnrollment: SyncEnrollment?
     public init(notes: [Note] = []) { self.notes = notes }
     public var allTags: [String] {
         Note.normalizedTags(notes.flatMap(\.tags)).sorted { $0.localizedStandardCompare($1) == .orderedAscending }
@@ -22,6 +23,34 @@ public struct NoteLibrary: Codable, Equatable, Sendable {
     public mutating func initializeSyncJournal() throws {
         guard syncJournal == nil else { return }
         syncJournal = try SyncJournal.bootstrap(self)
+    }
+    /// First enrollment starts with live notes, not pre-enrollment deleted
+    /// content. Caller must obtain explicit consent to replace local history.
+    /// Existing conflicts must be resolved first. The durable caller must save
+    /// this entire library atomically before any transfer.
+    public mutating func enrollSync(account: SyncAccount, replaceLocalHistory: Bool) throws {
+        guard !account.provider.isEmpty, !account.namespace.isEmpty, !account.accountID.isEmpty else { throw SyncSessionError.invalidAccount }
+        if let enrollment = syncEnrollment {
+            guard enrollment.account == account else { throw SyncSessionError.accountMismatch }
+            return
+        }
+        guard replaceLocalHistory else { throw SyncSessionError.historyConsentRequired }
+        guard syncJournal?.conflictKeys.isEmpty != false else { throw SyncSessionError.unresolvedHistory }
+        let fresh = try SyncJournal.bootstrap(self)
+        syncJournal = fresh
+        syncEnrollment = SyncEnrollment(account: account)
+    }
+    public mutating func setSyncPaused(_ paused: Bool, account: SyncAccount) throws {
+        guard var enrollment = syncEnrollment else { throw SyncSessionError.notEnrolled }
+        guard enrollment.account == account else { throw SyncSessionError.accountMismatch }
+        enrollment.setPaused(paused)
+        syncEnrollment = enrollment
+    }
+    public func requireSyncAccount(_ account: SyncAccount) throws {
+        guard let enrollment = syncEnrollment else { throw SyncSessionError.notEnrolled }
+        guard enrollment.account == account else { throw SyncSessionError.accountMismatch }
+        guard !enrollment.isPaused else { throw SyncSessionError.paused }
+        guard syncJournal != nil else { throw SyncSessionError.persistenceFailed }
     }
     /// Record changes in the same value that is atomically saved to notes.json.
     /// The original remains untouched if recording or persistence fails.

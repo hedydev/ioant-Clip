@@ -53,6 +53,7 @@ public enum SyncExchange {
     }
     public static func send(_ plan: Plan, transport: any RevisionTransport, expected: SyncAccount) async throws {
         guard try await transport.identity() == expected else { throw ExchangeError.accountChanged }
+        try Task.checkCancellation()
         try await transport.upload(plan.outgoing, expected: expected)
     }
 }
