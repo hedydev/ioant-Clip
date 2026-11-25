@@ -114,6 +114,7 @@ struct LibraryView: View {
     @EnvironmentObject var store: LibraryStore
     @State private var selected: UUID?
     @State private var copiedID: UUID?
+    @State private var plainPreview = false
     @State private var compactColumn: NavigationSplitViewColumn = .sidebar
     @State private var checked = Set<UUID>()
     @State private var selecting = false
@@ -159,6 +160,9 @@ struct LibraryView: View {
                         Button { selecting.toggle(); checked.removeAll() } label: { Label(selecting ? "Done" : "Select", systemImage: selecting ? "checkmark" : "checkmark.circle") }
                     }
                 }
+                #if os(macOS)
+                .navigationSplitViewColumnWidth(min: 220, ideal: 280, max: 380)
+                #endif
                 .safeAreaInset(edge: .top, spacing: 0) {
                     VStack(spacing: 8) {
                         pasteButton
@@ -181,6 +185,11 @@ struct LibraryView: View {
                         HStack(alignment: .top) {
                             Text(note.title).font(.title2.bold())
                             Spacer()
+                            Button { plainPreview.toggle() } label: {
+                                Label(plainPreview ? "Rich text" : "Plain text", systemImage: plainPreview ? "doc.richtext" : "text.alignleft")
+                            }
+                            .buttonStyle(.bordered)
+                            .disabled(note.plainText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                             Button { Clipboard.copy(note); copiedID = note.id } label: {
                                 Label(copiedID == note.id ? "Copied" : "Copy note", systemImage: copiedID == note.id ? "checkmark" : "doc.on.doc")
                             }
@@ -190,7 +199,16 @@ struct LibraryView: View {
                         if let source = note.parts.first?.sourceURL { Text(source).font(.caption).foregroundStyle(.secondary).lineLimit(1).textSelection(.enabled) }
                     }.padding()
                     Divider()
-                    HTMLPreview(html: note.htmlDocument).id(note.id)
+                    if plainPreview && !note.plainText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        ScrollView {
+                            Text(note.plainText)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .textSelection(.enabled)
+                                .padding(16)
+                        }
+                    } else {
+                        HTMLPreview(html: note.htmlDocument).id(note.id)
+                    }
                 }.toolbar { ToolbarItemGroup { Button { editing = note } label: { Label("Edit title and tags", systemImage: "tag") }; Button(role: .destructive) { deleting = [note.id]; confirmDelete = true } label: { Label("Delete", systemImage: "trash") } } }
             } else {
                 VStack(spacing: 16) {
@@ -213,6 +231,7 @@ struct LibraryView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
+        .onChange(of: selected) { _, _ in plainPreview = false; copiedID = nil }
         .onChange(of: store.lastIncoming) { _, id in
             if let id, !selecting { selected = id; compactColumn = .detail; tagFilter = nil; query = "" }
         }
@@ -270,22 +289,6 @@ struct EditNote: View {
     }
 }
 
-final class PreviewCoordinator: NSObject, WKNavigationDelegate {
-    private var loadedHTML: String?
-    func render(_ html: String, in view: WKWebView) {
-        guard loadedHTML != html else { return }
-        loadedHTML = html
-        view.loadHTMLString(html, baseURL: nil)
-    }
-    func webView(_ webView: WKWebView, decidePolicyFor action: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
-        let scheme = action.request.url?.scheme ?? ""
-        decisionHandler(["about", "data"].contains(scheme) && action.navigationType != .linkActivated ? .allow : .cancel)
-    }
-}
-func previewWebView(_ coordinator: PreviewCoordinator) -> WKWebView {
-    let config = WKWebViewConfiguration(); config.websiteDataStore = .nonPersistent(); config.defaultWebpagePreferences.allowsContentJavaScript = false
-    let view = WKWebView(frame: .zero, configuration: config); view.navigationDelegate = coordinator; return view
-}
 #if os(macOS)
 struct HTMLPreview: NSViewRepresentable {
     let html: String

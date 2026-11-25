@@ -5,3 +5,6 @@
 "Copy note" = "复制笔记";
 "Copied" = "已复制";
 "No supported content in the clipboard." = "剪贴板中没有可用内容。";
+
+"Plain text" = "纯文本";
+"Rich text" = "富文本";

@@ -35,9 +35,19 @@ final class NoteCoreTests: XCTestCase {
     }
     func testEscapingAndSandboxMarkup() {
         let note = Note(title: "test", parts: [.init(text: "<script>bad</script>")])
-        XCTAssertTrue(note.htmlDocument.contains("iframe sandbox"))
+        XCTAssertFalse(note.htmlDocument.contains("iframe"))
+        XCTAssertTrue(note.htmlDocument.contains("&lt;script&gt;"))
         XCTAssertTrue(note.htmlDocument.contains("default-src 'none'"))
         XCTAssertTrue(note.parts[0].renderedHTML.contains("&lt;script&gt;"))
+    }
+    func testMergedDocumentsUseExplicitDataFrames() {
+        let note = Note(title: "merged", parts: [.init(html: "<b>one</b>", text: "one"), .init(text: "two")])
+        XCTAssertTrue(note.htmlDocument.contains("frame-src data:"))
+        XCTAssertTrue(note.htmlDocument.contains("iframe sandbox"))
+        XCTAssertFalse(note.htmlDocument.contains("srcdoc="))
+        let encoded = Data(Note.document(for: note.parts[0]).utf8).base64EncodedString()
+        XCTAssertTrue(note.htmlDocument.contains(encoded))
+        XCTAssertEqual(note.plainText, "one\n\ntwo")
     }
     func testImageEmbedding() {
         let part = NotePart(image: Data([1,2,3]), imageMIME: "image/png")

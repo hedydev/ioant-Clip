@@ -15,6 +15,7 @@ xcodebuild -version || exit 1
 swift --version
 status=0
 swift test || status=1
+bash scripts/test_webkit_render.sh || status=1
 PYTHONDONTWRITEBYTECODE=1 /usr/bin/python3 scripts/test_native_host.py || status=1
 if command -v node >/dev/null; then
   node --check BrowserExtension/popup.js || status=1
