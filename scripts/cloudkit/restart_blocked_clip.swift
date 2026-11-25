@@ -34,7 +34,7 @@ import AppKit
         let copy = backup.appending(path:"notes.json")
         try data.write(to:copy,options:.withoutOverwriting)
         try fm.setAttributes([.posixPermissions:0o600],ofItemAtPath:copy.path)
-        guard try Data(contentsOf:copy) == data, Data(contentsOf:notes) == data else { throw NSError(domain:"LibraryChangedBeforeQuit",code:1) }
+        guard try Data(contentsOf:copy) == data, try Data(contentsOf:notes) == data else { throw NSError(domain:"LibraryChangedBeforeQuit",code:1) }
         let checkpoint = directory.appending(path:"cloudkit-remote-checkpoint-v1.json")
         if fm.fileExists(atPath:checkpoint.path) {
             let bytes = try Data(contentsOf:checkpoint)

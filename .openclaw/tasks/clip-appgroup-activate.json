@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "title": "Activate already verified App Group authorized Mac artifact",
+  "steps": [
+    {
+      "name": "restart_verified_client",
+      "runtime": "bash",
+      "script": "scripts/cloudkit/restart_blocked_clip.sh",
+      "timeoutSeconds": 120
+    }
+  ],
+  "artifacts": []
+}
