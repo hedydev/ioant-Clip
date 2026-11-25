@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "title": "Build signed smoke and diagnose CloudKit account status read-only",
+  "steps": [
+    {
+      "name": "build_signed_smoke",
+      "runtime": "bash",
+      "script": "scripts/cloudkit/build_signed_smoke_mac.sh",
+      "timeoutSeconds": 300
+    },
+    {
+      "name": "check_account_read_only",
+      "runtime": "bash",
+      "script": "scripts/cloudkit/check_signed_smoke_account_mac.sh",
+      "timeoutSeconds": 60
+    }
+  ],
+  "artifacts": []
+}

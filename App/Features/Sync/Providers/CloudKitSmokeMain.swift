@@ -12,13 +12,38 @@ import Darwin
     private static func log(_ message: String) {
         FileHandle.standardOutput.write(Data((message + "\n").utf8))
     }
+    private static func accountStatusName(_ status: CKAccountStatus) -> String {
+        switch status {
+        case .available: return "available"
+        case .noAccount: return "noAccount"
+        case .restricted: return "restricted"
+        case .couldNotDetermine: return "couldNotDetermine"
+        case .temporarilyUnavailable: return "temporarilyUnavailable"
+        @unknown default: return "unknown(" + String(status.rawValue) + ")"
+        }
+    }
     static func main() async {
-        guard CommandLine.arguments == [CommandLine.arguments[0], "--clip-cloudkit-smoke"],
+        let arguments = Array(CommandLine.arguments.dropFirst())
+        guard arguments == ["--clip-cloudkit-smoke"] || arguments == ["--clip-cloudkit-account-check"],
               Bundle.main.object(forInfoDictionaryKey: "ClipCloudKitSmoke") as? String == "YES",
               let config = CloudKitReviewConfiguration.current(),
               config.environment == "Development", config.container == "iCloud.com.ioant.clip" else {
             log("BLOCKED: invalid smoke configuration or missing explicit run argument")
             exit(2)
+        }
+        // Read-only mode never creates a transport zone or requests any record.
+        do {
+            let status = try await CKContainer(identifier: config.container).accountStatus()
+            log("CloudKit account status: " + accountStatusName(status))
+            guard status == .available else { exit(3) }
+            if arguments == ["--clip-cloudkit-account-check"] {
+                log("PASS: account status available (read-only check; no zone or records)")
+                return
+            }
+        } catch {
+            let ns = error as NSError
+            log("FAIL: account status query; " + ns.domain + " code " + String(ns.code))
+            exit(1)
         }
         let zoneName = "ioantClipSmoke-" + UUID().uuidString
         log("Synthetic development zone: " + zoneName)
