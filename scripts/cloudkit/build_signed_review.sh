@@ -9,9 +9,11 @@ mode="${2:-review}"
 cacheLane=CloudKitReview
 smoke=NO
 ui=NO
+development=NO
 conditions='$(inherited) CLIP_CLOUDKIT_REVIEW'
 case "$mode" in
   review) ;;
+  development) cacheLane=CloudKitDevelopment; development=YES; conditions="$conditions CLIP_CLOUDKIT_DEVELOPMENT";;
   ui) [ "$platform" = macOS ] || exit 2
     cacheLane=CloudKitUIReview; ui=YES; conditions="$conditions CLIP_CLOUDKIT_UI_REVIEW";;
   smoke) [ "$platform" = macOS ] || exit 2
@@ -49,7 +51,7 @@ if xcodebuild -project ioant-Clip.xcodeproj -scheme "ioant-Clip-$platform" -conf
   CODE_SIGNING_ALLOWED=YES CODE_SIGNING_REQUIRED=YES \
   "CLIP_CLOUDKIT_CONTAINER=$container" "CODE_SIGN_ENTITLEMENTS=$root/Config/CloudKitReview.entitlements" \
   "INFOPLIST_FILE=$root/Config/CloudKitReview-Info.plist" \
-  "CLIP_CLOUDKIT_SMOKE=$smoke" "CLIP_CLOUDKIT_UI_REVIEW=$ui" "SWIFT_ACTIVE_COMPILATION_CONDITIONS=$conditions" \
+  "CLIP_CLOUDKIT_SMOKE=$smoke" "CLIP_CLOUDKIT_UI_REVIEW=$ui" "CLIP_CLOUDKIT_DEVELOPMENT=$development" "SWIFT_ACTIVE_COMPILATION_CONDITIONS=$conditions" \
   build > "$log" 2>&1; then
   echo "BUILD SUCCEEDED $platform"
 else
@@ -65,5 +67,11 @@ fi
 if [ "$mode" = ui ]; then
   [ "$(/usr/libexec/PlistBuddy -c 'Print :ClipCloudKitUIReview' "$app/Contents/Info.plist")" = YES ]
   [ "$(/usr/libexec/PlistBuddy -c 'Print :ClipCloudKitSmoke' "$app/Contents/Info.plist")" = NO ]
+fi
+if [ "$mode" = development ]; then
+  if [ "$platform" = macOS ]; then plist="$app/Contents/Info.plist"; else plist="$app/Info.plist"; fi
+  [ "$(/usr/libexec/PlistBuddy -c 'Print :ClipCloudKitDevelopment' "$plist")" = YES ]
+  [ "$(/usr/libexec/PlistBuddy -c 'Print :ClipCloudKitUIReview' "$plist")" = NO ]
+  [ "$(/usr/libexec/PlistBuddy -c 'Print :ClipCloudKitSmoke' "$plist")" = NO ]
 fi
 echo "Signed $mode artifact verified; not installed or launched"

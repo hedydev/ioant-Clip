@@ -24,6 +24,12 @@ struct CloudKitReviewConfiguration {
               bundle.object(forInfoDictionaryKey: "ClipCloudKitUIReview") as? String == "YES",
               bundle.object(forInfoDictionaryKey: "ClipCloudKitSmoke") as? String == "NO" else { return nil }
         #endif
+        #if CLIP_CLOUDKIT_DEVELOPMENT
+        guard id == "iCloud.com.ioant.clip",
+              bundle.object(forInfoDictionaryKey: "ClipCloudKitDevelopment") as? String == "YES",
+              bundle.object(forInfoDictionaryKey: "ClipCloudKitUIReview") as? String == "NO",
+              bundle.object(forInfoDictionaryKey: "ClipCloudKitSmoke") as? String == "NO" else { return nil }
+        #endif
         return Self(container: id, environment: environment)
         #else
         return nil

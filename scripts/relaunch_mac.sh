@@ -6,6 +6,7 @@ if [ -d /Volumes/LunaDrive/DeveloperCache ] && [ -w /Volumes/LunaDrive/Developer
 else
   derived="$PWD/DerivedData"
 fi
-app="$derived/macOS/Build/Products/Debug/ioant-Clip-macOS.app"
+app="$derived/CloudKitDevelopment/macOS/Build/Products/Debug/ioant-Clip-macOS.app"
 test -d "$app"
-/usr/bin/swift scripts/relaunch_mac.swift "$app"
+PYTHONDONTWRITEBYTECODE=1 /usr/bin/python3 scripts/cloudkit/verify_signed_review.py macOS "$app" 64RS366WKG iCloud.com.ioant.clip
+/usr/bin/swift scripts/relaunch_mac.swift "$app" "$derived" "${1:-normal}"

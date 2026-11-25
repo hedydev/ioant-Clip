@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "title": "Enable iCloud in daily development client with local backup and no automatic enrollment",
+  "steps": [
+    {
+      "name": "validate_storage_scope",
+      "runtime": "bash",
+      "script": "scripts/test_cloudkit_review.sh",
+      "timeoutSeconds": 180
+    },
+    {
+      "name": "build_signed_development",
+      "runtime": "bash",
+      "script": "scripts/cloudkit/build_signed_development_mac.sh",
+      "timeoutSeconds": 300
+    },
+    {
+      "name": "activate_development",
+      "runtime": "bash",
+      "script": "scripts/cloudkit/activate_development_mac.sh",
+      "timeoutSeconds": 120
+    },
+    {
+      "name": "retarget_native_host",
+      "runtime": "bash",
+      "script": "scripts/cloudkit/point_native_host_to_development.sh",
+      "timeoutSeconds": 60
+    }
+  ],
+  "artifacts": []
+}

@@ -1,10 +1,9 @@
 import Foundation
 
-/// Signed review builds must never open the user's existing daily library,
-/// even when the cloud configuration is missing or invalid.
+/// Test lanes are isolated. Signed development deliberately retains the daily library.
 enum LibraryLocation {
     static var isCloudReview: Bool {
-        #if CLIP_CLOUDKIT_REVIEW
+        #if CLIP_CLOUDKIT_REVIEW && !CLIP_CLOUDKIT_DEVELOPMENT
         true
         #else
         false
