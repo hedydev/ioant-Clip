@@ -32,6 +32,7 @@ public enum CaptureInbox {
                 let capture = try WebCapture.decode(Data(contentsOf: file))
                 var next = library
                 guard next.add(capture.part, title: capture.title, id: id) != nil else { throw WebCapture.ImportError.empty }
+                try next.recordLocalChanges(from: library)
                 try next.save(to: libraryURL)
                 library = next
                 result.imported.append(id)

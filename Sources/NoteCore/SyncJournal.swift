@@ -43,6 +43,23 @@ public struct SyncJournal: Codable, Equatable, Sendable {
         guard !conflictKeys.contains(key) else { throw JournalError.unresolvedConflict }
         return try resolve(value, for: key)
     }
+    /// Batch local changes, validating once rather than once per note.
+    public mutating func recordBatch(_ changes: [(SyncKey, SyncValue)]) throws {
+        guard Set(changes.map(\.0)).count == changes.count else { throw JournalError.conflictingIdentity }
+        var incoming: [SyncRevision] = []
+        for (key, value) in changes {
+            let current = heads(for: key)
+            if current.dropFirst().contains(where: { $0.value != current.first?.value }) { throw JournalError.unresolvedConflict }
+            if current.count == 1, current[0].value == value { continue }
+            incoming.append(SyncRevision(key: key, parents: Set(current.map(\.id)), value: value))
+        }
+        if !incoming.isEmpty { try ingest(incoming) }
+    }
+    public func validate() throws {
+        var validated = SyncJournal()
+        for (id, revision) in revisions where id != revision.id { throw JournalError.conflictingIdentity }
+        try validated.ingest(Array(revisions.values))
+    }
     /// Explicit resolution creates a descendant of every observed head.
     @discardableResult public mutating func resolve(_ value: SyncValue, for key: SyncKey) throws -> SyncRevision? {
         let current = heads(for: key)
@@ -92,10 +109,10 @@ public struct SyncJournal: Codable, Equatable, Sendable {
     /// an empty library, and must precede any cloud exchange.
     public static func bootstrap(_ library: NoteLibrary) throws -> SyncJournal {
         var journal = SyncJournal()
-        for note in library.notes { try journal.record(.note(note), for: .note(note.id)) }
-        for name in library.allTags {
-            try journal.record(.tagColor(library.color(for: name)), for: .tagColor(TagColor.key(name)))
-        }
+        let notes: [(SyncKey, SyncValue)] = library.notes.map { (.note($0.id), .note($0)) }
+        var colors = library.syncColors
+        for name in library.allTags where colors[TagColor.key(name)] == nil { colors[TagColor.key(name)] = .gray }
+        try journal.recordBatch(notes + colors.map { (.tagColor($0.key), .tagColor($0.value)) })
         return journal
     }
     public func save(to url: URL) throws {

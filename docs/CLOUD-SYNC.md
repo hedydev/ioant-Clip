@@ -1,6 +1,6 @@
 # Optional cloud synchronization
 
-Status: shared offline revision journal foundation only. Not connected to live providers, not wired into local note mutations or enabled in UI. No user data uploaded.
+Status: journal integrated with local mutations and native capture inbox, atomic persistence in existing notes.json, conflict projection and explicit resolution UI, Cloud Sync settings show local-only status. No live provider connected and no user data uploaded. Legacy libraries are initialized locally; downgrading to builds that do not preserve the journal is unsupported.
 
 ## Provider selection
 
@@ -15,7 +15,7 @@ Do not synchronize notes.json directly. Immutable per-key revisions contain note
 
 ## Next steps
 
-1. Atomic integration of journal with local note mutations and sync-state persistence; migration of existing notes and explicit conflict resolution UI. Test offline edits, delete/merge and retry across two simulated devices.
+1. Local integration implemented; validate migration, offline edits, deletion, capture and conflict resolution. Before provider activation, add account binding, transport/checksums and a history size policy.
 2. CloudKit signed development integration, private record storage, test Mac/iPhone with same Apple ID.
 3. Google OAuth/Drive adapter, real same-account cross-device validation.
 4. Foreground sync on activation and changes, optional background refresh where allowed, manual sync button, status/errors and safe disconnect. Neither background timing nor instant synchronization is guaranteed.

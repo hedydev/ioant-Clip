@@ -69,6 +69,7 @@ public struct Note: Codable, Identifiable, Equatable, Sendable {
 public struct NoteLibrary: Codable, Equatable, Sendable {
     public private(set) var notes: [Note]
     private var tagPalette: [String: TagColor]?
+    public private(set) var syncJournal: SyncJournal?
     public init(notes: [Note] = []) { self.notes = notes }
     public var allTags: [String] {
         Note.normalizedTags(notes.flatMap(\.tags)).sorted { $0.localizedStandardCompare($1) == .orderedAscending }
@@ -81,6 +82,84 @@ public struct NoteLibrary: Codable, Equatable, Sendable {
         guard !key.isEmpty else { return }
         if tagPalette == nil { tagPalette = [:] }
         tagPalette?[key] = color
+    }
+    /// Includes retained colors even if the last note with that tag was removed.
+    public var syncColors: [String: TagColor] { tagPalette ?? [:] }
+    public mutating func initializeSyncJournal() throws {
+        guard syncJournal == nil else { return }
+        syncJournal = try SyncJournal.bootstrap(self)
+    }
+    /// Record changes in the same value that is atomically saved to notes.json.
+    /// The original remains untouched if recording or persistence fails.
+    public mutating func recordLocalChanges(from previous: NoteLibrary) throws {
+        guard var journal = previous.syncJournal else { return }
+        let before = Dictionary(uniqueKeysWithValues: previous.notes.map { ($0.id, $0) })
+        let after = Dictionary(uniqueKeysWithValues: notes.map { ($0.id, $0) })
+        var changes: [(SyncKey, SyncValue)] = []
+        for id in Set(before.keys).union(after.keys) where before[id] != after[id] {
+            changes.append((.note(id), after[id].map(SyncValue.note) ?? .deleted))
+        }
+        for key in Set(previous.syncColors.keys).union(syncColors.keys) where previous.syncColors[key] != syncColors[key] {
+            changes.append((.tagColor(key), syncColors[key].map(SyncValue.tagColor) ?? .deleted))
+        }
+        try journal.recordBatch(changes)
+        syncJournal = journal
+    }
+    /// Incoming history is validated before projection. Divergent heads are
+    /// retained; a local visible version stays visible until explicit resolution.
+    public mutating func ingestSyncRevisions(_ revisions: [SyncRevision]) throws {
+        var next = self
+        try next.initializeSyncJournal()
+        guard var journal = next.syncJournal else { return }
+        try journal.ingest(revisions)
+        next.project(journal)
+        self = next
+    }
+    public mutating func resolveSyncConflict(_ key: SyncKey, choosing revisionID: UUID) throws {
+        guard var journal = syncJournal,
+              journal.conflictKeys.contains(key),
+              let chosen = journal.heads(for: key).first(where: { $0.id == revisionID })
+        else { throw SyncJournal.JournalError.unresolvedConflict }
+        try journal.resolve(chosen.value, for: key)
+        var next = self
+        next.project(journal)
+        self = next
+    }
+    private mutating func project(_ journal: SyncJournal) {
+        var byID = Dictionary(uniqueKeysWithValues: notes.map { ($0.id, $0) })
+        var palette = syncColors
+        for key in journal.keys {
+            let heads = journal.heads(for: key)
+            guard let first = heads.first else { continue }
+            let conflict = heads.dropFirst().contains { $0.value != first.value }
+            switch key {
+            case .note(let id):
+                if conflict {
+                    if let current = byID[id], heads.contains(where: { $0.value == .note(current) }) { continue }
+                    if let visible = heads.compactMap({ revision -> Note? in
+                        if case .note(let note) = revision.value { return note }; return nil
+                    }).first { byID[id] = visible }
+                } else {
+                    if case .note(let note) = first.value { byID[id] = note }
+                    else if first.value == .deleted { byID.removeValue(forKey: id) }
+                }
+            case .tagColor(let name):
+                if conflict {
+                    if let current = palette[name], heads.contains(where: { $0.value == .tagColor(current) }) { continue }
+                    if let visible = heads.compactMap({ revision -> TagColor? in
+                        if case .tagColor(let color) = revision.value { return color }; return nil
+                    }).first { palette[name] = visible }
+                } else {
+                    if case .tagColor(let color) = first.value { palette[name] = color }
+                    else if first.value == .deleted { palette.removeValue(forKey: name) }
+                }
+            }
+        }
+        notes = byID.values.sorted { a, b in
+            a.createdAt == b.createdAt ? a.id.uuidString < b.id.uuidString : a.createdAt > b.createdAt
+        }
+        tagPalette = palette.isEmpty ? nil : palette
+        syncJournal = journal
     }
     public func filtered(query: String, filter: TagFilter) -> [Note] {
         notes.filter { $0.matches(query) && filter.includes($0) }
@@ -106,7 +185,12 @@ public struct NoteLibrary: Codable, Equatable, Sendable {
     }
     public static func load(from url: URL) throws -> Self {
         guard FileManager.default.fileExists(atPath: url.path) else { return Self() }
-        return try JSONDecoder().decode(Self.self, from: Data(contentsOf: url))
+        let library = try JSONDecoder().decode(Self.self, from: Data(contentsOf: url))
+        guard Set(library.notes.map(\.id)).count == library.notes.count else { throw SyncJournal.JournalError.conflictingIdentity }
+        if let journal = library.syncJournal {
+            try journal.validate()
+        }
+        return library
     }
     public func save(to url: URL) throws {
         try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)

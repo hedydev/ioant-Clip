@@ -35,3 +35,21 @@
 "Blue" = "蓝色";
 "Purple" = "紫色";
 "Pink" = "粉色";
+
+"Cloud sync" = "云同步";
+"Storage" = "存储";
+"Local only" = "仅本地存储";
+"All notes stay on this device. Cloud providers are not connected." = "所有笔记保留在本机，尚未连接云服务。";
+"Cloud providers" = "云服务";
+"Requires signed CloudKit configuration" = "需要 CloudKit 签名配置";
+"Requires Google OAuth configuration" = "需要 Google OAuth 配置";
+"Local sync history" = "本地同步记录";
+"Recorded revisions" = "版本记录";
+"Conflicts" = "冲突";
+"Version history is local. Nothing has been uploaded." = "版本记录仅在本机保存，未上传。";
+"Not connected" = "未连接";
+"Conflicting versions" = "冲突版本";
+"Deleted version" = "已删除版本";
+"Keep this version" = "保留此版本";
+"Resolve this conflict?" = "解决此冲突？";
+"Keep selected version" = "保留所选版本";

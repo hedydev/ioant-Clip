@@ -15,14 +15,36 @@ import UIKit
     @Published private(set) var lastIncoming: UUID?
     private var reportedInboxFailures = Set<String>()
     init() {
-        do { library = try NoteLibrary.load(from: url); ready = true }
+        do {
+            var loaded = try NoteLibrary.load(from: url)
+            if loaded.syncJournal == nil {
+                try loaded.initializeSyncJournal()
+                try loaded.save(to: url)
+            }
+            library = loaded
+            ready = true
+        }
         catch { self.error = "Cannot open library. Existing data was not changed: \(error.localizedDescription)" }
     }
     @discardableResult func change<T>(_ mutation: (inout NoteLibrary) -> T) -> T? {
         guard ready else { error = "Library is unavailable."; return nil }
         var next = library; let result = mutation(&next)
-        do { try next.save(to: url); library = next; return result }
+        do {
+            try next.recordLocalChanges(from: library)
+            try next.save(to: url)
+            library = next
+            return result
+        }
         catch { self.error = error.localizedDescription; return nil }
+    }
+    func resolveConflict(_ key: SyncKey, revision: UUID) {
+        guard ready else { return }
+        var next = library
+        do {
+            try next.resolveSyncConflict(key, choosing: revision)
+            try next.save(to: url)
+            library = next
+        } catch { self.error = error.localizedDescription }
     }
     #if os(macOS)
     func receivePendingCaptures() {
@@ -120,6 +142,7 @@ struct LibraryView: View {
     @State private var selecting = false
     @State private var query = ""
     @State private var importing = false
+    @State private var syncSettings = false
     @State private var editing: Note?
     @State private var deleting = Set<UUID>()
     @State private var confirmDelete = false
@@ -156,6 +179,7 @@ struct LibraryView: View {
             }.navigationTitle("ioant-Note").searchable(text: $query)
                 .toolbar {
                     ToolbarItemGroup {
+                        Button { syncSettings = true } label: { Label("Cloud sync", systemImage: "icloud") }
                         Button { selecting.toggle(); checked.removeAll() } label: { Label(selecting ? "Done" : "Select", systemImage: selecting ? "checkmark" : "checkmark.circle") }
                     }
                 }
@@ -252,6 +276,7 @@ struct LibraryView: View {
         .fileImporter(isPresented: $importing, allowedContentTypes: [.json]) { result in
             switch result { case .success(let url): if let id = store.importFile(url) { selected = id; compactColumn = .detail; tagFilter = .all; query = "" }; case .failure(let error): store.error = error.localizedDescription }
         }
+        .sheet(isPresented: $syncSettings) { SyncSettingsView().environmentObject(store) }
         .sheet(item: $editing) { note in
             EditNote(note: note, library: store.library) { title, tags, colors in
                 let saved: Bool? = store.change { library in
