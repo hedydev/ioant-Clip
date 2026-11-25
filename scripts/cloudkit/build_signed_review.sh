@@ -45,5 +45,5 @@ else
   exit 1
 fi
 app="$derived/Build/Products/$product"
-/usr/bin/python3 scripts/cloudkit/verify_signed_review.py "$platform" "$app" "$team" "$container"
+PYTHONDONTWRITEBYTECODE=1 /usr/bin/python3 scripts/cloudkit/verify_signed_review.py "$platform" "$app" "$team" "$container"
 echo "Signed review artifact verified; not installed or launched"

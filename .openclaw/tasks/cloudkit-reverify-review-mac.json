@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "title": "Reverify existing signed macOS review without provisioning or rebuild",
+  "steps": [
+    {
+      "name": "verify_existing_signed_artifact",
+      "runtime": "bash",
+      "script": "scripts/cloudkit/reverify_review_mac.sh",
+      "timeoutSeconds": 60
+    }
+  ],
+  "artifacts": []
+}

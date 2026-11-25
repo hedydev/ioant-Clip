@@ -40,7 +40,7 @@ def verify(platform, app, team, container):
     # Extract only public certificate from the signature, never key material.
     with tempfile.TemporaryDirectory(prefix="clip-review-cert-") as directory:
         prefix = str(pathlib.Path(directory) / "certificate")
-        run("/usr/bin/codesign", "-d", "--extract-certificates", prefix, str(app))
+        run("/usr/bin/codesign", "-d", "--extract-certificates=" + prefix, str(app))
         leaf = pathlib.Path(prefix + "0").read_bytes()
         _, candidates, _ = discover(team)
         assert hashlib.sha1(leaf).hexdigest().upper() in candidates, "signature identity not locally valid"

@@ -47,9 +47,16 @@ def matching_profile(profile, platform, now):
     services = values(ent.get("com.apple.developer.icloud-services"))
     containers = values(ent.get("com.apple.developer.icloud-container-identifiers"))
     containers = {x for x in containers if x.startswith("iCloud.") and "*" not in x and "$" not in x}
-    if not (ent.get("get-task-allow") is True or ent.get("com.apple.security.get-task-allow") is True):
+    # Apple TN3125: macOS get-task-allow is unrestricted and need not
+    # be present in the profile. Require device-scoped development
+    # candidates; actual signer/profile certificate checked on the build.
+    if platform == "iOS" and ent.get("get-task-allow") is not True:
         return None
-    if "CloudKit" not in services or "Development" not in env:
+    if platform == "macOS" and (not profile.get("ProvisionedDevices") or profile.get("ProvisionsAllDevices") is True):
+        return None
+    # Profile is an allowlist; Apple can authorize service values with "*".
+    # The signed app must still explicitly claim CloudKit and one container.
+    if not ({"CloudKit", "*"} & services) or "Development" not in env:
         return None
     return team, containers
 
