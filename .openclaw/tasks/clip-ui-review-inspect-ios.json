@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "title": "Reconcile installed synthetic UI review after initialization check",
+  "steps": [
+    {
+      "name": "inspect_ui_review",
+      "runtime": "bash",
+      "script": "scripts/cloudkit/inspect_ui_review_simulator.sh",
+      "timeoutSeconds": 60
+    }
+  ],
+  "artifacts": []
+}
