@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "title": "Inspect capture inbox metadata and scoped sandbox denials without modifying data",
+  "steps": [
+    {
+      "name": "inspect_inbox",
+      "runtime": "bash",
+      "script": "scripts/cloudkit/inspect_capture_inbox.sh",
+      "timeoutSeconds": 60
+    }
+  ],
+  "artifacts": []
+}
