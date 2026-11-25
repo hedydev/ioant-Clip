@@ -5,11 +5,17 @@ export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PAT
 export USER="$(id -un)"
 export LOGNAME="$USER"
 root="$PWD"
+mode="${1:-isolated}"
+case "$mode" in
+  isolated) bundle=com.ioant.clip.ios.simsmoke; lane=Simulator;;
+  registered) bundle=com.ioant.clip.ios; lane=SimulatorRegistered;;
+  *) exit 2;;
+esac
 cache=/Volumes/LunaDrive/DeveloperCache
 if [ -d "$cache" ] && [ -w "$cache" ]; then
-  derived="$cache/projects/ioant-clip/DerivedData/CloudKitSmoke/Simulator"
+  derived="$cache/projects/ioant-clip/DerivedData/CloudKitSmoke/$lane"
 else
-  derived="$root/DerivedData/CloudKitSmoke/Simulator"
+  derived="$root/DerivedData/CloudKitSmoke/$lane"
 fi
 mkdir -p "$derived"
 xcodegen generate
@@ -17,7 +23,7 @@ log="$derived/build.log"
 # Simulator-only identity, no portal registration or provisioning updates.
 if ! xcodebuild -project ioant-Clip.xcodeproj -scheme ioant-Clip-iOS -configuration Debug \
   -destination 'generic/platform=iOS Simulator' -derivedDataPath "$derived" \
-  PRODUCT_BUNDLE_IDENTIFIER=com.ioant.clip.ios.simsmoke \
+  "PRODUCT_BUNDLE_IDENTIFIER=$bundle" \
   CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY=- CODE_SIGNING_ALLOWED=YES CODE_SIGNING_REQUIRED=YES \
   DEVELOPMENT_TEAM=64RS366WKG \
   CLIP_CLOUDKIT_CONTAINER=iCloud.com.ioant.clip CLIP_CLOUDKIT_SMOKE=YES \
@@ -28,4 +34,4 @@ if ! xcodebuild -project ioant-Clip.xcodeproj -scheme ioant-Clip-iOS -configurat
   grep -E 'error:|warning:|BUILD FAILED' "$log" | tail -n 30 || true
   exit 1
 fi
-/usr/bin/python3 scripts/cloudkit/verify_simulator_smoke.py "$derived/Build/Products/Debug-iphonesimulator/ioant-Clip-iOS.app"
+/usr/bin/python3 scripts/cloudkit/verify_simulator_smoke.py "$derived/Build/Products/Debug-iphonesimulator/ioant-Clip-iOS.app" "$bundle"

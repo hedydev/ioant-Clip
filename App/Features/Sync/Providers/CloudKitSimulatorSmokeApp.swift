@@ -24,7 +24,7 @@ private struct SimulatorSmokeView: View {
                 try? Data((lines.joined(separator: "\n") + "\n").utf8).write(to: url, options: .atomic)
             }
             guard ProcessInfo.processInfo.arguments.contains("--clip-simulator-smoke"),
-                  Bundle.main.bundleIdentifier == "com.ioant.clip.ios.simsmoke",
+                  ["com.ioant.clip.ios.simsmoke", "com.ioant.clip.ios"].contains(Bundle.main.bundleIdentifier ?? ""),
                   Bundle.main.object(forInfoDictionaryKey: "ClipCloudKitSmoke") as? String == "YES",
                   let config = CloudKitReviewConfiguration.current() else {
                 record("RESULT: BLOCKED invalid explicit configuration"); return

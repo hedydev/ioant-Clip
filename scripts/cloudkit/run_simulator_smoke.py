@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
-import json, os, pathlib, subprocess, time
+import json, os, pathlib, subprocess, time, sys
 root = pathlib.Path(__file__).resolve().parents[2]
 cache = pathlib.Path("/Volumes/LunaDrive/DeveloperCache")
-derived = (cache / "projects/ioant-clip/DerivedData" if cache.is_dir() and os.access(cache, os.W_OK) else root / "DerivedData") / "CloudKitSmoke/Simulator"
+derived = (cache / "projects/ioant-clip/DerivedData" if cache.is_dir() and os.access(cache, os.W_OK) else root / "DerivedData") / ("CloudKitSmoke/SimulatorRegistered" if len(sys.argv) == 2 and sys.argv[1] == "--registered" else "CloudKitSmoke/Simulator")
 app = derived / "Build/Products/Debug-iphonesimulator/ioant-Clip-iOS.app"
-bundle = "com.ioant.clip.ios.simsmoke"
+assert sys.argv[1:] in ([], ["--registered"])
+bundle = "com.ioant.clip.ios" if sys.argv[1:] else "com.ioant.clip.ios.simsmoke"
 def sim(*args, timeout=30, check=True):
     return subprocess.run(["/usr/bin/xcrun", "simctl", *args], capture_output=True, text=True, timeout=timeout, check=check)
-subprocess.run(["/usr/bin/python3", str(root / "scripts/cloudkit/verify_simulator_smoke.py"), str(app)], check=True)
+subprocess.run(["/usr/bin/python3", str(root / "scripts/cloudkit/verify_simulator_smoke.py"), str(app), bundle], check=True)
 devices = json.loads(sim("list", "-j", "devices", "booted").stdout)["devices"]
 phones = [d for ds in devices.values() for d in ds if d["state"] == "Booted" and d.get("isAvailable") and d["name"].startswith("iPhone")]
 for d in phones: print("Booted iPhone:", d["name"], d["udid"], flush=True)
@@ -16,7 +17,7 @@ if len(phones) != 1:
 udid = phones[0]["udid"]
 # Never replace an existing test installation or any normal Clip app.
 if sim("get_app_container", udid, bundle, "app", check=False).returncode == 0:
-    raise SystemExit("BLOCKED: previous smoke app exists; inspect its receipt before another run")
+    raise SystemExit("BLOCKED: target bundle already installed; no app replaced; explicit review needed")
 launched = False
 try:
     sim("install", udid, str(app), timeout=60)

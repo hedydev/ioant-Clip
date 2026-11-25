@@ -2,7 +2,9 @@ import pathlib, plistlib, struct, subprocess, sys, tempfile
 
 app = pathlib.Path(sys.argv[1])
 info = plistlib.loads((app / "Info.plist").read_bytes())
-assert info["CFBundleIdentifier"] == "com.ioant.clip.ios.simsmoke"
+bundle = sys.argv[2] if len(sys.argv) == 3 else "com.ioant.clip.ios.simsmoke"
+assert bundle in ("com.ioant.clip.ios.simsmoke", "com.ioant.clip.ios")
+assert info["CFBundleIdentifier"] == bundle
 assert info["ClipCloudKitContainer"] == "iCloud.com.ioant.clip"
 assert info["ClipCloudKitEnvironment"] == "Development"
 assert info["ClipCloudKitSmoke"] == "YES"
@@ -43,4 +45,6 @@ print("Verified embedded simulator entitlement keys:", ", ".join(sorted(ent)))
 assert ent.get("com.apple.developer.icloud-container-identifiers") == ["iCloud.com.ioant.clip"], "simulator container entitlement mismatch"
 assert "CloudKit" in ent.get("com.apple.developer.icloud-services", []), "simulator CloudKit service missing"
 assert ent.get("com.apple.developer.icloud-container-environment") == "Development", "simulator environment mismatch"
+if bundle == "com.ioant.clip.ios":
+    assert ent.get("application-identifier") == "64RS366WKG." + bundle, "registered application identifier mismatch"
 print("PASS: simulator smoke identity, host signature and embedded CloudKit Development entitlements verified; server authorization not yet verified")

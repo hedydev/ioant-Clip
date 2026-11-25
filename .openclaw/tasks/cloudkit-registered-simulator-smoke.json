@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "title": "Registered simulator CloudKit smoke, never replace installed app",
+  "steps": [
+    {
+      "name": "build_registered_simulator",
+      "runtime": "bash",
+      "script": "scripts/cloudkit/build_registered_simulator_smoke.sh",
+      "timeoutSeconds": 300
+    },
+    {
+      "name": "run_only_if_bundle_absent",
+      "runtime": "bash",
+      "script": "scripts/cloudkit/run_registered_simulator_smoke.sh",
+      "timeoutSeconds": 300
+    },
+    {
+      "name": "verify_mac",
+      "runtime": "bash",
+      "script": "scripts/cloudkit/verify_simulator_mac.sh",
+      "timeoutSeconds": 120
+    }
+  ],
+  "artifacts": []
+}
