@@ -26,7 +26,7 @@ import Darwin
         let arguments = Array(CommandLine.arguments.dropFirst())
         let resumeZone = arguments.count == 2 && arguments.first == "--clip-cloudkit-resume" &&
             arguments[1].hasPrefix("ioantClipSmoke-") && UUID(uuidString: String(arguments[1].dropFirst("ioantClipSmoke-".count))) != nil ? arguments[1] : nil
-        guard arguments == ["--clip-cloudkit-smoke"] || arguments == ["--clip-cloudkit-account-check"] || resumeZone != nil || arguments == ["--clip-cloudkit-verify-simulator"] || arguments == ["--clip-cloudkit-mac-modify"] || arguments == ["--clip-cloudkit-mac-resolve"] || arguments == ["--clip-cloudkit-incremental"],
+        guard arguments == ["--clip-cloudkit-smoke"] || arguments == ["--clip-cloudkit-account-check"] || resumeZone != nil || arguments == ["--clip-cloudkit-verify-simulator"] || arguments == ["--clip-cloudkit-mac-modify"] || arguments == ["--clip-cloudkit-mac-resolve"] || arguments == ["--clip-cloudkit-incremental"] || arguments == ["--clip-controller-smoke"],
               Bundle.main.object(forInfoDictionaryKey: "ClipCloudKitSmoke") as? String == "YES",
               let config = CloudKitReviewConfiguration.current(),
               config.environment == "Development", config.container == "iCloud.com.ioant.clip" else {
@@ -46,6 +46,16 @@ import Darwin
             let ns = error as NSError
             log("FAIL: account status query; " + ns.domain + " code " + String(ns.code))
             exit(1)
+        }
+        if arguments == ["--clip-controller-smoke"] {
+            do {
+                try await CloudKitControllerSmoke.run(config: config, log: log)
+                return
+            } catch {
+                let ns = error as NSError
+                log("FAIL: controller smoke; " + ns.domain + " code " + String(ns.code))
+                exit(1)
+            }
         }
         if arguments == ["--clip-cloudkit-incremental"] {
             do {

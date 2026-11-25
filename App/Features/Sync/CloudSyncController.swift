@@ -9,9 +9,25 @@ import SwiftUI
     @Published private(set) var phase: Phase = .idle
     @Published private(set) var pendingAccount: SyncAccount?
     @Published private(set) var lastSuccess: Date?
-    private let config = CloudKitReviewConfiguration.current()
+    private let config: CloudKitReviewConfiguration?
+    private let makeTransport: () -> any RevisionTransport
     private let cycle = SyncCycle()
     private var lastAttempt: Date?
+    init() {
+        let config = CloudKitReviewConfiguration.current()
+        self.config = config
+        self.makeTransport = {
+            guard let config else { preconditionFailure("CloudKit configuration unavailable") }
+            return config.transport()
+        }
+    }
+    #if CLIP_CLOUDKIT_SMOKE
+    // Explicit synthetic lane only; no default library or zone is substituted.
+    init(testConfiguration: CloudKitReviewConfiguration, testTransport: @escaping () -> any RevisionTransport) {
+        self.config = testConfiguration
+        self.makeTransport = testTransport
+    }
+    #endif
     var available: Bool { config != nil }
     var busy: Bool { phase == .checking || phase == .syncing }
 
@@ -20,7 +36,7 @@ import SwiftUI
         pendingAccount = nil
         phase = .checking
         do {
-            let account = try await config.transport().identity()
+            let account = try await makeTransport().identity()
             try Task.checkCancellation()
             guard account.provider == "icloud", account.namespace == config.namespace else { throw SyncSessionError.accountMismatch }
             pendingAccount = account
@@ -28,15 +44,15 @@ import SwiftUI
         } catch { fail(error) }
     }
     func cancelEnrollment() { pendingAccount = nil }
-    func approveEnrollment(store: LibraryStore) {
-        guard !busy, let account = pendingAccount, let config, store.library.syncEnrollment == nil else { return }
+    @discardableResult func approveEnrollment(store: LibraryStore) -> Task<Void, Never>? {
+        guard !busy, let account = pendingAccount, config != nil, store.library.syncEnrollment == nil else { return nil }
         pendingAccount = nil
         phase = .checking
-        Task { await confirmEnrollment(account: account, config: config, store: store) }
+        return Task { await confirmEnrollment(account: account, store: store) }
     }
-    private func confirmEnrollment(account: SyncAccount, config: CloudKitReviewConfiguration, store: LibraryStore) async {
+    private func confirmEnrollment(account: SyncAccount, store: LibraryStore) async {
         do {
-            let transport = config.transport()
+            let transport = makeTransport()
             guard try await transport.identity() == account else { throw SyncSessionError.accountMismatch }
             try Task.checkCancellation()
             try store.enrollSync(account: account, replaceLocalHistory: true)
@@ -62,7 +78,7 @@ import SwiftUI
         lastAttempt = Date()
         phase = .syncing
         do {
-            _ = try await cycle.run(library: store, transport: config.transport(), expected: enrollment.account)
+            _ = try await cycle.run(library: store, transport: makeTransport(), expected: enrollment.account)
             lastSuccess = Date()
             phase = .idle
         } catch { fail(error) }
@@ -77,6 +93,7 @@ import SwiftUI
         if error is CancellationError || Task.isCancelled { phase = .idle; return }
         switch error {
         case SyncSessionError.accountMismatch, SyncExchange.ExchangeError.accountChanged,
+             RemoteRevisionCheckpoint.Failure.scopeMismatch,
              CloudKitRevisionTransport.ProviderError.accountChanged:
             phase = .failed("sync.error.accountChanged")
         case SyncSessionError.historyLimit:

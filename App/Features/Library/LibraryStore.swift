@@ -4,11 +4,12 @@ import SwiftUI
 @MainActor final class LibraryStore: ObservableObject, SyncLibraryAccess {
     @Published private(set) var library = NoteLibrary()
     @Published var error: LibraryIssue?
-    private let url = LibraryLocation.notesURL
+    private let url: URL
     private var ready = false
     @Published private(set) var lastIncoming: UUID?
     private var reportedInboxFailures = Set<String>()
-    init() {
+    init(url: URL = LibraryLocation.notesURL) {
+        self.url = url
         do {
             var loaded = try NoteLibrary.load(from: url)
             if loaded.syncJournal == nil {

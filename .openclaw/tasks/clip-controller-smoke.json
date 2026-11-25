@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "title": "Signed app controller and persistent synthetic library integration",
+  "steps": [
+    {
+      "name": "build_controller_smoke",
+      "runtime": "bash",
+      "script": "scripts/cloudkit/build_signed_smoke_mac.sh",
+      "timeoutSeconds": 300
+    },
+    {
+      "name": "controller_acceptance",
+      "runtime": "bash",
+      "script": "scripts/cloudkit/run_controller_smoke.sh",
+      "timeoutSeconds": 240
+    },
+    {
+      "name": "full_regression",
+      "runtime": "bash",
+      "script": "scripts/validate.sh",
+      "timeoutSeconds": 300
+    }
+  ],
+  "artifacts": []
+}

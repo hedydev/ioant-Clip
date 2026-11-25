@@ -17,7 +17,9 @@ struct CloudKitSettingsSection: View {
                 if controller.available {
                     HStack {
                         Button(enrollment.isPaused ? LocalizedStringKey("sync.resume") : LocalizedStringKey("sync.pause")) {
-                            controller.setPaused(!enrollment.isPaused, store: store)
+                            let resume = enrollment.isPaused
+                            controller.setPaused(!resume, store: store)
+                            if resume { Task { await controller.syncNow(store: store) } }
                         }
                         .disabled(controller.busy)
                         .accessibilityIdentifier("clip-sync-pause-resume")
