@@ -12,7 +12,14 @@ def entitlements(path):
         import struct
         info_path = path/"Info.plist"
         info = plistlib.loads(info_path.read_bytes())
-        raw = (path/info["CFBundleExecutable"]).read_bytes()
+        executable = path/info["CFBundleExecutable"]
+        raw = executable.read_bytes()
+        if raw[:4] != b"\xcf\xfa\xed\xfe":
+            import tempfile
+            with tempfile.TemporaryDirectory() as temp:
+                thin = pathlib.Path(temp)/"arm64"
+                subprocess.run(["/usr/bin/lipo",str(executable),"-thin","arm64","-output",str(thin)],check=True)
+                raw = thin.read_bytes()
         assert raw[:4] == b"\xcf\xfa\xed\xfe", "expected arm64 simulator"
         ncmds, sizeofcmds = struct.unpack_from("<II", raw, 16)
         pos, limit = 32, 32 + sizeofcmds
