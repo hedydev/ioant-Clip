@@ -7,17 +7,22 @@ struct SyncSettingsView: View {
     var body: some View {
         ModalScrollPage {
                 ModalSection(title: "sync.storage") {
-                    Label("sync.local", systemImage: "checkmark.circle.fill")
-                    ModalDescription(key: "sync.local.description")
+                    if store.library.syncEnrollment == nil {
+                        Label("sync.local", systemImage: "checkmark.circle.fill")
+                        ModalDescription(key: "sync.local.description")
+                    } else {
+                        ModalDescription(key: "sync.bound.description")
+                    }
                 }
                 ModalSection(title: "sync.providers") {
-                    provider("iCloud", icon: "icloud", status: "sync.cloudkit.required")
+                    CloudKitSettingsSection()
+                    Divider()
                     provider("Google Drive", icon: "externaldrive", status: "sync.google.required")
                 }
                 ModalSection(title: "sync.history") {
                     LabeledContent { Text(journal?.revisions.count ?? 0, format: .number) } label: { Text("sync.revisions") }
                     LabeledContent { Text(journal?.conflictKeys.count ?? 0, format: .number) } label: { Text("sync.conflicts") }
-                    ModalDescription(key: "sync.history.description")
+                    ModalDescription(key: store.library.syncEnrollment == nil ? "sync.history.description" : "sync.history.cloudDescription")
                 }
                 if let journal {
                     ForEach(Array(journal.conflictKeys).sorted(by: { String(describing: $0) < String(describing: $1) }), id: \.self) { key in

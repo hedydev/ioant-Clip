@@ -4,11 +4,14 @@ import SwiftUI
     @StateObject private var store = LibraryStore()
     @StateObject private var language = LanguagePreferences()
     @StateObject private var theme = ThemePreferences()
+    @StateObject private var cloudSync = CloudSyncController()
     var body: some Scene {
         WindowGroup {
             AppThemeScope(preferences: theme) {
                 AppLocaleScope(preferences: language) { LibraryView().environmentObject(store) }
             }
+                .environmentObject(cloudSync)
+                .modifier(SyncForegroundSchedule(controller: cloudSync, store: store))
             #if os(macOS)
                 .frame(minWidth: PresentationMetrics.mainMinimum.width, minHeight: PresentationMetrics.mainMinimum.height)
                 .background(MainWindowSizing())
