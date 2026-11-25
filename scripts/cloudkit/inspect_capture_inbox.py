@@ -36,3 +36,14 @@ for line in p.stdout.splitlines()[-25:]:
     if "deny" in line.lower():
         print("Sandbox denial:",line[:500],flush=True)
 print("Read-only inspection complete; no captures changed.",flush=True)
+
+import plistlib
+app=pathlib.Path("/Volumes/LunaDrive/DeveloperCache/projects/ioant-clip/DerivedData/CloudKitCaptureExtensions/macOS/Build/Products/Debug/ioant-Clip-macOS.app")
+for bundle in [app,*((app/"Contents/PlugIns").glob("*.appex"))]:
+    profile=bundle/"Contents/embedded.provisionprofile"
+    if not profile.is_file():
+        print(bundle.name,"embedded profile missing"); continue
+    p=plistlib.loads(subprocess.check_output(["/usr/bin/security","cms","-D","-i",str(profile)]))
+    print(bundle.name,"profile group permissions",p.get("Entitlements",{}).get("com.apple.security.application-groups"),flush=True)
+    e=subprocess.check_output(["/usr/bin/codesign","-d","--entitlements",":-",str(bundle)],stderr=subprocess.DEVNULL)
+    print(bundle.name,"signed group permissions",plistlib.loads(e).get("com.apple.security.application-groups"),flush=True)
