@@ -28,9 +28,17 @@ enum AppLanguage: String, CaseIterable, Identifiable {
         self.defaults = defaults
         selection = AppLanguage(rawValue: defaults.string(forKey: Self.key) ?? "") ?? .system
     }
-    func resolvedLocale(system: Locale) -> Locale {
-        if selection != .system { return Locale(identifier: selection.rawValue) }
-        return AppLanguage.supported(system) ? system : Locale(identifier: "en")
+    func resolvedLocale(system: Locale, preferredLanguages: [String]? = nil) -> Locale {
+        Locale(identifier: CaptureLanguage.resolve(selection: selection.rawValue, preferred: preferredLanguages ?? [system.identifier]))
+    }
+    func publishExtensionLanguage(_ language: String) {
+        #if CLIP_CAPTURE_EXTENSIONS
+        if let url = CaptureLanguage.groupFile { try? CaptureLanguage.write(language, to: url) }
+        #if os(macOS)
+        let host = URL.applicationSupportDirectory.appending(path: "ioant-Clip/NativeMessaging/interface-language.json")
+        try? CaptureLanguage.write(language, to: host)
+        #endif
+        #endif
     }
 }
 struct AppLocaleScope<Content: View>: View {
@@ -38,8 +46,11 @@ struct AppLocaleScope<Content: View>: View {
     @ObservedObject var preferences: LanguagePreferences
     @ViewBuilder let content: () -> Content
     var body: some View {
+        let locale = preferences.resolvedLocale(system: systemLocale, preferredLanguages: Locale.preferredLanguages)
+        let language = CaptureLanguage.canonical(locale.identifier) ?? "en"
         content()
             .environmentObject(preferences)
-            .environment(\.locale, preferences.resolvedLocale(system: systemLocale))
+            .environment(\.locale, locale)
+            .onChange(of: language, initial: true) { _, value in preferences.publishExtensionLanguage(value) }
     }
 }

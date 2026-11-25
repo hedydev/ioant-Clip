@@ -7,6 +7,11 @@ final class ShareViewController: UIViewController {
     private let status = UILabel()
     private let save = UIButton(type: .system)
     private var working = false
+    private lazy var language = CaptureLanguage.read(from: CaptureLanguage.groupFile)
+        ?? CaptureLanguage.resolve(selection: "system", preferred: Locale.preferredLanguages)
+    private func localized(_ key: String) -> String {
+        CaptureLanguage.localized(key, language: language)
+    }
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -15,10 +20,10 @@ final class ShareViewController: UIViewController {
         status.font = .preferredFont(forTextStyle: .headline)
         status.numberOfLines = 0
         status.textAlignment = .center
-        save.setTitle(String(localized: "common.save"), for: .normal)
+        save.setTitle(localized("common.save"), for: .normal)
         save.addTarget(self, action: #selector(saveCapture), for: .touchUpInside)
         let cancel = UIButton(type: .system)
-        cancel.setTitle(String(localized: "common.cancel"), for: .normal)
+        cancel.setTitle(localized("common.cancel"), for: .normal)
         cancel.addTarget(self, action: #selector(cancelCapture), for: .touchUpInside)
         let stack = UIStackView(arrangedSubviews: [status, save, cancel])
         stack.axis = .vertical; stack.spacing = 20
@@ -39,6 +44,7 @@ final class ShareViewController: UIViewController {
         guard !working else { return }
         working = true
         save.isEnabled = false
+        status.text = localized("share.saving")
         Task { @MainActor in
             do {
                 let items = (extensionContext?.inputItems as? [NSExtensionItem]) ?? []
@@ -79,7 +85,12 @@ final class ShareViewController: UIViewController {
                 _ = try SharedCaptureInbox.enqueue(JSONSerialization.data(withJSONObject: capture))
                 extensionContext?.completeRequest(returningItems: [], completionHandler: nil)
             } catch {
-                status.text = error.localizedDescription
+                switch error {
+                case WebCapture.ImportError.tooLarge: status.text = localized("error.capture.large")
+                case WebCapture.ImportError.unsupported: status.text = localized("error.capture.format")
+                case WebCapture.ImportError.empty: status.text = localized("error.capture.empty")
+                default: status.text = localized("share.error")
+                }
                 working = false
                 save.isEnabled = true
             }

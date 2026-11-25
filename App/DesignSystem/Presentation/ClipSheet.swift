@@ -4,6 +4,7 @@ import SwiftUI
 /// confirmation dialogs remain native. A child page can push via NavigationLink.
 struct ClipSheet<Content: View>: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.locale) private var locale
     let title: LocalizedStringKey
     var size: PresentationMetrics.SheetSize = .regular
     let parentSize: CGSize
@@ -30,6 +31,7 @@ struct ClipSheet<Content: View>: View {
                     }
                 }
         }
+        .environment(\.locale, locale)
         #if os(macOS)
         let bounds = PresentationMetrics.sheetSize(size, parent: parentSize)
         navigation.frame(width: bounds.width, height: bounds.height)

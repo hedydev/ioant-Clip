@@ -51,7 +51,7 @@ struct ExtensionSettingsSection: View {
             details("Chrome", icon: "globe", status: shareEmbedded ? "settings.extensions.shareAvailable" : "settings.extensions.notEmbedded",
                     description: "settings.extensions.mobileChrome.description")
             Divider()
-            details(String(localized: "settings.extensions.share"), icon: "square.and.arrow.up",
+            details("settings.extensions.share", icon: "square.and.arrow.up",
                     status: shareEmbedded ? "settings.extensions.shareAvailable" : "settings.extensions.notEmbedded",
                     description: "settings.extensions.share.description")
             #endif
@@ -80,7 +80,7 @@ struct ExtensionSettingsSection: View {
         }
     }
 
-    private func details(_ name: String, icon: String, status: LocalizedStringKey, description: LocalizedStringKey) -> some View {
+    private func details(_ name: LocalizedStringKey, icon: String, status: LocalizedStringKey, description: LocalizedStringKey) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
                 Label(name, systemImage: icon).font(.headline)

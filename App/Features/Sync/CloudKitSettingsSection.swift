@@ -10,7 +10,7 @@ struct CloudKitSettingsSection: View {
             if !controller.available {
                 ModalDescription(key: "sync.cloudkit.required")
             } else {
-                ModalDescription(key: "sync.review.description")
+                ModalDescription(key: LibraryLocation.isCloudReview ? "sync.review.description" : "sync.development.description")
             }
             if let enrollment {
                 Label(enrollment.isPaused ? LocalizedStringKey("sync.paused") : LocalizedStringKey("sync.bound"), systemImage: enrollment.isPaused ? "pause.circle" : "link")
