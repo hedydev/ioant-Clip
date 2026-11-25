@@ -12,7 +12,7 @@ import SwiftUI
     private let config: CloudKitReviewConfiguration?
     private let makeTransport: () -> any RevisionTransport
     private let cycle = SyncCycle()
-    private var lastAttempt: Date?
+    private var schedule = SyncAttemptSchedule()
     init() {
         let config = CloudKitReviewConfiguration.current()
         self.config = config
@@ -66,7 +66,7 @@ import SwiftUI
         do {
             try store.setSyncPaused(paused, account: enrollment.account)
             phase = .idle
-            lastAttempt = nil
+            schedule.reset()
         } catch { fail(error) }
     }
     func syncNow(store: LibraryStore) async {
@@ -75,18 +75,23 @@ import SwiftUI
         guard enrollment.account.provider == "icloud", enrollment.account.namespace == config.namespace else {
             fail(SyncSessionError.accountMismatch); return
         }
-        lastAttempt = Date()
         phase = .syncing
         do {
-            _ = try await cycle.run(library: store, transport: makeTransport(), expected: enrollment.account)
-            lastSuccess = Date()
+            let result = try await cycle.run(library: store, transport: makeTransport(), expected: enrollment.account)
+            let completed = Date()
+            schedule.succeeded(at: completed, confirmedRevisionCount: result.confirmedRevisionCount)
+            lastSuccess = completed
             phase = .idle
-        } catch { fail(error) }
+        } catch {
+            if error is CancellationError || Task.isCancelled { schedule.cancelled() }
+            else { schedule.failed(at: Date()) }
+            fail(error)
+        }
     }
     func syncIfDue(store: LibraryStore) async {
         guard !busy, pendingAccount == nil, available, let enrollment = store.library.syncEnrollment,
               !enrollment.isPaused else { return }
-        if let lastAttempt, Date().timeIntervalSince(lastAttempt) < 60 { return }
+        guard schedule.isDue(at: Date(), revisionCount: store.library.syncJournal?.revisions.count ?? 0) else { return }
         await syncNow(store: store)
     }
     private func fail(_ error: Error) {

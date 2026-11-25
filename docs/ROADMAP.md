@@ -9,3 +9,5 @@ No background clipboard monitoring, cloud backend or AI processing in the initia
 
 ## Current priority (2026-11-26)
 Validate actual Safari and iOS share capture, maintain iCloud-only sync stability, improve UI/localization, prepare physical-device and release acceptance. Google Drive transport remains in the repository but OAuth, enrollment and all further Google Drive development are paused at the owner's request. Do not change an existing cloud enrollment.
+
+Foreground iCloud scheduling: check every 15 seconds, poll an unchanged successful library at 60-second intervals, prioritize local revisions not confirmed by the last completed plan, retry failed cycles after 60 seconds, and allow immediate reconciliation after foreground-task cancellation. Never bypass enrollment, pause, account or history guards. Offline simulation tests use a fake transport; physical network interruption remains a separate acceptance gate.

@@ -6,16 +6,23 @@ private actor CycleTransport: RevisionTransport {
     var records: [UUID: SyncRevision] = [:]
     var uploads = 0
     var hook: (@Sendable () async -> Void)?
+    var uploadHook: (@Sendable () async -> Void)?
+    var offline = false
     init(_ account: SyncAccount) { self.account = account }
     func identity() -> SyncAccount { account }
     func setAccount(_ value: SyncAccount) { account = value }
     func setHook(_ value: (@Sendable () async -> Void)?) { hook = value }
+    func setUploadHook(_ value: (@Sendable () async -> Void)?) { uploadHook = value }
+    func setOffline(_ value: Bool) { offline = value }
     func fetchRevisions(expected: SyncAccount) async throws -> [SyncRevision] {
         guard account == expected else { throw SyncSessionError.accountMismatch }
+        if offline { throw URLError(.notConnectedToInternet) }
         if let hook { await hook() }
         return Array(records.values)
     }
-    func upload(_ revisions: [SyncRevision], expected: SyncAccount) throws {
+    func upload(_ revisions: [SyncRevision], expected: SyncAccount) async throws {
+        if let uploadHook { await uploadHook() }
+        if offline { throw URLError(.notConnectedToInternet) }
         guard account == expected else { throw SyncSessionError.accountMismatch }
         try Task.checkCancellation()
         for revision in revisions {
@@ -96,6 +103,53 @@ final class SyncCycleTests: XCTestCase {
         let result = try await SyncCycle().run(library:local,transport:remote,expected:account)
         XCTAssertEqual(result.uploaded,1)
         XCTAssertEqual(local.value.notes.count,1)
+    }
+    @MainActor func testEditsDuringUploadRemainPendingForNextCycle() async throws {
+        var initial = NoteLibrary(); try initial.enrollSync(account:account,replaceLocalHistory:true)
+        let local = CycleLibrary(initial), remote = CycleTransport(account)
+        try local.add("first")
+        await remote.setUploadHook { await MainActor.run { try! local.add("during upload") } }
+        let first = try await SyncCycle().run(library:local,transport:remote,expected:account)
+        XCTAssertEqual(first.confirmedRevisionCount,1)
+        XCTAssertEqual(local.value.syncJournal?.revisions.count,2)
+        let now = Date()
+        var schedule = SyncAttemptSchedule()
+        schedule.succeeded(at:now,confirmedRevisionCount:first.confirmedRevisionCount)
+        XCTAssertFalse(schedule.isDue(at:now.addingTimeInterval(14),revisionCount:2))
+        XCTAssertTrue(schedule.isDue(at:now.addingTimeInterval(15),revisionCount:2))
+        await remote.setUploadHook(nil)
+        let second = try await SyncCycle().run(library:local,transport:remote,expected:account)
+        XCTAssertEqual(second.uploaded,1)
+        XCTAssertEqual(second.confirmedRevisionCount,2)
+        schedule.succeeded(at:now.addingTimeInterval(15),confirmedRevisionCount:second.confirmedRevisionCount)
+        XCTAssertFalse(schedule.isDue(at:now.addingTimeInterval(30),revisionCount:2))
+    }
+    @MainActor func testOfflineLocalEditRetainedAndReconcilesAfterReconnect() async throws {
+        var initial = NoteLibrary(); try initial.enrollSync(account:account,replaceLocalHistory:true)
+        let local = CycleLibrary(initial), remote = CycleTransport(account)
+        let receiver = CycleLibrary(initial)
+        try local.add("offline")
+        let before = local.value
+        await remote.setOffline(true)
+        do {
+            _ = try await SyncCycle().run(library:local,transport:remote,expected:account)
+            XCTFail("Offline exchange succeeded")
+        } catch { XCTAssertEqual((error as? URLError)?.code,.notConnectedToInternet) }
+        XCTAssertEqual(local.value,before)
+        let offlineUploads = await remote.uploads
+        XCTAssertEqual(offlineUploads,0)
+        var schedule = SyncAttemptSchedule()
+        let now = Date()
+        schedule.failed(at:now)
+        XCTAssertFalse(schedule.isDue(at:now.addingTimeInterval(15),revisionCount:1))
+        XCTAssertTrue(schedule.isDue(at:now.addingTimeInterval(60),revisionCount:1))
+        await remote.setOffline(false)
+        let result = try await SyncCycle().run(library:local,transport:remote,expected:account)
+        XCTAssertEqual(result.uploaded,1)
+        _ = try await SyncCycle().run(library:receiver,transport:remote,expected:account)
+        XCTAssertEqual(local.value,receiver.value)
+        let retry = try await SyncCycle().run(library:local,transport:remote,expected:account)
+        XCTAssertEqual(retry.uploaded,0)
     }
     @MainActor func testPersistenceFailurePreventsUpload() async throws {
         var a = NoteLibrary(); try a.enrollSync(account:account,replaceLocalHistory:true)

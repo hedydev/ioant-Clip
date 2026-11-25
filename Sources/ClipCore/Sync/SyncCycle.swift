@@ -12,6 +12,7 @@ import Foundation
         public let downloaded: Int
         public let uploaded: Int
         public let conflicts: Int
+        public let confirmedRevisionCount: Int
     }
     private var running = false
     public init() {}
@@ -49,6 +50,6 @@ import Foundation
         try Task.checkCancellation()
         let final = library.syncSnapshot
         try final.requireSyncAccount(expected)
-        return Result(downloaded: downloaded, uploaded: plan.outgoing.count, conflicts: final.syncJournal?.conflictKeys.count ?? 0)
+        return Result(downloaded: downloaded, uploaded: plan.outgoing.count, conflicts: final.syncJournal?.conflictKeys.count ?? 0, confirmedRevisionCount: combined.revisions.count)
     }
 }

@@ -10,7 +10,7 @@ struct SyncForegroundSchedule: ViewModifier {
             guard scenePhase == .active, controller.available else { return }
             while !Task.isCancelled {
                 await controller.syncIfDue(store: store)
-                do { try await Task.sleep(for: .seconds(15)) }
+                do { try await Task.sleep(for: .seconds(SyncAttemptSchedule.pollInterval)) }
                 catch { break }
             }
         }
