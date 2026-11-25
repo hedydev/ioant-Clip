@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "title": "Gracefully dismiss only known repeating inbox alerts and activate already built signed Mac hotfix",
+  "steps": [
+    {
+      "name": "activate_existing_hotfix",
+      "runtime": "bash",
+      "script": "scripts/cloudkit/resume_inbox_hotfix.sh",
+      "timeoutSeconds": 90
+    }
+  ],
+  "artifacts": []
+}
