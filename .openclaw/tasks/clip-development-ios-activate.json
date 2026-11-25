@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "title": "Bring owned iOS simulator onto the same daily CloudKit zone as Mac",
+  "steps": [
+    {
+      "name": "build_development_ios",
+      "runtime": "bash",
+      "script": "scripts/cloudkit/build_development_simulator.sh",
+      "timeoutSeconds": 300
+    },
+    {
+      "name": "activate_development_ios",
+      "runtime": "bash",
+      "script": "scripts/cloudkit/activate_development_simulator.sh",
+      "timeoutSeconds": 120
+    }
+  ],
+  "artifacts": []
+}
