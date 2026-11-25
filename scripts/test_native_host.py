@@ -63,13 +63,17 @@ class NativeHostTests(unittest.TestCase):
         app = self.root / "Note.app"
         (app / "Contents").mkdir(parents=True)
         with (app / "Contents/Info.plist").open("wb") as f:
-            plistlib.dump({"CFBundleIdentifier":"com.ioant.note.macos"},f)
+            plistlib.dump({"CFBundleIdentifier":"com.ioant.clip.macos"},f)
         support = self.root / "Support"
         self.assertEqual(installer.install(app,support,("Google/Chrome","Microsoft Edge")),installer.extension_id())
         for browser in ("Google/Chrome","Microsoft Edge"):
-            manifest=json.loads((support/browser/"NativeMessagingHosts/com.ioant.note.capture.json").read_text())
+            manifest=json.loads((support/browser/"NativeMessagingHosts/com.ioant.clip.capture.json").read_text())
             self.assertEqual(manifest["allowed_origins"],[self.origin])
             self.assertTrue(pathlib.Path(manifest["path"]).is_file())
+            legacy=json.loads((support/browser/"NativeMessagingHosts/com.ioant.note.capture.json").read_text())
+            self.assertEqual(legacy["name"],"com.ioant.note.capture")
+            self.assertEqual(legacy["path"],manifest["path"])
+            self.assertEqual(legacy["allowed_origins"],manifest["allowed_origins"])
         self.assertEqual(len(installer.extension_id()),32)
 
 if __name__ == "__main__":

@@ -1,4 +1,4 @@
-name: ioant-Note
+name: ioant-Clip
 options:
   bundleIdPrefix: com.ioant
   deploymentTarget:
@@ -13,20 +13,20 @@ settings:
     INFOPLIST_KEY_CFBundleDisplayName: ioant-Clip
     CODE_SIGN_STYLE: Automatic
 targets:
-  ioant-Note-macOS:
+  ioant-Clip-macOS:
     type: application
     platform: macOS
     sources: [App, Sources/NoteCore]
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.ioant.note.macos
+        PRODUCT_BUNDLE_IDENTIFIER: com.ioant.clip.macos
         ENABLE_HARDENED_RUNTIME: YES
-  ioant-Note-iOS:
+  ioant-Clip-iOS:
     type: application
     platform: iOS
     sources: [App, Sources/NoteCore]
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.ioant.note.ios
+        PRODUCT_BUNDLE_IDENTIFIER: com.ioant.clip.ios
         TARGETED_DEVICE_FAMILY: '1,2'
         INFOPLIST_KEY_UILaunchScreen_Generation: YES

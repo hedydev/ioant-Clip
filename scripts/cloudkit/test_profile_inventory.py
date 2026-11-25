@@ -11,7 +11,7 @@ class ProfileTest(unittest.TestCase):
             "Platform":["iOS" if platform == "iOS" else "OSX"],
             "ExpirationDate": self.now + datetime.timedelta(days=2),
             "Entitlements":{
-                "application-identifier":"FAKETEAM.com.ioant.note."+("ios" if platform=="iOS" else "macos"),
+                "application-identifier":"FAKETEAM.com.ioant.clip."+("ios" if platform=="iOS" else "macos"),
                 "com.apple.developer.team-identifier":"FAKETEAM",
                 "get-task-allow":True,
                 "com.apple.developer.icloud-container-identifiers":["iCloud.example.review"],

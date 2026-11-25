@@ -4,25 +4,26 @@ import json, os, pathlib, subprocess, sys
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 CACHE = pathlib.Path("/Volumes/LunaDrive/DeveloperCache")
-derived = CACHE / "projects/ioant-note/DerivedData" if CACHE.is_dir() and os.access(CACHE,os.W_OK) else ROOT / "DerivedData"
-app = derived / "iOS/Build/Products/Debug-iphonesimulator/ioant-Note-iOS.app"
+derived = CACHE / "projects/ioant-clip/DerivedData" if CACHE.is_dir() and os.access(CACHE,os.W_OK) else ROOT / "DerivedData"
+app = derived / "iOS/Build/Products/Debug-iphonesimulator/ioant-Clip-iOS.app"
 if not app.is_dir():
     raise SystemExit("Previously built iOS app not found: " + str(app))
 import plistlib
 with (app / "Info.plist").open("rb") as f:
     bundle = plistlib.load(f)["CFBundleIdentifier"]
-if bundle != "com.ioant.note.ios":
+if bundle != "com.ioant.clip.ios":
     raise SystemExit("Unexpected bundle identifier: " + bundle)
 def run(*args, timeout=30):
     return subprocess.check_output(args, text=True, stderr=subprocess.STDOUT, timeout=timeout).strip()
 def sim(*args, timeout=30):
     return run("/usr/bin/xcrun","simctl",*args,timeout=timeout)
 inventory=json.loads(sim("list","-j"))
-name="ioant-Note Review iPhone"
+name="ioant-Clip Review iPhone"
+legacy_name="ioant-Note Review iPhone"
 runtimes=[r for r in inventory["runtimes"] if r.get("isAvailable") and r["identifier"].startswith("com.apple.CoreSimulator.SimRuntime.iOS-")]
 if not runtimes: raise SystemExit("No available iOS simulator runtime")
 runtimes.sort(key=lambda r:tuple(int(x) for x in r["version"].split(".")),reverse=True)
-existing=[d for r in runtimes for d in inventory["devices"].get(r["identifier"],[]) if d.get("isAvailable") and d["name"]==name]
+existing=[d for r in runtimes for d in inventory["devices"].get(r["identifier"],[]) if d.get("isAvailable") and d["name"] in (name,legacy_name)]
 if len(existing)>1: raise SystemExit("Multiple dedicated review devices; refusing ambiguous selection")
 if existing:
     device=existing[0]; udid=device["udid"]; already_booted=device["state"]=="Booted"

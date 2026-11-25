@@ -42,7 +42,7 @@ fi
 xcodegen generate || exit 1
 root="$PWD"
 if [ -d /Volumes/LunaDrive/DeveloperCache ] && [ -w /Volumes/LunaDrive/DeveloperCache ]; then
-  derived="/Volumes/LunaDrive/DeveloperCache/projects/ioant-note/DerivedData"
+  derived="/Volumes/LunaDrive/DeveloperCache/projects/ioant-clip/DerivedData"
 else
   derived="$root/DerivedData"
 fi
@@ -54,12 +54,12 @@ for platform in macOS iOS; do
     iOS) dest="generic/platform=iOS Simulator";;
   esac
   echo "BEGIN BUILD $platform"
-  xcodebuild -project ioant-Note.xcodeproj -scheme "ioant-Note-$platform" -destination "$dest" -derivedDataPath "$derived/$platform" CODE_SIGNING_ALLOWED=NO build > "$derived/$platform.log" 2>&1
+  xcodebuild -project ioant-Clip.xcodeproj -scheme "ioant-Note-$platform" -destination "$dest" -derivedDataPath "$derived/$platform" CODE_SIGNING_ALLOWED=NO build > "$derived/$platform.log" 2>&1
   rc=$?
   grep -E 'error:|warning:|BUILD (SUCCEEDED|FAILED)' "$derived/$platform.log" | tail -n 35 || true
   echo "END BUILD $platform exit=$rc"
   if [ "$rc" -ne 0 ]; then tail -n 35 "$derived/$platform.log"; status=1; else
-    case "$platform" in macOS) app="$derived/macOS/Build/Products/Debug/ioant-Note-macOS.app";; iOS) app="$derived/iOS/Build/Products/Debug-iphonesimulator/ioant-Note-iOS.app";; esac
+    case "$platform" in macOS) app="$derived/macOS/Build/Products/Debug/ioant-Clip-macOS.app";; iOS) app="$derived/iOS/Build/Products/Debug-iphonesimulator/ioant-Clip-iOS.app";; esac
     /usr/bin/python3 scripts/test_localization.py "$app" || status=1
   fi
 done

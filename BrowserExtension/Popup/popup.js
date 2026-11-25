@@ -7,7 +7,7 @@ if (typeof document !== 'undefined') {
   function download(data) {
     const url = URL.createObjectURL(new Blob([JSON.stringify(data)],{type:'application/json'}));
     const a = document.createElement('a'); a.href = url;
-    a.download = (data.title.replace(/[\\/:*?"<>|]/g,'_').slice(0,70) || 'web-capture') + '.ioantnote.json';
+    a.download = (data.title.replace(/[\\/:*?"<>|]/g,'_').slice(0,70) || 'web-capture') + '.ioantclip.json';
     a.click(); setTimeout(() => URL.revokeObjectURL(url), 30000);
   }
   async function save(mode) {
@@ -39,7 +39,7 @@ if (typeof document !== 'undefined') {
           resultMessage = message('status_copied');
         } catch { resultMessage = message('status_copy_unavailable'); }
       } else try {
-        const reply = await chrome.runtime.sendNativeMessage('com.ioant.note.capture', {version:1, action:'capture', capture:data});
+        const reply = await chrome.runtime.sendNativeMessage('com.ioant.clip.capture', {version:1, action:'capture', capture:data});
         if (!reply?.ok || reply.state !== 'queued') throw new Error(reply?.error || 'error_native');
         resultMessage = reply.opened ? message('status_sent') : message('status_queued');
       } catch(error) {

@@ -8,7 +8,7 @@ import pathlib
 import plistlib
 import subprocess
 
-BUNDLES = {"macOS": "com.ioant.note.macos", "iOS": "com.ioant.note.ios"}
+BUNDLES = {"macOS": "com.ioant.clip.macos", "iOS": "com.ioant.clip.ios"}
 
 def values(value):
     if isinstance(value, str):

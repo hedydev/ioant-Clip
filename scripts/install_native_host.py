@@ -11,7 +11,8 @@ import shutil
 import tempfile
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
-HOST = "com.ioant.note.capture"
+HOST = "com.ioant.clip.capture"
+LEGACY_HOST = "com.ioant.note.capture"
 
 def extension_id():
     manifest = json.loads((ROOT / "BrowserExtension/manifest.json").read_text())
@@ -20,7 +21,7 @@ def extension_id():
 
 def atomic_json(path, value):
     path.parent.mkdir(parents=True, exist_ok=True)
-    fd, tmp = tempfile.mkstemp(prefix=".ioant-note-", dir=path.parent)
+    fd, tmp = tempfile.mkstemp(prefix=".ioant-clip-", dir=path.parent)
     try:
         with os.fdopen(fd, "w") as handle:
             json.dump(value, handle, indent=2)
@@ -33,9 +34,9 @@ def atomic_json(path, value):
 def install(app, support, browsers=("Google/Chrome",)):
     app = app.resolve(strict=True)
     with (app / "Contents/Info.plist").open("rb") as handle:
-        if plistlib.load(handle).get("CFBundleIdentifier") != "com.ioant.note.macos":
-            raise ValueError("Not an ioant-Note macOS application.")
-    native = support / "ioant-Note/NativeMessaging"
+        if plistlib.load(handle).get("CFBundleIdentifier") != "com.ioant.clip.macos":
+            raise ValueError("Not an ioant-Clip macOS application.")
+    native = support / "ioant-Clip/NativeMessaging"
     native.mkdir(parents=True, exist_ok=True, mode=0o700)
     inbox = support / "ioant-Note/CaptureInbox"
     inbox.mkdir(parents=True, exist_ok=True, mode=0o700)
@@ -53,9 +54,13 @@ def install(app, support, browsers=("Google/Chrome",)):
             os.unlink(tmp)
     origins = ["chrome-extension://" + extension_id() + "/"]
     atomic_json(native / "config.json", {"allowed_origins": origins, "app_path": str(app)})
-    manifest = {"name": HOST, "description": "ioant-Note local capture", "path": str(host), "type": "stdio", "allowed_origins": origins}
+    manifest = {"name": HOST, "description": "ioant-Clip local capture", "path": str(host), "type": "stdio", "allowed_origins": origins}
     for browser in browsers:
         atomic_json(support / browser / "NativeMessagingHosts" / (HOST + ".json"), manifest)
+        # Older loaded extension still uses the old host name; same trusted
+        # origin and same inbox, no retry across hosts that could duplicate captures.
+        atomic_json(support / browser / "NativeMessagingHosts" / (LEGACY_HOST + ".json"),
+                    dict(manifest, name=LEGACY_HOST))
     return extension_id()
 
 def main():
@@ -65,7 +70,7 @@ def main():
     args = parser.parse_args()
     browsers = {"chrome": ("Google/Chrome",), "edge": ("Microsoft Edge",), "both": ("Google/Chrome", "Microsoft Edge")}[args.browser]
     os.umask(0o077)
-    print("Installed ioant-Note native host; extension ID:", install(args.app, pathlib.Path.home() / "Library/Application Support", browsers))
+    print("Installed ioant-Clip native host; extension ID:", install(args.app, pathlib.Path.home() / "Library/Application Support", browsers))
 
 if __name__ == "__main__":
     main()
