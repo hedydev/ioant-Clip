@@ -12,6 +12,8 @@ import UIKit
     @Published var error: String?
     private let url = URL.applicationSupportDirectory.appending(path: "ioant-Note/notes.json")
     private var ready = false
+    @Published private(set) var lastIncoming: UUID?
+    private var reportedInboxFailures = Set<String>()
     init() {
         do { library = try NoteLibrary.load(from: url); ready = true }
         catch { self.error = "Cannot open library. Existing data was not changed: \(error.localizedDescription)" }
@@ -22,6 +24,21 @@ import UIKit
         do { try next.save(to: url); library = next; return result }
         catch { self.error = error.localizedDescription; return nil }
     }
+    #if os(macOS)
+    func receivePendingCaptures() {
+        guard ready else { return }
+        let inbox = url.deletingLastPathComponent().appending(path: "CaptureInbox")
+        do {
+            let result = try CaptureInbox.drain(directory: inbox, libraryURL: url, library: &library)
+            if let id = result.imported.last { lastIncoming = id }
+            let newFailures = Set(result.failures).subtracting(reportedInboxFailures)
+            if !newFailures.isEmpty { error = "Some incoming captures could not be imported. The files have been retained." }
+            reportedInboxFailures = Set(result.failures)
+        } catch {
+            if reportedInboxFailures.insert("directory").inserted { self.error = "Cannot read incoming captures." }
+        }
+    }
+    #endif
     func importFile(_ url: URL) -> UUID? {
         let access = url.startAccessingSecurityScopedResource()
         defer { if access { url.stopAccessingSecurityScopedResource() } }
@@ -63,7 +80,20 @@ import UIKit
 
 @main struct NoteApp: App {
     @StateObject private var store = LibraryStore()
-    var body: some Scene { WindowGroup { LibraryView().environmentObject(store) } }
+    var body: some Scene {
+        WindowGroup {
+            LibraryView().environmentObject(store)
+            #if os(macOS)
+                .task {
+                    while !Task.isCancelled {
+                        store.receivePendingCaptures()
+                        do { try await Task.sleep(for: .seconds(1)) }
+                        catch { break }
+                    }
+                }
+            #endif
+        }
+    }
 }
 
 struct LibraryView: View {
@@ -131,6 +161,9 @@ struct LibraryView: View {
                     HTMLPreview(html: note.htmlDocument).id(note.id)
                 }.toolbar { ToolbarItemGroup { Button { editing = note } label: { Label("Edit title and tags", systemImage: "tag") }; Button(role: .destructive) { deleting = [note.id]; confirmDelete = true } label: { Label("Delete", systemImage: "trash") } } }
             } else { ContentUnavailableView("No note selected", systemImage: "doc.richtext", description: Text("Paste content or import a browser capture.")) }
+        }
+        .onChange(of: store.lastIncoming) { _, id in
+            if let id, !selecting { selected = id; compactColumn = .detail; tagFilter = nil; query = "" }
         }
         .fileImporter(isPresented: $importing, allowedContentTypes: [.json]) { result in
             switch result { case .success(let url): if let id = store.importFile(url) { selected = id; compactColumn = .detail; tagFilter = nil; query = "" }; case .failure(let error): store.error = error.localizedDescription }

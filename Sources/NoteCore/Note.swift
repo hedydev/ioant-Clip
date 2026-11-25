@@ -60,10 +60,11 @@ public struct Note: Codable, Identifiable, Equatable, Sendable {
 public struct NoteLibrary: Codable, Equatable, Sendable {
     public private(set) var notes: [Note]
     public init(notes: [Note] = []) { self.notes = notes }
-    @discardableResult public mutating func add(_ part: NotePart, title: String? = nil) -> UUID? {
+    @discardableResult public mutating func add(_ part: NotePart, title: String? = nil, id: UUID = UUID()) -> UUID? {
+        if notes.contains(where: { $0.id == id }) { return id }
         guard !part.isEmpty else { return nil }
         let supplied = title?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        let note = Note(title: supplied.isEmpty ? Note.title(for: part) : String(supplied.prefix(200)), parts: [part]); notes.insert(note, at: 0); return note.id
+        let note = Note(id: id, title: supplied.isEmpty ? Note.title(for: part) : String(supplied.prefix(200)), parts: [part]); notes.insert(note, at: 0); return note.id
     }
     @discardableResult public mutating func merge(_ ids: Set<UUID>) -> UUID? {
         let ordered = notes.filter { ids.contains($0.id) }.reversed()
