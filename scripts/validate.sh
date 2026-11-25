@@ -17,6 +17,7 @@ status=0
 swift test || status=1
 /usr/bin/python3 scripts/test_localization.py || status=1
 bash scripts/test_language_preferences.sh || status=1
+bash scripts/test_theme_preferences.sh || status=1
 /usr/bin/python3 scripts/test_extension_localization.py || status=1
 bash scripts/test_webkit_render.sh || status=1
 PYTHONDONTWRITEBYTECODE=1 /usr/bin/python3 scripts/test_native_host.py || status=1

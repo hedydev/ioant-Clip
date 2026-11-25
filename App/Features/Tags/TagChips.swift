@@ -9,7 +9,7 @@ struct TagChip: View {
             Text(tag).lineLimit(1)
         }
         .font(.caption)
-        .padding(.horizontal, 7).padding(.vertical, 4)
+        .padding(.horizontal, LayoutMetrics.chipHorizontal).padding(.vertical, LayoutMetrics.xSmall)
         .background(color.swiftUIColor.opacity(0.15), in: Capsule())
     }
 }
@@ -18,7 +18,7 @@ struct TagChipRow: View {
     let color: (String) -> TagColor
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 5) { ForEach(tags, id: \.self) { TagChip(tag: $0, color: color($0)) } }
+            HStack(spacing: LayoutMetrics.chipSpacing) { ForEach(tags, id: \.self) { TagChip(tag: $0, color: color($0)) } }
         }
     }
 }

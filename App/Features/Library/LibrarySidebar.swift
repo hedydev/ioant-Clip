@@ -2,6 +2,7 @@ import SwiftUI
 
 struct LibrarySidebar: View {
     @EnvironmentObject var store: LibraryStore
+    @Environment(\.clipTheme) private var theme
     @Binding var selected: UUID?
     @Binding var compactColumn: NavigationSplitViewColumn
     @Binding var checked: Set<UUID>
@@ -39,7 +40,7 @@ struct LibrarySidebar: View {
                                 }
                                 Spacer()
                             }.padding(.vertical, 5).contentShape(Rectangle())
-                        }.buttonStyle(.plain).listRowBackground(selected == note.id ? Color.accentColor.opacity(0.12) : Color.clear)
+                        }.buttonStyle(.plain).listRowBackground(selected == note.id ? theme.selectedRow : Color.clear)
                     }
                 }
             }.navigationTitle("ioant-Clip").searchable(text: $query, prompt: Text("library.search"))
@@ -54,7 +55,7 @@ struct LibrarySidebar: View {
                 .navigationSplitViewColumnWidth(min: 220, ideal: 280, max: 380)
                 #endif
                 .safeAreaInset(edge: .top, spacing: 0) {
-                    VStack(spacing: 8) {
+                    VStack(spacing: LayoutMetrics.small) {
                         pasteButton
                         Button { importing = true } label: {
                             Label("library.import", systemImage: "square.and.arrow.down")
@@ -62,11 +63,11 @@ struct LibrarySidebar: View {
                         }
                         .buttonStyle(.bordered)
                     }
-                    .padding(12)
+                    .padding(LayoutMetrics.medium)
                     .background(.regularMaterial)
                 }
                 .safeAreaInset(edge: .bottom) {
-                    if selecting { HStack { Text("library.selected \(checked.count)"); Spacer(); Button("Merge clips") { if let id = store.change({ $0.merge(checked) }) ?? nil { selected = id; compactColumn = .detail; selecting = false; checked.removeAll() } }.disabled(checked.count < 2); Button(role: .destructive) { deleting = checked; confirmDelete = true } label: { Image(systemName: "trash").accessibilityLabel(Text("common.delete")) }.disabled(checked.isEmpty) }.padding().background(.regularMaterial) }
+                    if selecting { HStack { Text("library.selected \(checked.count)"); Spacer(); Button("library.merge") { if let id = store.change({ $0.merge(checked) }) ?? nil { selected = id; compactColumn = .detail; selecting = false; checked.removeAll() } }.disabled(checked.count < 2); Button(role: .destructive) { deleting = checked; confirmDelete = true } label: { Image(systemName: "trash").accessibilityLabel(Text("common.delete")) }.disabled(checked.isEmpty) }.padding().background(.regularMaterial) }
                 }
     }
     private func filterRow(_ name: String, icon: String = "tag.fill", color: TagColor? = nil, filter: TagFilter, count: Int) -> some View {
@@ -83,7 +84,7 @@ struct LibrarySidebar: View {
             }.contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .listRowBackground(tagFilter == filter ? Color.accentColor.opacity(0.15) : Color.clear)
+        .listRowBackground(tagFilter == filter ? theme.selectedFilter : Color.clear)
         .accessibilityAddTraits(tagFilter == filter ? [.isSelected] : [])
     }
     private func filterLabel(_ name: String, filter: TagFilter) -> Text {

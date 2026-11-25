@@ -52,14 +52,14 @@ struct ClipDetailView: View {
                             Text(note.plainText)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .textSelection(.enabled)
-                                .padding(16)
+                                .padding(LayoutMetrics.large)
                         }
                     } else {
                         HTMLPreview(html: note.htmlDocument).id(note.id)
                     }
                 }.toolbar { ToolbarItemGroup { Button { editing = note } label: { Label("reader.edit", systemImage: "tag") }; Button(role: .destructive) { deleting = [note.id]; confirmDelete = true } label: { Label("common.delete", systemImage: "trash") } } }
             } else {
-                VStack(spacing: 16) {
+                VStack(spacing: LayoutMetrics.large) {
                     Image(systemName: "doc.on.clipboard")
                         .font(.system(size: 44))
                         .foregroundStyle(.secondary)
@@ -75,7 +75,7 @@ struct ClipDetailView: View {
                     Button("library.import") { importing = true }
                         .buttonStyle(.bordered)
                 }
-                .padding(24)
+                .padding(LayoutMetrics.xLarge)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
     }

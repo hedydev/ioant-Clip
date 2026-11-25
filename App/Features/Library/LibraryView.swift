@@ -33,7 +33,7 @@ struct LibraryView: View {
         .fileImporter(isPresented: $importing, allowedContentTypes: [.json]) { result in
             switch result { case .success(let url): if let id = store.importFile(url) { selected = id; compactColumn = .detail; tagFilter = .all; query = "" }; case .failure(let error): store.error = LibraryIssue(error) }
         }
-        .sheet(isPresented: $appSettings) { LanguageSettingsView() }
+        .sheet(isPresented: $appSettings) { AppSettingsView() }
         .sheet(isPresented: $syncSettings) { SyncSettingsView().environmentObject(store) }
         .sheet(item: $editing) { note in
             EditClipView(note: note, library: store.library) { title, tags, colors in
@@ -48,7 +48,7 @@ struct LibraryView: View {
         .onChange(of: tags) { _, available in
             if case .tag(let tag) = tagFilter, !available.contains(where: { TagColor.key($0) == TagColor.key(tag) }) { tagFilter = .all }
         }
-        .confirmationDialog("library.delete.confirm \(deleting.count)", isPresented: $confirmDelete, titleVisibility: .visible) { Button("Delete", role: .destructive) { if store.change({ $0.delete(deleting) }) != nil { if let selected, deleting.contains(selected) { self.selected = nil; compactColumn = .sidebar }; checked.subtract(deleting) }; deleting.removeAll() } }
+        .confirmationDialog("library.delete.confirm \(deleting.count)", isPresented: $confirmDelete, titleVisibility: .visible) { Button("common.delete", role: .destructive) { if store.change({ $0.delete(deleting) }) != nil { if let selected, deleting.contains(selected) { self.selected = nil; compactColumn = .sidebar }; checked.subtract(deleting) }; deleting.removeAll() } }
         .alert("ioant-Clip", isPresented: Binding(get: { store.error != nil }, set: { if !$0 { store.error = nil } })) { Button("common.ok") { store.error = nil } } message: { if let issue = store.error { Text(LocalizedStringKey(issue.key)); if let detail = issue.detail { Text(verbatim: detail) } } }
     }
     func paste() {

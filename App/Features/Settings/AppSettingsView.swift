@@ -1,6 +1,6 @@
 import SwiftUI
 
-struct LanguageSettingsView: View {
+struct AppSettingsView: View {
     @EnvironmentObject private var preferences: LanguagePreferences
     @Environment(\.dismiss) private var dismiss
     var body: some View {
@@ -18,12 +18,13 @@ struct LanguageSettingsView: View {
                     }
                     Text("settings.language.description").font(.caption).foregroundStyle(.secondary)
                 } header: { Text("settings.language") }
+                AppearanceSettingsSection()
             }
             .navigationTitle("settings.title")
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("common.done") { dismiss() } } }
         }
         #if os(macOS)
-        .frame(minWidth: 440, idealWidth: 500, minHeight: 240)
+        .frame(minWidth: 440, idealWidth: 520, minHeight: 480, idealHeight: 620)
         #endif
     }
 }
