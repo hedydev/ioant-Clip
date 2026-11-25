@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "title": "Build and verify signed iOS CloudKit review",
+  "steps": [
+    {
+      "name": "signed_development_review",
+      "runtime": "bash",
+      "script": "scripts/cloudkit/build_signed_review_ios.sh",
+      "timeoutSeconds": 300
+    }
+  ],
+  "artifacts": []
+}
