@@ -1,0 +1,37 @@
+import pathlib, subprocess, tempfile, html, re, os
+root=pathlib.Path(__file__).resolve().parents[1]
+chrome=pathlib.Path("/Applications/Google Chrome.app/Contents/MacOS/Google Chrome")
+if not chrome.is_file():
+    raise SystemExit("Chrome not installed; capture browser test blocked")
+fixture=r"""<!doctype html><meta charset=utf-8><style>
+body {background:#fafafa;color:#141414;font:16px Arial}
+main {width:760px} table {width:100%;border-collapse:collapse} td {border-bottom:1px solid #ddd;padding:8px}
+.track {width:100%;height:8px;background:#eee;border-radius:4px;position:relative;overflow:hidden}
+.fill {width:75%;height:8px;background:#12a34a;border-radius:4px}
+</style><main id="target"><h1>Fixture title</h1><table><tr><td>Core</td><td>90%</td></tr></table>
+<div class="track"><div class="fill"></div></div>
+<svg width="500" height="150" viewBox="0 0 500 150" xmlns="http://www.w3.org/2000/svg"><defs><marker id="a" markerWidth="5" markerHeight="5" refX="4" refY="2" orient="auto"><path d="M0 0 L5 2 L0 4 Z" fill="#f80"/></marker></defs><rect x="1" y="1" width="180" height="70" rx="8" fill="#ddd" stroke="blue"/><text x="20" y="40" fill="black">Host</text><line x1="180" y1="35" x2="350" y2="35" stroke="#f80" marker-end="url(#a)"/></svg>
+<pre>const x = 1;</pre></main><pre id="result"></pre>"""
+js=(root/"BrowserExtension/capture.js").read_text()
+checks=r"""
+try {
+ const range=document.createRange();range.selectNodeContents(document.getElementById('target'));
+ const sel=window.getSelection();sel.removeAllRanges();sel.addRange(range);
+ const data=capture('selection'); const parsed=new DOMParser().parseFromString(data.html,'text/html');
+ const svg=parsed.querySelector('img[src^="data:image/svg+xml"]');
+ const xml=svg && decodeURIComponent(svg.getAttribute('src').split(',').slice(1).join(','));
+ const fill=[...parsed.querySelectorAll('div')].find(e=>e.style.backgroundColor==='rgb(18, 163, 74)');
+ if(!svg || !xml.includes('Host') || !xml.includes('marker-end') || !fill || Math.abs(parseFloat(fill.style.width)-75)>1 || fill.style.height!=='8px' || !parsed.querySelector('table td') || !parsed.querySelector('pre') || !data.text.includes('Fixture title') || data.truncated) throw new Error('svg=' + !!svg + ' marker=' + (xml&&xml.includes('marker-end')) + ' fill=' + (fill&&fill.style.cssText) + ' truncated='+data.truncated);
+ document.getElementById('result').textContent='IOANT_CAPTURE_PASS';
+} catch(e) {document.getElementById('result').textContent='IOANT_CAPTURE_FAIL '+e.message;}
+"""
+with tempfile.TemporaryDirectory(prefix="ioant-chrome-fixture-") as tmp:
+    p=pathlib.Path(tmp); page=p/"fixture.html"; page.write_text(fixture+"<script>"+js+"\n"+checks+"</script>")
+    cmd=[str(chrome),"--headless","--disable-gpu","--no-first-run","--no-default-browser-check","--disable-background-networking","--disable-component-update","--user-data-dir="+str(p/"profile"),"--window-size=1100,900","--dump-dom",page.as_uri()]
+    result=subprocess.run(cmd,capture_output=True,text=True,timeout=35)
+    marker=re.search(r'<pre id="result">(.*?)</pre>',result.stdout,re.S)
+    actual=html.unescape(marker.group(1)) if marker else "missing fixture result"
+    print("Chrome computed-style fixture:",actual[:500])
+    if result.returncode or actual!="IOANT_CAPTURE_PASS":
+        print(result.stderr[-1000:])
+        raise SystemExit(1)

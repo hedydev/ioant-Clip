@@ -19,6 +19,8 @@ bash scripts/test_webkit_render.sh || status=1
 PYTHONDONTWRITEBYTECODE=1 /usr/bin/python3 scripts/test_native_host.py || status=1
 if command -v node >/dev/null; then
   node --check BrowserExtension/popup.js || status=1
+  node --check BrowserExtension/capture.js || status=1
+  /usr/bin/python3 scripts/test_capture_browser.py || status=1
 else
   echo "Node unavailable: extension syntax check not run"; status=1
 fi
