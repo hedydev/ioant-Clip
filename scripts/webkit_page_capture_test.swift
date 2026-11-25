@@ -61,7 +61,7 @@ import WebKit
         }
         print("PASS: WebKit source-to-production-reader layout, hidden labels, inert input, pseudo-elements and result text geometry")
     }
-    @MainActor static func wait(_ observer:Observer) async throws {
+    @MainActor private static func wait(_ observer:Observer) async throws {
         let deadline=Date().addingTimeInterval(12)
         while !observer.finished && !observer.failed && Date()<deadline { try await Task.sleep(for:.milliseconds(100)) }
         guard observer.finished && !observer.failed else { throw NSError(domain:"Navigation",code:1) }

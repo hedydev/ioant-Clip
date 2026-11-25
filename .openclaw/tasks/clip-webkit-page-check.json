@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "title": "Focused WebKit actual capture and reader geometry regression",
+  "steps": [
+    {
+      "name": "webkit_page_geometry",
+      "runtime": "bash",
+      "script": "scripts/test_webkit_page_capture.sh",
+      "timeoutSeconds": 90
+    }
+  ],
+  "artifacts": []
+}
