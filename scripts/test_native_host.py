@@ -59,7 +59,7 @@ class NativeHostTests(unittest.TestCase):
         with (app / "Contents/Info.plist").open("wb") as f:
             plistlib.dump({"CFBundleIdentifier":"com.ioant.note.macos"},f)
         support = self.root / "Support"
-        self.assertEqual(installer.install(app,support),installer.extension_id())
+        self.assertEqual(installer.install(app,support,("Google/Chrome","Microsoft Edge")),installer.extension_id())
         for browser in ("Google/Chrome","Microsoft Edge"):
             manifest=json.loads((support/browser/"NativeMessagingHosts/com.ioant.note.capture.json").read_text())
             self.assertEqual(manifest["allowed_origins"],[self.origin])

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "title": "Validate native capture and register ioant-Note host in local Chrome and Edge",
+  "title": "Validate native capture and register ioant-Note host in local Chrome",
   "steps": [
     {
       "name": "validate",

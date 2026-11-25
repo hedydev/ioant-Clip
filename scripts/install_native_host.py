@@ -30,7 +30,7 @@ def atomic_json(path, value):
         if os.path.exists(tmp):
             os.unlink(tmp)
 
-def install(app, support):
+def install(app, support, browsers=("Google/Chrome",)):
     app = app.resolve(strict=True)
     with (app / "Contents/Info.plist").open("rb") as handle:
         if plistlib.load(handle).get("CFBundleIdentifier") != "com.ioant.note.macos":
@@ -54,16 +54,18 @@ def install(app, support):
     origins = ["chrome-extension://" + extension_id() + "/"]
     atomic_json(native / "config.json", {"allowed_origins": origins, "app_path": str(app)})
     manifest = {"name": HOST, "description": "ioant-Note local capture", "path": str(host), "type": "stdio", "allowed_origins": origins}
-    for browser in ("Google/Chrome", "Microsoft Edge"):
+    for browser in browsers:
         atomic_json(support / browser / "NativeMessagingHosts" / (HOST + ".json"), manifest)
     return extension_id()
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--app", required=True, type=pathlib.Path)
+    parser.add_argument("--browser", choices=["chrome", "edge", "both"], default="chrome")
     args = parser.parse_args()
+    browsers = {"chrome": ("Google/Chrome",), "edge": ("Microsoft Edge",), "both": ("Google/Chrome", "Microsoft Edge")}[args.browser]
     os.umask(0o077)
-    print("Installed ioant-Note native host; extension ID:", install(args.app, pathlib.Path.home() / "Library/Application Support"))
+    print("Installed ioant-Note native host; extension ID:", install(args.app, pathlib.Path.home() / "Library/Application Support", browsers))
 
 if __name__ == "__main__":
     main()
