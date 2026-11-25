@@ -151,7 +151,27 @@ struct EditNote: View {
     @State var tags: String
     let save: (String, [String]) -> Void
     init(note: Note, save: @escaping (String, [String]) -> Void) { _title = State(initialValue: note.title); _tags = State(initialValue: note.tags.joined(separator: ", ")); self.save = save }
-    var body: some View { NavigationStack { Form { TextField("Title", text: $title); TextField("Tags (comma separated)", text: $tags) }.padding().navigationTitle("Edit note").toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }; ToolbarItem(placement: .confirmationAction) { Button("Save") { save(title, tags.components(separatedBy: CharacterSet(charactersIn: ",，"))); dismiss() } } } }
+    var body: some View {
+        NavigationStack {
+            Form {
+                TextField("Title", text: $title)
+                TextField("Tags (comma separated)", text: $tags)
+            }
+            .padding()
+            .navigationTitle("Edit note")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") {
+                        save(title, tags.components(separatedBy: CharacterSet(charactersIn: ",，")))
+                        dismiss()
+                    }
+                }
+            }
+        }
+    }
 }
 
 final class PreviewCoordinator: NSObject, WKNavigationDelegate {
