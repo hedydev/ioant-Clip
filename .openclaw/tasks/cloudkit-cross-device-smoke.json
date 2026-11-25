@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "title": "Isolated simulator CloudKit cross-device acceptance",
+  "steps": [
+    {
+      "name": "build_mac_readback",
+      "runtime": "bash",
+      "script": "scripts/cloudkit/build_signed_smoke_mac.sh",
+      "timeoutSeconds": 300
+    },
+    {
+      "name": "build_simulator",
+      "runtime": "bash",
+      "script": "scripts/cloudkit/build_simulator_smoke.sh",
+      "timeoutSeconds": 300
+    },
+    {
+      "name": "run_simulator",
+      "runtime": "bash",
+      "script": "scripts/cloudkit/run_simulator_smoke.sh",
+      "timeoutSeconds": 300
+    },
+    {
+      "name": "verify_mac",
+      "runtime": "bash",
+      "script": "scripts/cloudkit/verify_simulator_mac.sh",
+      "timeoutSeconds": 120
+    }
+  ],
+  "artifacts": []
+}

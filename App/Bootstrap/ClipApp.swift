@@ -1,4 +1,4 @@
-#if !CLIP_CLOUDKIT_SMOKE
+#if !CLIP_CLOUDKIT_SMOKE && !CLIP_CLOUDKIT_SIM_SMOKE
 import SwiftUI
 
 @main struct ClipApp: App {
