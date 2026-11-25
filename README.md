@@ -1,6 +1,6 @@
-# ioant-Note — 0.2.0 prototype
+# ioant-Clip — high-fidelity content library
 
-A local-first macOS and iOS/iPadOS rich-content notebook. A clipboard paste creates a new note; browser captures preserve available rendered styles and can be imported as a new note. Merge creates a new note in oldest-to-newest order without deleting the originals. Tags, title edits, search, batch deletion, and local persistence are included in the source.
+A local-first macOS and iOS/iPadOS high-fidelity content collection app. A clipboard paste creates a new clip; browser captures preserve available rendered styles and can be imported as a new note. Merge creates a new note in oldest-to-newest order without deleting the originals. Tags, title edits, search, batch deletion, and local persistence are included in the source.
 
 ## Build on Mac
 
@@ -46,3 +46,5 @@ Entire page layout preserves the source CSS viewport, grid/flex used sizes and n
 
 ### Colored tags
 New notes remain untagged. Optional suggestions use only deterministic local domain/title/text rules shared on macOS and iOS; no AI model, network or inference service. Assign tags explicitly in the note header or edit sheet. Colors are shared by case-insensitive tag name; legacy libraries decode without migration. Sidebar filters all notes, untagged, and each used tag, combined with search.
+
+The product display name is ioant-Clip. Repository, app bundle identifiers, existing notes.json schema, native host identifier, extension key and file format remain stable for compatibility. See docs/ARCHITECTURE.md.
