@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "title": "Inspect existing signed macOS review provisioning metadata",
+  "steps": [
+    {
+      "name": "read_existing_profile",
+      "runtime": "bash",
+      "script": "scripts/cloudkit/inspect_review_mac.sh",
+      "timeoutSeconds": 60
+    }
+  ],
+  "artifacts": []
+}
