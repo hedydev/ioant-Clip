@@ -15,9 +15,21 @@ if (typeof document !== 'undefined') {
     try {
       const [tab] = await chrome.tabs.query({active:true,currentWindow:true});
       if (!tab?.id) throw new Error('No active tab.');
-      const [response] = await chrome.scripting.executeScript({target:{tabId:tab.id},func:capture,args:[mode]});
-      if (!response?.result) throw new Error(response?.error || 'Unable to capture this page.');
-      const data = response.result; latestCapture = data;
+      let data;
+      if (mode === 'viewport') {
+        const [meta] = await chrome.scripting.executeScript({target:{tabId:tab.id},func:()=>({title:document.title,sourceURL:location.href,width:window.innerWidth})});
+        const [before] = await chrome.tabs.query({active:true,windowId:tab.windowId});
+        if (before?.id !== tab.id || before.url !== tab.url) throw new Error('Active page changed. Capture again.');
+        const image = await chrome.tabs.captureVisibleTab(tab.windowId,{format:'png'});
+        const [after] = await chrome.tabs.query({active:true,windowId:tab.windowId});
+        if (after?.id !== tab.id || after.url !== tab.url) throw new Error('Active page changed. Capture again.');
+        data = viewportCapture(meta?.result,image);
+      } else {
+        const [response] = await chrome.scripting.executeScript({target:{tabId:tab.id},func:capture,args:[mode]});
+        if (!response?.result) throw new Error(response?.error || 'Unable to capture this page.');
+        data = response.result;
+      }
+      latestCapture = data;
       let resultMessage;
       const copyOnly = document.querySelector('#copy').checked;
       if (copyOnly) {
@@ -36,6 +48,7 @@ if (typeof document !== 'undefined') {
     } catch(error) { status.textContent = error.message || String(error); }
     finally { buttons.forEach(b => b.disabled = false); exportButton.disabled = !latestCapture; }
   }
+  document.querySelector('#viewport').addEventListener('click', () => save('viewport'));
   document.querySelector('#page').addEventListener('click', () => save('page'));
   document.querySelector('#answer').addEventListener('click', () => save('answer'));
   document.querySelector('#selection').addEventListener('click', () => save('selection'));

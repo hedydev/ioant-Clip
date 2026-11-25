@@ -22,7 +22,7 @@ public struct WebCapture: Codable, Equatable, Sendable {
     public static func decode(_ data: Data) throws -> Self {
         guard data.count <= maxBytes else { throw ImportError.tooLarge }
         let capture = try JSONDecoder().decode(Self.self, from: data)
-        guard capture.version == 1, ["page", "selection", "answer"].contains(capture.mode) else { throw ImportError.unsupported }
+        guard capture.version == 1, ["page", "selection", "answer", "viewport"].contains(capture.mode) else { throw ImportError.unsupported }
         guard !capture.part.isEmpty else { throw ImportError.empty }
         return capture
     }

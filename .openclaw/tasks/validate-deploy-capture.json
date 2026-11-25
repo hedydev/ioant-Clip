@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "title": "Validate complex page capture, install native host and relaunch macOS",
+  "steps": [
+    {
+      "name": "validate",
+      "runtime": "bash",
+      "script": "scripts/validate.sh",
+      "timeoutSeconds": 900
+    },
+    {
+      "name": "register_native_host",
+      "runtime": "bash",
+      "script": "scripts/install_dev_host.sh",
+      "timeoutSeconds": 60
+    },
+    {
+      "name": "relaunch_mac",
+      "runtime": "bash",
+      "script": "scripts/relaunch_mac.sh",
+      "timeoutSeconds": 120
+    }
+  ],
+  "artifacts": []
+}

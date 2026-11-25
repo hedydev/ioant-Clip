@@ -41,6 +41,12 @@ class NativeHostTests(unittest.TestCase):
         path = self.inbox / (result["id"] + ".json")
         self.assertEqual(json.loads(path.read_text()), self.capture)
         self.assertEqual(path.stat().st_mode & 0o777, 0o600)
+    def test_viewport_capture(self):
+        self.capture["mode"] = "viewport"
+        self.capture["html"] = '<img src="data:image/png;base64,AA==">'
+        result = self.run_message({"version":1,"action":"capture","capture":self.capture})
+        self.assertTrue(result["ok"])
+        self.assertEqual(json.loads((self.inbox / (result["id"] + ".json")).read_text())["mode"], "viewport")
     def test_wrong_origin_and_action(self):
         msg = {"version":1,"action":"capture","capture":self.capture}
         self.assertFalse(self.run_message(msg, origin="chrome-extension://unknown/")["ok"])

@@ -40,3 +40,6 @@ On ChatGPT use Latest ChatGPT answer to capture the last loaded assistant messag
 
 ### 0.3.1 capture surface and images
 New captures have a padded, rounded source-colored reading surface. Existing snapshots with the original marker get a matching reader-side frame without rewriting saved notes. SVG data/blob images are retained as isolated vector images; local raster bytes are preserved where possible. Remote or inaccessible image sources use the available canvas fallback; lost resolution in existing bitmap captures cannot be recovered. Reload the unpacked browser extension after updating.
+
+### 0.4.0 complex websites
+Entire page layout preserves the source CSS viewport, grid/flex used sizes and nested scrolling instead of fitting every child to a percentage of its parent. The reading surface may scroll horizontally on narrower displays. Background images and available CORS-readable image assets are embedded without cross-origin credentials; inaccessible assets are reported. Visible page · exact image is an explicit screenshot of the current browser viewport, not a full scroll capture or selectable rich text. It is useful for complex applications where DOM reconstruction is inadequate. Existing notes are unchanged; recapture after reloading extension.

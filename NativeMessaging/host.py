@@ -38,7 +38,7 @@ def queue(message, inbox):
     if not isinstance(message, dict) or message.get("version") != 1 or message.get("action") != "capture":
         raise ValueError("Unsupported request.")
     capture = message.get("capture")
-    if not isinstance(capture, dict) or type(capture.get("version")) is not int or capture["version"] != 1 or capture.get("mode") not in ("page", "selection", "answer"):
+    if not isinstance(capture, dict) or type(capture.get("version")) is not int or capture["version"] != 1 or capture.get("mode") not in ("page", "selection", "answer", "viewport"):
         raise ValueError("Unsupported capture.")
     for field in ("title", "sourceURL", "html", "text"):
         if not isinstance(capture.get(field), str):
