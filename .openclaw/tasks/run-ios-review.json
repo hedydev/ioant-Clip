@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "title": "Start one dedicated iPhone simulator for interactive review",
+  "steps": [
+    {
+      "name": "run_ios_review",
+      "runtime": "bash",
+      "script": "scripts/run_ios_review.sh",
+      "timeoutSeconds": 300
+    }
+  ],
+  "artifacts": []
+}
