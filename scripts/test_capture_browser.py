@@ -11,23 +11,26 @@ main {width:760px} table {width:100%;border-collapse:collapse} td {border-bottom
 </style><main id="target"><h1>Fixture title</h1><table><tr><td>Core</td><td>90%</td></tr></table>
 <div class="track"><div class="fill"></div></div>
 <svg width="500" height="150" viewBox="0 0 500 150" xmlns="http://www.w3.org/2000/svg"><defs><marker id="a" markerWidth="5" markerHeight="5" refX="4" refY="2" orient="auto"><path d="M0 0 L5 2 L0 4 Z" fill="#f80"/></marker></defs><rect x="1" y="1" width="180" height="70" rx="8" fill="#ddd" stroke="blue"/><text x="20" y="40" fill="black">Host</text><line x1="180" y1="35" x2="350" y2="35" stroke="#f80" marker-end="url(#a)"/></svg>
-<pre>const x = 1;</pre></main><pre id="result"></pre>"""
+<img id="vector-image" alt="source vector" src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2220%22%20height%3D%2210%22%3E%3Crect%20width%3D%2220%22%20height%3D%2210%22%20fill%3D%22red%22%2F%3E%3C%2Fsvg%3E"><pre>const x = 1;</pre></main><pre id="result"></pre>"""
 js=(root/"BrowserExtension/capture.js").read_text()
 checks=r"""
-try {
+(async()=>{try {
  const range=document.createRange();range.selectNodeContents(document.getElementById('target'));
  const sel=window.getSelection();sel.removeAllRanges();sel.addRange(range);
- const data=capture('selection'); const parsed=new DOMParser().parseFromString(data.html,'text/html');
+ const data=await capture('selection'); const parsed=new DOMParser().parseFromString(data.html,'text/html');
  const svg=parsed.querySelector('img[src^="data:image/svg+xml"]');
  const xml=svg && decodeURIComponent(svg.getAttribute('src').split(',').slice(1).join(','));
+ const vectorImage=parsed.querySelector('img[alt="source vector"]');
+ const frame=parsed.querySelector('[data-ioant-frame="1"]');
+ if(!vectorImage?.getAttribute('src')?.startsWith('data:image/svg+xml') || !frame || frame.style.borderRadius!=='16px' || !frame.style.padding || frame.style.backgroundColor!=='rgb(250, 250, 250)') throw new Error('Vector image or source-colored frame missing');
  const fill=[...parsed.querySelectorAll('div')].find(e=>e.style.backgroundColor==='rgb(18, 163, 74)');
  if(!svg || !xml.includes('Host') || !xml.includes('marker-end') || !fill || Math.abs(parseFloat(fill.style.width)-75)>1 || fill.style.height!=='8px' || !parsed.querySelector('table td') || !parsed.querySelector('pre') || !data.text.includes('Fixture title') || data.truncated) throw new Error('svg=' + !!svg + ' marker=' + (xml&&xml.includes('marker-end')) + ' fill=' + (fill&&fill.style.cssText) + ' truncated='+data.truncated);
  document.getElementById('result').textContent='IOANT_CAPTURE_PASS';
-} catch(e) {document.getElementById('result').textContent='IOANT_CAPTURE_FAIL '+e.message;}
+} catch(e) {document.getElementById('result').textContent='IOANT_CAPTURE_FAIL '+e.message;}})();
 """
 with tempfile.TemporaryDirectory(prefix="ioant-chrome-fixture-") as tmp:
     p=pathlib.Path(tmp); page=p/"fixture.html"; page.write_text(fixture+"<script>"+js+"\n"+checks+"</script>")
-    cmd=[str(chrome),"--headless","--disable-gpu","--no-first-run","--no-default-browser-check","--disable-background-networking","--disable-component-update","--user-data-dir="+str(p/"profile"),"--window-size=1100,900","--dump-dom",page.as_uri()]
+    cmd=[str(chrome),"--headless","--disable-gpu","--no-first-run","--no-default-browser-check","--disable-background-networking","--disable-component-update","--user-data-dir="+str(p/"profile"),"--window-size=1100,900","--virtual-time-budget=5000","--dump-dom",page.as_uri()]
     result=subprocess.run(cmd,capture_output=True,text=True,timeout=35)
     marker=re.search(r'<pre id="result">(.*?)</pre>',result.stdout,re.S)
     actual=html.unescape(marker.group(1)) if marker else "missing fixture result"

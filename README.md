@@ -37,3 +37,6 @@ SSH remote: git@github.com:hedydev/ioant-Note.git.
 
 ## High-fidelity capture (0.3)
 On ChatGPT use Latest ChatGPT answer to capture the last loaded assistant message, or Selected content to capture an explicit range. Entire page remains available. For ordinary copy/paste workflow choose Copy styled content only, then paste in Note; direct native import retains the complete capture envelope and is recommended for diagrams. Capture uses computed styles, measured layout widths, SVG diagrams as restricted offline image documents, and available canvas/raster images. It is a static snapshot, not pixel-identical or interactive; cross-origin assets, unmounted messages and embedded external frames may be missing. An incomplete-assets warning is reported. Existing plain clipboard notes cannot recover data never copied.
+
+### 0.3.1 capture surface and images
+New captures have a padded, rounded source-colored reading surface. Existing snapshots with the original marker get a matching reader-side frame without rewriting saved notes. SVG data/blob images are retained as isolated vector images; local raster bytes are preserved where possible. Remote or inaccessible image sources use the available canvas fallback; lost resolution in existing bitmap captures cannot be recovered. Reload the unpacked browser extension after updating.

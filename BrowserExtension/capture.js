@@ -1,5 +1,5 @@
 /* Self-contained function executed in the active tab's isolated world. */
-function capture(mode) {
+async function capture(mode) {
   const selection = window.getSelection();
   const range = mode === 'selection' && selection && !selection.isCollapsed && selection.rangeCount ? selection.getRangeAt(0) : null;
   if (mode === 'selection' && !range) throw new Error('Select some page content first.');
@@ -23,13 +23,15 @@ function capture(mode) {
   const paint = 'fill fill-opacity fill-rule stroke stroke-width stroke-opacity stroke-dasharray stroke-dashoffset stroke-linecap stroke-linejoin stroke-miterlimit clip-rule clip-path mask marker-start marker-mid marker-end opacity color font-family font-size font-weight font-style letter-spacing text-anchor dominant-baseline alignment-baseline vector-effect stop-color stop-opacity paint-order'.split(' ');
   const ns = 'http://www.w3.org/2000/svg';
   const maxImage = 12 * 1024 * 1024;
+  const pendingImages = [];
   let nodes = 0, svgNodes = 0, imageBytes = 0, truncated = false, missing = 0;
   const root = document.createElement('div');
   root.setAttribute('data-ioant-snapshot','1');
+  root.setAttribute('data-ioant-frame','1');
   const sourceCSS = getComputedStyle(source);
   const sourceWidth = Math.ceil(source.getBoundingClientRect().width);
-  root.style.cssText = 'box-sizing:border-box;margin:0 auto;max-width:100%;min-width:0;padding:0;';
-  root.style.width = Math.max(1, Math.min(sourceWidth || 768, 1800)) + 'px';
+  root.style.cssText = 'box-sizing:border-box;margin:0 auto;max-width:100%;min-width:0;padding:clamp(14px,3vw,24px);border:1px solid rgba(128,128,128,.25);border-radius:16px;';
+  root.style.width = (Math.max(1, Math.min(sourceWidth || 768, 1800)) + 50) + 'px';
   root.style.color = sourceCSS.color;
   root.style.fontFamily = sourceCSS.fontFamily;
   root.style.fontSize = sourceCSS.fontSize;
@@ -40,7 +42,9 @@ function capture(mode) {
     if (c && c !== 'transparent' && c !== 'rgba(0, 0, 0, 0)') { background = c; break; }
   }
   root.style.backgroundColor = background;
-  root.style.colorScheme = sourceCSS.colorScheme;
+  // Keep the captured surface readable independently of the reader's system theme.
+  const channels = background.match(/[\d.]+/g)?.slice(0,3).map(Number);
+  root.style.colorScheme = channels?.length === 3 && (channels[0]*.2126 + channels[1]*.7152 + channels[2]*.0722) < 128 ? 'dark' : 'light';
   function safeCSS(value, localSVG = false) {
     if (!value || /(?:expression\s*\(|-moz-binding|javascript:)/i.test(value)) return false;
     if (!/url\s*\(/i.test(value)) return true;
@@ -92,14 +96,67 @@ function capture(mode) {
   }
   function snapshotImage(src, dst) {
     dst.alt = src.alt || '[Image unavailable offline]';
-    try {
-      if (!src.complete || !src.naturalWidth || !src.naturalHeight) { missing++; return; }
-      const scale = Math.min(1, 2400 / Math.max(src.naturalWidth, src.naturalHeight));
-      const canvas = document.createElement('canvas');
-      canvas.width = Math.max(1, Math.round(src.naturalWidth * scale)); canvas.height = Math.max(1, Math.round(src.naturalHeight * scale));
-      canvas.getContext('2d').drawImage(src, 0, 0, canvas.width, canvas.height);
-      attachData(dst, canvas.toDataURL('image/png'));
-    } catch { missing++; }
+    dst.style.imageRendering = 'auto';
+    const url = src.currentSrc || src.src || '';
+    // Preserve original encoded bytes when available locally. In particular,
+    // SVG wrapped in an HTML img must not be flattened through canvas.
+    async function preserveLocal() {
+      if (!/^(data:|blob:)/i.test(url)) return false;
+      try {
+        const response = await fetch(url);
+        const blob = await response.blob();
+        if (!blob.size || blob.size > maxImage) return false;
+        const mime = blob.type.toLowerCase().split(';')[0];
+        if (mime === 'image/svg+xml') {
+          const xml = await blob.text();
+          if (/<!DOCTYPE|<!ENTITY/i.test(xml)) return false;
+          const doc = new DOMParser().parseFromString(xml,'image/svg+xml');
+          const svg = doc.documentElement;
+          if (svg.localName !== 'svg' || svg.namespaceURI !== ns || doc.querySelector('parsererror')) return false;
+          // SVG remains an isolated image, never active inline HTML.
+          for (const el of svg.querySelectorAll('script,foreignObject,iframe,object,embed,animate,animateMotion,animateTransform,set')) el.remove();
+          for (const el of [svg,...svg.querySelectorAll('*')]) {
+            for (const attr of [...el.attributes]) {
+              const name = attr.localName.toLowerCase();
+              if (name.startsWith('on') || name === 'base' || (['href','src'].includes(name) && !/^#[\w:.-]+$/.test(attr.value)) || (/url\s*\(/i.test(attr.value) && /url\s*\(\s*['"]?(?!#)[^'")\s]/i.test(attr.value))) el.removeAttributeNode(attr);
+            }
+            if (el.localName === 'style' && /@import|url\s*\(/i.test(el.textContent)) el.remove();
+          }
+          const data = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(new XMLSerializer().serializeToString(svg));
+          if (imageBytes + data.length > maxImage) return false;
+          return attachData(dst,data);
+        }
+        if (!['image/png','image/jpeg','image/gif','image/webp','image/avif'].includes(mime)) return false;
+        const data = await new Promise((resolve,reject)=>{
+          const reader = new FileReader();
+          reader.onload = ()=>resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+        if (typeof data !== 'string' || imageBytes + data.length > maxImage) return false;
+        return attachData(dst,data);
+      } catch { return false; }
+    }
+    function rasterFallback() {
+      try {
+        if (!src.complete || !src.naturalWidth || !src.naturalHeight) { missing++; return; }
+        const r = src.getBoundingClientRect();
+        const ratio = Math.min(3,Math.max(2,window.devicePixelRatio || 1));
+        const target = Math.max(src.naturalWidth,src.naturalHeight,r.width*ratio,r.height*ratio);
+        // For SVG loaded as img, a high-DPI canvas fallback is sharper.
+        // For ordinary raster sources never upscale beyond original pixels.
+        const vectorHint = /(?:\.svg(?:[?#]|$)|^data:image\/svg\+xml)/i.test(url);
+        const scale = Math.min(4096/Math.max(src.naturalWidth,src.naturalHeight),vectorHint ? target/Math.max(src.naturalWidth,src.naturalHeight) : 1);
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.max(1, Math.round(src.naturalWidth * scale));
+        canvas.height = Math.max(1, Math.round(src.naturalHeight * scale));
+        const ctx = canvas.getContext('2d');
+        ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(src, 0, 0, canvas.width, canvas.height);
+        attachData(dst, canvas.toDataURL('image/png'));
+      } catch { missing++; }
+    }
+    pendingImages.push(async () => { if (!await preserveLocal()) rasterFallback(); });
   }
   function snapshotSVG(src, dst) {
     // Recreate a restricted SVG tree instead of copying arbitrary active markup.
@@ -175,6 +232,8 @@ function capture(mode) {
     for (const child of node.childNodes) { if (nodes >= 18000) { truncated = true; break; } visit(child,dst); }
   }
   visit(source,root);
+  // Sequential local asset reads keep size accounting deterministic.
+  for (const load of pendingImages) await load();
   const html = root.outerHTML;
   // innerText of the attached original is not used for selections: it could include text outside the selection.
   const text = (range ? range.toString() : source.innerText || root.textContent).slice(0,2_000_000);

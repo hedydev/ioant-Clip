@@ -61,7 +61,7 @@ public struct Note: Codable, Identifiable, Equatable, Sendable {
     }
     public static func document(for part: NotePart) -> String {
         """
-        <!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src data:; font-src data:; form-action 'none'; base-uri 'none'"><style>html{color-scheme:light dark}body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;overflow-wrap:anywhere;margin:16px;line-height:1.55;color:CanvasText;background:Canvas}img,video{max-width:100%;height:auto}pre{overflow:auto}table{max-width:100%;border-collapse:collapse}td,th{padding:5px;border:1px solid #9995}</style></head><body>\(part.renderedHTML)</body></html>
+        <!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src data:; font-src data:; form-action 'none'; base-uri 'none'"><style>html{color-scheme:light dark}body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;overflow-wrap:anywhere;margin:16px;line-height:1.55;color:CanvasText;background:Canvas}img,video{max-width:100%;height:auto}img{image-rendering:auto} [data-ioant-snapshot]:not([data-ioant-frame]){box-sizing:border-box!important;padding:clamp(14px,3vw,24px)!important;border:1px solid rgba(128,128,128,.25)!important;border-radius:16px!important;}pre{overflow:auto}table{max-width:100%;border-collapse:collapse}td,th{padding:5px;border:1px solid #9995}</style></head><body>\(part.renderedHTML)</body></html>
         """
     }
 }
