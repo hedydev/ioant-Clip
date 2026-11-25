@@ -6,6 +6,16 @@ generated.mkdir(exist_ok=True)
 source = root / "BrowserExtension"
 core = ["Sources/ClipCore/Capture/SharedCaptureInbox.swift", "Sources/ClipCore/Capture/WebCapture.swift", "Sources/ClipCore/Notes/NotePart.swift"]
 targets = {}
+def extension_sources(name, original, localized=False):
+    dest = generated / name
+    dest.mkdir(exist_ok=True)
+    for path in [original, *core]:
+        source = root / path
+        shutil.copyfile(source, dest / source.name)
+    if localized:
+        shutil.copyfile(root / 'App/Localization/Localizable.xcstrings', dest / 'Localizable.xcstrings')
+    return [str(dest.relative_to(root))]
+
 for platform, suffix in (("macOS","macos"), ("iOS","ios")):
     target = "ioant-Clip-" + platform
     safari = target + "-Safari"
@@ -22,12 +32,12 @@ for platform, suffix in (("macOS","macos"), ("iOS","ios")):
     resources = [{"path":str((dest/name).relative_to(root)), "type":"folder", "buildPhase":"resources"} for name in ("CaptureEngine","Popup","_locales")]
     resources.append({"path":str((dest/"manifest.json").relative_to(root)), "buildPhase":"resources"})
     targets[safari] = {"type":"app-extension","platform":platform,
-        "sources":["Extensions/Safari"]+core+resources,
+        "sources":extension_sources(platform+"SafariSources","Extensions/Safari/SafariWebExtensionHandler.swift")+resources,
         "settings":{"base":{"PRODUCT_BUNDLE_IDENTIFIER":"com.ioant.clip."+suffix+".safari","INFOPLIST_FILE":"Config/SafariExtension-Info.plist","APPLICATION_EXTENSION_API_ONLY":"YES","CODE_SIGN_ENTITLEMENTS":"Config/"+("MacSafariExtension" if platform=="macOS" else "CaptureExtension")+".entitlements","SKIP_INSTALL":"YES"}}}
     deps = [{"target":safari,"embed":True}]
     if platform == "iOS":
         share = target + "-Share"
-        targets[share] = {"type":"app-extension","platform":"iOS","sources":["Extensions/Share","App/Localization/Localizable.xcstrings"]+core,"settings":{"base":{"PRODUCT_BUNDLE_IDENTIFIER":"com.ioant.clip.ios.share","INFOPLIST_FILE":"Config/ShareExtension-Info.plist","CODE_SIGN_ENTITLEMENTS":"Config/CaptureExtension.entitlements","APPLICATION_EXTENSION_API_ONLY":"YES","SKIP_INSTALL":"YES","TARGETED_DEVICE_FAMILY":"1,2"}}}
+        targets[share] = {"type":"app-extension","platform":"iOS","sources":extension_sources("iOSShareSources","Extensions/Share/ShareViewController.swift",localized=True),"settings":{"base":{"PRODUCT_BUNDLE_IDENTIFIER":"com.ioant.clip.ios.share","INFOPLIST_FILE":"Config/ShareExtension-Info.plist","CODE_SIGN_ENTITLEMENTS":"Config/CaptureExtension.entitlements","APPLICATION_EXTENSION_API_ONLY":"YES","SKIP_INSTALL":"YES","TARGETED_DEVICE_FAMILY":"1,2"}}}
         deps.append({"target":share,"embed":True})
     settings = {"PRODUCT_BUNDLE_IDENTIFIER":"com.ioant.clip."+suffix,"INFOPLIST_FILE":"Config/CloudKitReview-Info.plist","CODE_SIGN_ENTITLEMENTS":"Config/CloudKitExtensions.entitlements","CLIP_CLOUDKIT_CONTAINER":"iCloud.com.ioant.clip","CLIP_CLOUDKIT_SMOKE":"NO","CLIP_CLOUDKIT_UI_REVIEW":"NO","CLIP_CLOUDKIT_DEVELOPMENT":"YES","SWIFT_ACTIVE_COMPILATION_CONDITIONS":"$(inherited) CLIP_CLOUDKIT_REVIEW CLIP_CLOUDKIT_DEVELOPMENT CLIP_CAPTURE_EXTENSIONS"}
     if platform=="macOS": settings["ENABLE_HARDENED_RUNTIME"]="YES"
