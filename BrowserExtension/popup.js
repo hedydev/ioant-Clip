@@ -35,12 +35,12 @@ if (typeof document !== 'undefined') {
       if (copyOnly) {
         try {
           await navigator.clipboard.write([new ClipboardItem({'text/html':new Blob([data.html],{type:'text/html'}),'text/plain':new Blob([data.text],{type:'text/plain'})})]);
-          resultMessage = 'Styled HTML copied. Paste in ioant-Note to create a new note.';
+          resultMessage = 'Styled HTML copied. Paste in ioant-Clip to create a new clip.';
         } catch { resultMessage = 'Clipboard copy unavailable. Export this capture instead.'; }
       } else try {
         const reply = await chrome.runtime.sendNativeMessage('com.ioant.note.capture', {version:1, action:'capture', capture:data});
         if (!reply?.ok || reply.state !== 'queued') throw new Error(reply?.error || 'Unexpected native response.');
-        resultMessage = reply.opened ? 'Sent to ioant-Note. The app will import it.' : 'Queued locally. Open ioant-Note to import.';
+        resultMessage = reply.opened ? 'Sent to ioant-Clip. The app will import it.' : 'Queued locally. Open ioant-Clip to import.';
       } catch(error) {
         resultMessage = 'Direct import not confirmed. You can export this capture below. ' + (error.message || String(error));
       }

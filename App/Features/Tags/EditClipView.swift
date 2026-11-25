@@ -1,56 +1,6 @@
 import SwiftUI
 
-extension TagColor {
-    var swiftUIColor: Color {
-        switch self {
-        case .gray: .gray
-        case .red: .red
-        case .orange: .orange
-        case .yellow: .yellow
-        case .green: .green
-        case .teal: .teal
-        case .blue: .blue
-        case .purple: .purple
-        case .pink: .pink
-        }
-    }
-    var label: LocalizedStringKey {
-        switch self {
-        case .gray: "Gray"
-        case .red: "Red"
-        case .orange: "Orange"
-        case .yellow: "Yellow"
-        case .green: "Green"
-        case .teal: "Teal"
-        case .blue: "Blue"
-        case .purple: "Purple"
-        case .pink: "Pink"
-        }
-    }
-}
-struct TagChip: View {
-    let tag: String
-    let color: TagColor
-    var body: some View {
-        HStack(spacing: 4) {
-            Circle().fill(color.swiftUIColor).frame(width: 7, height: 7)
-            Text(tag).lineLimit(1)
-        }
-        .font(.caption)
-        .padding(.horizontal, 7).padding(.vertical, 4)
-        .background(color.swiftUIColor.opacity(0.15), in: Capsule())
-    }
-}
-struct TagChipRow: View {
-    let tags: [String]
-    let color: (String) -> TagColor
-    var body: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 5) { ForEach(tags, id: \.self) { TagChip(tag: $0, color: color($0)) } }
-        }
-    }
-}
-struct EditNote: View {
+struct EditClipView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var title: String
     @State private var tags: [String]
@@ -110,7 +60,7 @@ struct EditNote: View {
                                 .accessibilityLabel(Text("Remove tag") + Text(" \(tag)"))
                             }
                         }
-                        Text("Tag colors are shared across notes.").font(.caption).foregroundStyle(.secondary)
+                        Text("Tag colors are shared across clips.").font(.caption).foregroundStyle(.secondary)
                     }
                     VStack(alignment: .leading, spacing: 8) {
                         Text("New tag").font(.headline)
@@ -142,7 +92,7 @@ struct EditNote: View {
                     if !available.isEmpty { choices("Existing tags", values: available) }
                 }.padding(20)
             }
-            .navigationTitle("Edit note")
+            .navigationTitle("Edit clip")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {

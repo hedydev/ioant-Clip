@@ -10,7 +10,7 @@ struct SyncSettingsView: View {
             List {
                 Section("Storage") {
                     Label("Local only", systemImage: "checkmark.circle.fill")
-                    Text("All notes stay on this device. Cloud providers are not connected.").font(.caption).foregroundStyle(.secondary)
+                    Text("All clips stay on this device. Cloud providers are not connected.").font(.caption).foregroundStyle(.secondary)
                 }
                 Section("Cloud providers") {
                     provider("iCloud", icon: "icloud", status: "Requires signed CloudKit configuration")

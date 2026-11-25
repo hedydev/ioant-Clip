@@ -1,8 +1,8 @@
-"Paste as new note" = "粘贴为新笔记";
+"Save from clipboard" = "粘贴为新收藏";
 "Import web capture" = "导入网页采集";
-"Create a note from clipboard" = "从剪贴板创建笔记";
-"Copy text, images or formatted web content, then paste to create a new note." = "复制文字、图片或带格式的网页内容，然后粘贴为一条新笔记。";
-"Copy note" = "复制笔记";
+"Save content from clipboard" = "从剪贴板创建收藏";
+"Copy text, images or formatted web content, then save it as a clip." = "复制文字、图片或带格式的网页内容，然后粘贴为一条新收藏。";
+"Copy clip" = "复制收藏";
 "Copied" = "已复制";
 "No supported content in the clipboard." = "剪贴板中没有可用内容。";
 
@@ -11,7 +11,7 @@
 
 "Title" = "标题";
 "Tags" = "标签";
-"All notes" = "全部笔记";
+"All clips" = "全部收藏";
 "Untagged" = "无标签";
 "No tags yet" = "暂无标签";
 "New tag" = "新标签";
@@ -21,9 +21,9 @@
 "Remove tag" = "移除标签";
 "Suggested tags" = "推荐标签";
 "Existing tags" = "已有标签";
-"Tag colors are shared across notes." = "同名标签在所有笔记中共享颜色。";
+"Tag colors are shared across clips." = "同名标签在所有收藏中共享颜色。";
 "Suggestions are local rules. Nothing is added automatically." = "根据本地规则推荐，不会自动添加标签。";
-"Edit note" = "编辑笔记";
+"Edit clip" = "编辑收藏";
 "Save" = "保存";
 "Cancel" = "取消";
 "Gray" = "灰色";
@@ -39,7 +39,7 @@
 "Cloud sync" = "云同步";
 "Storage" = "存储";
 "Local only" = "仅本地存储";
-"All notes stay on this device. Cloud providers are not connected." = "所有笔记保留在本机，尚未连接云服务。";
+"All clips stay on this device. Cloud providers are not connected." = "所有收藏保留在本机，尚未连接云服务。";
 "Cloud providers" = "云服务";
 "Requires signed CloudKit configuration" = "需要 CloudKit 签名配置";
 "Requires Google OAuth configuration" = "需要 Google OAuth 配置";
@@ -53,3 +53,9 @@
 "Keep this version" = "保留此版本";
 "Resolve this conflict?" = "解决此冲突？";
 "Keep selected version" = "保留所选版本";
+
+"Edit clip details" = "编辑收藏信息";
+"Merge clips" = "合并收藏";
+"Select" = "选择";
+"Done" = "完成";
+"Delete" = "删除";
