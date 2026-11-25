@@ -36,6 +36,7 @@ else:
     already_booted=False
 print("Dedicated simulator:",name,"UDID:",udid,"previously booted:",already_booted,flush=True)
 boot_requested=False
+app_launched=False
 try:
     if not already_booted:
         boot_requested=True
@@ -43,10 +44,22 @@ try:
     sim("bootstatus",udid,"-b",timeout=120)
     sim("install",udid,str(app),timeout=60)
     print(sim("launch",udid,bundle,timeout=45),flush=True)
-    run("/usr/bin/open","-a","Simulator","--args","-CurrentDeviceUDID",udid,timeout=20)
+    app_launched=True
+    developer=pathlib.Path(run("/usr/bin/xcode-select","-p"))
+    simulator=developer / "Applications/Simulator.app"
+    if not simulator.is_dir():
+        raise RuntimeError("Simulator application missing: " + str(simulator))
+    try:
+        run("/usr/bin/open","-a",str(simulator),"--args","-CurrentDeviceUDID",udid,timeout=20)
+        print("Simulator UI open request succeeded (window visibility not independently verified).",flush=True)
+    except subprocess.CalledProcessError as e:
+        print("Simulator open with arguments failed:",e.output,flush=True)
+        run("/usr/bin/open","-a",str(simulator),timeout=20)
+        print("Simulator opened without arguments. Select the dedicated device in File > Open Simulator if needed.",flush=True)
     print("Interactive review device intentionally left booted; no other devices changed.",flush=True)
 except BaseException:
-    if boot_requested:
+    if boot_requested and not app_launched:
         try: sim("shutdown",udid,timeout=30)
         except Exception as e: print("Review device cleanup failed:",e,file=sys.stderr)
+    if app_launched: print('Client launched; dedicated simulator retained for interactive review despite UI error.',flush=True)
     raise
