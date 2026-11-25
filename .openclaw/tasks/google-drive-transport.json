@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "title": "Validate initial Google Drive private revision transport",
+  "steps": [
+    {
+      "name": "drive_transport_tests",
+      "runtime": "bash",
+      "script": "scripts/test_google_drive.sh",
+      "timeoutSeconds": 180
+    },
+    {
+      "name": "full_regression",
+      "runtime": "bash",
+      "script": "scripts/validate.sh",
+      "timeoutSeconds": 300
+    }
+  ],
+  "artifacts": []
+}
