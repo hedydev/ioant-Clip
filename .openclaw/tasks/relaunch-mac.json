@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "title": "Relaunch previously validated daily macOS client only",
+  "steps": [
+    {
+      "name": "relaunch_mac",
+      "runtime": "bash",
+      "script": "scripts/relaunch_mac.sh",
+      "timeoutSeconds": 120
+    }
+  ],
+  "artifacts": []
+}
