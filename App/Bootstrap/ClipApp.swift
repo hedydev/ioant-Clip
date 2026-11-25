@@ -3,14 +3,15 @@ import SwiftUI
 
 @main struct ClipApp: App {
     @StateObject private var store = LibraryStore()
-    @StateObject private var language = LanguagePreferences()
-    @StateObject private var theme = ThemePreferences()
+    @StateObject private var language = LanguagePreferences(defaults: ClipPreferencesScope.defaults)
+    @StateObject private var theme = ThemePreferences(defaults: ClipPreferencesScope.defaults)
     @StateObject private var cloudSync = CloudSyncController()
     var body: some Scene {
-        WindowGroup {
+        WindowGroup(ClipPreferencesScope.windowTitle) {
             AppThemeScope(preferences: theme) {
                 AppLocaleScope(preferences: language) { LibraryView().environmentObject(store) }
             }
+                .defaultAppStorage(ClipPreferencesScope.defaults)
                 .environmentObject(cloudSync)
                 .modifier(SyncForegroundSchedule(controller: cloudSync, store: store))
             #if os(macOS)

@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "title": "Build and open signed isolated Mac UI review alongside daily app",
+  "steps": [
+    {
+      "name": "build_mac_ui",
+      "runtime": "bash",
+      "script": "scripts/cloudkit/build_ui_review_mac.sh",
+      "timeoutSeconds": 300
+    },
+    {
+      "name": "launch_mac_ui",
+      "runtime": "bash",
+      "script": "scripts/cloudkit/launch_ui_review_mac.sh",
+      "timeoutSeconds": 90
+    }
+  ],
+  "artifacts": []
+}

@@ -12,9 +12,9 @@ struct MainWindowSizing: NSViewRepresentable {
         private static let migrationKey = "ioant.clip.window.initialSize.v2"
         override func viewDidMoveToWindow() {
             super.viewDidMoveToWindow()
-            guard let window, !UserDefaults.standard.bool(forKey: Self.migrationKey) else { return }
+            guard let window, !ClipPreferencesScope.defaults.bool(forKey: Self.migrationKey) else { return }
             DispatchQueue.main.async { [weak window] in
-                guard let window, !UserDefaults.standard.bool(forKey: Self.migrationKey),
+                guard let window, !ClipPreferencesScope.defaults.bool(forKey: Self.migrationKey),
                       let screen = window.screen ?? NSScreen.main else { return }
                 // Full screen is user-controlled. Never resize a full-screen window.
                 guard !window.styleMask.contains(.fullScreen) else { return }
@@ -26,7 +26,7 @@ struct MainWindowSizing: NSViewRepresentable {
                     let y = min(max(current.midY - desired.height / 2, visible.minY), visible.maxY - desired.height)
                     window.setFrame(NSRect(origin: NSPoint(x: x, y: y), size: desired), display: true)
                 }
-                UserDefaults.standard.set(true, forKey: Self.migrationKey)
+                ClipPreferencesScope.defaults.set(true, forKey: Self.migrationKey)
             }
         }
     }

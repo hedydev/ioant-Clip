@@ -47,7 +47,7 @@ struct LibrarySidebar: View {
                 }
             }
         }
-        .navigationTitle("ioant-Clip")
+        .navigationTitle(ClipPreferencesScope.windowTitle)
         .searchable(text: $query, prompt: Text("library.search"))
         .autocorrectionDisabled()
         #if os(iOS)
