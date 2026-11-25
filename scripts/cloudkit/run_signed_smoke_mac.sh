@@ -15,8 +15,8 @@ PYTHONDONTWRITEBYTECODE=1 /usr/bin/python3 scripts/cloudkit/verify_signed_review
 # Direct executable invocation; no installation, LaunchServices or daily app access.
 mode="${1:---clip-cloudkit-smoke}"
 case "$mode" in
-  --clip-cloudkit-smoke|--clip-cloudkit-account-check) ;;
+  --clip-cloudkit-smoke|--clip-cloudkit-account-check) [ "$#" -le 1 ];;
+  --clip-cloudkit-resume) [ "$#" -eq 2 ]; exec "$app/Contents/MacOS/ioant-Clip-macOS" "$mode" "$2";;
   *) exit 2;;
 esac
-[ "$#" -le 1 ]
 exec "$app/Contents/MacOS/ioant-Clip-macOS" "$mode"

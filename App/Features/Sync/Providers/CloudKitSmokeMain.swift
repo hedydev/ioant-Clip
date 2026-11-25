@@ -24,7 +24,9 @@ import Darwin
     }
     static func main() async {
         let arguments = Array(CommandLine.arguments.dropFirst())
-        guard arguments == ["--clip-cloudkit-smoke"] || arguments == ["--clip-cloudkit-account-check"],
+        let resumeZone = arguments.count == 2 && arguments.first == "--clip-cloudkit-resume" &&
+            arguments[1].hasPrefix("ioantClipSmoke-") && UUID(uuidString: String(arguments[1].dropFirst("ioantClipSmoke-".count))) != nil ? arguments[1] : nil
+        guard arguments == ["--clip-cloudkit-smoke"] || arguments == ["--clip-cloudkit-account-check"] || resumeZone != nil,
               Bundle.main.object(forInfoDictionaryKey: "ClipCloudKitSmoke") as? String == "YES",
               let config = CloudKitReviewConfiguration.current(),
               config.environment == "Development", config.container == "iCloud.com.ioant.clip" else {
@@ -45,7 +47,7 @@ import Darwin
             log("FAIL: account status query; " + ns.domain + " code " + String(ns.code))
             exit(1)
         }
-        let zoneName = "ioantClipSmoke-" + UUID().uuidString
+        let zoneName = resumeZone ?? ("ioantClipSmoke-" + UUID().uuidString)
         log("Synthetic development zone: " + zoneName)
         var stage = "account"
         do {
@@ -55,14 +57,32 @@ import Darwin
             guard account.provider == "icloud", account.namespace == config.namespace,
                   try await second.identity() == account else { throw Failure.wrongAccount }
             log("PASS: signed private database account available; same identity for both transports")
-            stage = "initial upload"
-            let note = Note(title: "Synthetic CloudKit smoke", parts: [.init(text: "Generated test fixture; no user content.")])
-            var a = try SyncJournal.bootstrap(NoteLibrary(notes: [note]))
-            let initial = try await SyncExchange.prepare(local: a, transport: first, expected: account)
-            guard initial.remote.isEmpty, initial.outgoing.count == 1 else { throw Failure.wrongPlan }
+            let note: Note
+            var a: SyncJournal
+            let initial: SyncExchange.Plan
+            if resumeZone != nil {
+                stage = "reconcile original synthetic zone"
+                let records = try await second.fetchRevisions(expected: account)
+                guard records.count == 1, let only = records.first, only.parents.isEmpty,
+                      case .note(let existing) = only.value, only.key == .note(existing.id),
+                      existing.title == "Synthetic CloudKit smoke",
+                      existing.plainText == "Generated test fixture; no user content." else { throw Failure.unexpectedRemote }
+                note = existing
+                a = SyncJournal()
+                try a.ingest(records)
+                initial = try SyncExchange.plan(local: a, remote: [])
+                log("PASS: original first upload independently confirmed; no new initial record")
+            } else {
+                stage = "initial upload"
+                note = Note(title: "Synthetic CloudKit smoke", parts: [.init(text: "Generated test fixture; no user content.")])
+                a = try SyncJournal.bootstrap(NoteLibrary(notes: [note]))
+                initial = try await SyncExchange.prepare(local: a, transport: first, expected: account)
+                guard initial.remote.isEmpty, initial.outgoing.count == 1 else { throw Failure.wrongPlan }
+                try await SyncExchange.send(initial, transport: first, expected: account)
+            }
+            stage = "idempotent retry"
             try await SyncExchange.send(initial, transport: first, expected: account)
-            stage = "idempotent retry and second transport read"
-            try await SyncExchange.send(initial, transport: first, expected: account)
+            stage = "second transport read"
             var b = try await waitFor(a, transport: second, account: account)
             log("PASS: initial upload, duplicate retry and independent read")
             stage = "second transport edit"

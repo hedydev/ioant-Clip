@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "title": "Build and reconcile exact prior synthetic CloudKit zone",
+  "steps": [
+    {
+      "name": "build_signed_smoke",
+      "runtime": "bash",
+      "script": "scripts/cloudkit/build_signed_smoke_mac.sh",
+      "timeoutSeconds": 300
+    },
+    {
+      "name": "resume_verified_synthetic_zone",
+      "runtime": "bash",
+      "script": "scripts/cloudkit/resume_signed_smoke_mac.sh",
+      "timeoutSeconds": 240
+    }
+  ],
+  "artifacts": []
+}

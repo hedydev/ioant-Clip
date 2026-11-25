@@ -48,7 +48,7 @@ actor CloudKitRevisionTransport: RevisionTransport {
         guard record.recordID.recordName == revision.id.uuidString else { throw ProviderError.invalidRecord }
         return revision
     }
-    /// Initial full read, with paging. A future production version must retain
+    /// Initial full zone-change read, with paging. A future production version must retain
     /// zone change tokens and implement history retention before large libraries.
     func fetchRevisions(expected: SyncAccount) async throws -> [SyncRevision] {
         try await require(expected)
@@ -57,29 +57,42 @@ actor CloudKitRevisionTransport: RevisionTransport {
             try await require(expected)
             return []
         }
-        let query = CKQuery(recordType: Self.recordType, predicate: NSPredicate(value: true))
-        var page = try await database.records(matching: query, inZoneWith: zone.zoneID, desiredKeys: ["payload", "sha256"], resultsLimit: 100)
-        var values: [SyncRevision] = []
+        // A full zone-change scan requires no queryable recordName index.
+        // Until durable change-token storage is implemented, start at nil.
+        var token: CKServerChangeToken?
+        var values: [UUID: SyncRevision] = [:]
         var receivedBytes = 0
+        var pages = 0
         let limits = SyncLimits.review
         while true {
-            for (_, result) in page.matchResults {
+            try await require(expected)
+            let page = try await database.recordZoneChanges(inZoneWith: zone.zoneID, since: token, desiredKeys: ["payload", "sha256"], resultsLimit: 100)
+            // Physical deletions violate this immutable journal contract.
+            guard page.deletions.isEmpty else { throw ProviderError.invalidRecord }
+            pages += 1
+            guard pages <= limits.revisionCount + 1 else { throw SyncSessionError.historyLimit }
+            for (recordID, result) in page.modificationResultsByID {
                 try Task.checkCancellation()
-                let record = try result.get()
-                guard let asset = record["payload"] as? CKAsset, let url = asset.fileURL,
+                let record = try result.get().record
+                guard record.recordID == recordID,
+                      let asset = record["payload"] as? CKAsset, let url = asset.fileURL,
                       let bytes = try url.resourceValues(forKeys: [.fileSizeKey]).fileSize,
                       bytes >= 0, bytes <= limits.payloadBytes,
-                      bytes <= limits.totalBytes - receivedBytes,
-                      values.count < limits.revisionCount else { throw SyncSessionError.historyLimit }
+                      bytes <= limits.totalBytes - receivedBytes else { throw SyncSessionError.historyLimit }
                 receivedBytes += bytes
-                values.append(try decode(record))
+                let revision = try decode(record)
+                if let existing = values[revision.id] {
+                    guard existing == revision else { throw ProviderError.immutableCollision }
+                } else {
+                    guard values.count < limits.revisionCount else { throw SyncSessionError.historyLimit }
+                    values[revision.id] = revision
+                }
             }
-            guard let cursor = page.queryCursor else { break }
-            try await require(expected)
-            page = try await database.records(continuingMatchFrom: cursor, desiredKeys: ["payload", "sha256"], resultsLimit: 100)
+            guard page.moreComing else { break }
+            token = page.changeToken
         }
         try await require(expected)
-        return values
+        return Array(values.values)
     }
     func upload(_ revisions: [SyncRevision], expected: SyncAccount) async throws {
         guard !revisions.isEmpty else { return }
