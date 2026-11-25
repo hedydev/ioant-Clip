@@ -3,4 +3,5 @@
 <plist version="1.0"><dict>
 <key>ClipCloudKitContainer</key><string>$(CLIP_CLOUDKIT_CONTAINER)</string>
 <key>ClipCloudKitEnvironment</key><string>Development</string>
+<key>ClipCloudKitSmoke</key><string>$(CLIP_CLOUDKIT_SMOKE)</string>
 </dict></plist>

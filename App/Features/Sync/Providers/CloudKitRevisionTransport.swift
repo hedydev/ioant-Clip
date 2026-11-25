@@ -11,15 +11,16 @@ actor CloudKitRevisionTransport: RevisionTransport {
     private let container: CKContainer
     private let database: CKDatabase
     private let namespace: String
-    private let zone = CKRecordZone(zoneName: "ioantNoteRevisionsV1")
+    private let zone: CKRecordZone
     private static let recordType = "NoteRevisionV1"
     private static let maxPayload = 128 * 1024 * 1024
 
-    init(containerIdentifier: String, environment: String) {
+    init(containerIdentifier: String, environment: String, zoneName: String = "ioantNoteRevisionsV1") {
         let container = CKContainer(identifier: containerIdentifier)
         self.container = container
         self.database = container.privateCloudDatabase
         self.namespace = containerIdentifier + ":" + environment
+        self.zone = CKRecordZone(zoneName: zoneName)
     }
     func identity() async throws -> SyncAccount {
         guard try await container.accountStatus() == .available else { throw ProviderError.accountUnavailable }

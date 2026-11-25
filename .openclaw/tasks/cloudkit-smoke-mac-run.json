@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "title": "Run signed synthetic CloudKit Development transport smoke",
+  "steps": [
+    {
+      "name": "run_synthetic_cloudkit",
+      "runtime": "bash",
+      "script": "scripts/cloudkit/run_signed_smoke_mac.sh",
+      "timeoutSeconds": 240
+    }
+  ],
+  "artifacts": []
+}

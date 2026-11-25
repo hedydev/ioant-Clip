@@ -1,3 +1,4 @@
+#if !CLIP_CLOUDKIT_SMOKE
 import SwiftUI
 
 @main struct ClipApp: App {
@@ -31,3 +32,5 @@ import SwiftUI
     }
 }
 
+
+#endif

@@ -5,6 +5,16 @@ export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PAT
 export USER="$(id -un)"
 export LOGNAME="$USER"
 platform="$1"
+mode="${2:-review}"
+cacheLane=CloudKitReview
+smoke=NO
+conditions='$(inherited) CLIP_CLOUDKIT_REVIEW'
+case "$mode" in
+  review) ;;
+  smoke) [ "$platform" = macOS ] || exit 2
+    cacheLane=CloudKitSmoke; smoke=YES; conditions="$conditions CLIP_CLOUDKIT_SMOKE";;
+  *) exit 2;;
+esac
 team=64RS366WKG
 container=iCloud.com.ioant.clip
 case "$platform" in
@@ -21,9 +31,9 @@ xcodegen generate
 root="$PWD"
 cache="/Volumes/LunaDrive/DeveloperCache"
 if [ -d "$cache" ] && [ -w "$cache" ]; then
-  derived="$cache/projects/ioant-clip/DerivedData/CloudKitReview/$platform"
+  derived="$cache/projects/ioant-clip/DerivedData/$cacheLane/$platform"
 else
-  derived="$root/DerivedData/CloudKitReview/$platform"
+  derived="$root/DerivedData/$cacheLane/$platform"
 fi
 mkdir -p "$derived"
 log="$derived/signed-review.log"
@@ -36,7 +46,7 @@ if xcodebuild -project ioant-Clip.xcodeproj -scheme "ioant-Clip-$platform" -conf
   CODE_SIGNING_ALLOWED=YES CODE_SIGNING_REQUIRED=YES \
   "CLIP_CLOUDKIT_CONTAINER=$container" "CODE_SIGN_ENTITLEMENTS=$root/Config/CloudKitReview.entitlements" \
   "INFOPLIST_FILE=$root/Config/CloudKitReview-Info.plist" \
-  'SWIFT_ACTIVE_COMPILATION_CONDITIONS=$(inherited) CLIP_CLOUDKIT_REVIEW' \
+  "CLIP_CLOUDKIT_SMOKE=$smoke" "SWIFT_ACTIVE_COMPILATION_CONDITIONS=$conditions" \
   build > "$log" 2>&1; then
   echo "BUILD SUCCEEDED $platform"
 else
@@ -46,4 +56,7 @@ else
 fi
 app="$derived/Build/Products/$product"
 PYTHONDONTWRITEBYTECODE=1 /usr/bin/python3 scripts/cloudkit/verify_signed_review.py "$platform" "$app" "$team" "$container"
-echo "Signed review artifact verified; not installed or launched"
+if [ "$mode" = smoke ]; then
+  [ "$(/usr/libexec/PlistBuddy -c 'Print :ClipCloudKitSmoke' "$app/Contents/Info.plist")" = YES ]
+fi
+echo "Signed $mode artifact verified; not installed or launched"

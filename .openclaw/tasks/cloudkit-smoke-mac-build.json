@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "title": "Build signed isolated CloudKit smoke executable",
+  "steps": [
+    {
+      "name": "build_signed_smoke",
+      "runtime": "bash",
+      "script": "scripts/cloudkit/build_signed_smoke_mac.sh",
+      "timeoutSeconds": 300
+    }
+  ],
+  "artifacts": []
+}
