@@ -68,7 +68,23 @@ public struct Note: Codable, Identifiable, Equatable, Sendable {
 
 public struct NoteLibrary: Codable, Equatable, Sendable {
     public private(set) var notes: [Note]
+    private var tagPalette: [String: TagColor]?
     public init(notes: [Note] = []) { self.notes = notes }
+    public var allTags: [String] {
+        Note.normalizedTags(notes.flatMap(\.tags)).sorted { $0.localizedStandardCompare($1) == .orderedAscending }
+    }
+    public func color(for tag: String) -> TagColor {
+        tagPalette?[TagColor.key(tag)] ?? .gray
+    }
+    public mutating func setColor(_ color: TagColor, for tag: String) {
+        let key = TagColor.key(tag)
+        guard !key.isEmpty else { return }
+        if tagPalette == nil { tagPalette = [:] }
+        tagPalette?[key] = color
+    }
+    public func filtered(query: String, filter: TagFilter) -> [Note] {
+        notes.filter { $0.matches(query) && filter.includes($0) }
+    }
     @discardableResult public mutating func add(_ part: NotePart, title: String? = nil, id: UUID = UUID()) -> UUID? {
         if notes.contains(where: { $0.id == id }) { return id }
         guard !part.isEmpty else { return nil }

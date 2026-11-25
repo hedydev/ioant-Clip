@@ -8,3 +8,30 @@
 
 "Plain text" = "纯文本";
 "Rich text" = "富文本";
+
+"Title" = "标题";
+"Tags" = "标签";
+"All notes" = "全部笔记";
+"Untagged" = "无标签";
+"No tags yet" = "暂无标签";
+"New tag" = "新标签";
+"Tag name" = "标签名称";
+"Add" = "添加";
+"Color" = "颜色";
+"Remove tag" = "移除标签";
+"Suggested tags" = "推荐标签";
+"Existing tags" = "已有标签";
+"Tag colors are shared across notes." = "同名标签在所有笔记中共享颜色。";
+"Suggestions are local rules. Nothing is added automatically." = "根据本地规则推荐，不会自动添加标签。";
+"Edit note" = "编辑笔记";
+"Save" = "保存";
+"Cancel" = "取消";
+"Gray" = "灰色";
+"Red" = "红色";
+"Orange" = "橙色";
+"Yellow" = "黄色";
+"Green" = "绿色";
+"Teal" = "青色";
+"Blue" = "蓝色";
+"Purple" = "紫色";
+"Pink" = "粉色";

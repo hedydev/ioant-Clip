@@ -43,3 +43,6 @@ New captures have a padded, rounded source-colored reading surface. Existing sna
 
 ### 0.4.0 complex websites
 Entire page layout preserves the source CSS viewport, grid/flex used sizes and nested scrolling instead of fitting every child to a percentage of its parent. The reading surface may scroll horizontally on narrower displays. Background images and available CORS-readable image assets are embedded without cross-origin credentials; inaccessible assets are reported. Visible page · exact image is an explicit screenshot of the current browser viewport, not a full scroll capture or selectable rich text. It is useful for complex applications where DOM reconstruction is inadequate. Existing notes are unchanged; recapture after reloading extension.
+
+### Colored tags
+New notes remain untagged. Optional suggestions use only deterministic local domain/title/text rules shared on macOS and iOS; no AI model, network or inference service. Assign tags explicitly in the note header or edit sheet. Colors are shared by case-insensitive tag name; legacy libraries decode without migration. Sidebar filters all notes, untagged, and each used tag, combined with search.

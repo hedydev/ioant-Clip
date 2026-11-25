@@ -123,19 +123,18 @@ struct LibraryView: View {
     @State private var editing: Note?
     @State private var deleting = Set<UUID>()
     @State private var confirmDelete = false
-    @State private var tagFilter: String?
+    @State private var tagFilter: TagFilter = .all
     var current: Note? { store.library.notes.first { $0.id == selected } }
-    var tags: [String] { Note.normalizedTags(store.library.notes.flatMap(\.tags)).sorted() }
-    var filtered: [Note] { store.library.notes.filter { $0.matches(query) && (tagFilter == nil || $0.tags.contains { $0.caseInsensitiveCompare(tagFilter ?? "") == .orderedSame }) } }
+    var tags: [String] { store.library.allTags }
+    var filtered: [Note] { store.library.filtered(query: query, filter: tagFilter) }
     var body: some View {
         NavigationSplitView(preferredCompactColumn: $compactColumn) {
             List {
-                if !tags.isEmpty {
-                    Section("Tags") {
-                        Picker("Filter", selection: $tagFilter) {
-                            Text("All notes").tag(nil as String?)
-                            ForEach(tags, id: \.self) { Text($0).tag(Optional($0)) }
-                        }
+                Section("Tags") {
+                    filterRow("All notes", icon: "tray.full", filter: .all, count: store.library.notes.count)
+                    filterRow("Untagged", icon: "tag.slash", filter: .untagged, count: store.library.notes.filter { $0.tags.isEmpty }.count)
+                    ForEach(tags, id: \.self) { tag in
+                        filterRow(tag, color: store.library.color(for: tag), filter: .tag(tag), count: store.library.notes.filter { TagFilter.tag(tag).includes($0) }.count)
                     }
                 }
                 Section("Notes · \(filtered.count)") {
@@ -147,7 +146,7 @@ struct LibraryView: View {
                                     Text(note.title).font(.headline).lineLimit(2)
                                     Text(note.parts.first?.text ?? "").font(.caption).foregroundStyle(.secondary).lineLimit(2)
                                     Text(note.createdAt, style: .date).font(.caption2).foregroundStyle(.secondary)
-                                    if !note.tags.isEmpty { Text(note.tags.joined(separator: " · ")).font(.caption).foregroundStyle(.tint).lineLimit(1) }
+                                    if !note.tags.isEmpty { TagChipRow(tags: note.tags, color: store.library.color(for:)) }
                                 }
                                 Spacer()
                             }.padding(.vertical, 5).contentShape(Rectangle())
@@ -195,7 +194,22 @@ struct LibraryView: View {
                             }
                             .buttonStyle(.bordered)
                         }
-                        if !note.tags.isEmpty { Text(note.tags.joined(separator: " · ")).font(.caption).foregroundStyle(.secondary) }
+                        if !note.tags.isEmpty { TagChipRow(tags: note.tags, color: store.library.color(for:)) }
+                        let suggestions = TagSuggestions.forNote(note, existingTags: tags)
+                        if !suggestions.isEmpty {
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 6) {
+                                    Text("Suggested tags").font(.caption).foregroundStyle(.secondary)
+                                    ForEach(suggestions, id: \.self) { tag in
+                                        Button {
+                                            _ = store.change { $0.update(note.id, title: note.title, tags: note.tags + [tag]) }
+                                        } label: {
+                                            Label(tag, systemImage: "plus").font(.caption)
+                                        }.buttonStyle(.bordered)
+                                    }
+                                }
+                            }
+                        }
                         if let source = note.parts.first?.sourceURL { Text(source).font(.caption).foregroundStyle(.secondary).lineLimit(1).textSelection(.enabled) }
                     }.padding()
                     Divider()
@@ -233,14 +247,41 @@ struct LibraryView: View {
         }
         .onChange(of: selected) { _, _ in plainPreview = false; copiedID = nil }
         .onChange(of: store.lastIncoming) { _, id in
-            if let id, !selecting { selected = id; compactColumn = .detail; tagFilter = nil; query = "" }
+            if let id, !selecting { selected = id; compactColumn = .detail; tagFilter = .all; query = "" }
         }
         .fileImporter(isPresented: $importing, allowedContentTypes: [.json]) { result in
-            switch result { case .success(let url): if let id = store.importFile(url) { selected = id; compactColumn = .detail; tagFilter = nil; query = "" }; case .failure(let error): store.error = error.localizedDescription }
+            switch result { case .success(let url): if let id = store.importFile(url) { selected = id; compactColumn = .detail; tagFilter = .all; query = "" }; case .failure(let error): store.error = error.localizedDescription }
         }
-        .sheet(item: $editing) { note in EditNote(note: note) { title, tags in _ = store.change { $0.update(note.id, title: title, tags: tags) } } }
+        .sheet(item: $editing) { note in
+            EditNote(note: note, library: store.library) { title, tags, colors in
+                store.change {
+                    $0.update(note.id, title: title, tags: tags)
+                    for (tag, color) in colors { $0.setColor(color, for: tag) }
+                } != nil
+            }
+        }
+        .onChange(of: tags) { _, available in
+            if case .tag(let tag) = tagFilter, !available.contains(where: { TagColor.key($0) == TagColor.key(tag) }) { tagFilter = .all }
+        }
         .confirmationDialog("Delete \(deleting.count) note(s)?", isPresented: $confirmDelete, titleVisibility: .visible) { Button("Delete", role: .destructive) { if store.change({ $0.delete(deleting) }) != nil { if let selected, deleting.contains(selected) { self.selected = nil; compactColumn = .sidebar }; checked.subtract(deleting) }; deleting.removeAll() } }
         .alert("ioant-Note", isPresented: Binding(get: { store.error != nil }, set: { if !$0 { store.error = nil } })) { Button("OK") { store.error = nil } } message: { Text(store.error ?? "") }
+    }
+    private func filterRow(_ name: String, icon: String = "tag.fill", color: TagColor? = nil, filter: TagFilter, count: Int) -> some View {
+        Button {
+            tagFilter = filter
+            checked.removeAll()
+            if let note = current, !filter.includes(note) { selected = nil }
+        } label: {
+            HStack(spacing: 9) {
+                Image(systemName: icon).foregroundStyle(color?.swiftUIColor ?? Color.secondary)
+                Text(LocalizedStringKey(name)).lineLimit(1)
+                Spacer()
+                Text(count.formatted()).font(.caption).foregroundStyle(.secondary).monospacedDigit()
+            }.contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .listRowBackground(tagFilter == filter ? Color.accentColor.opacity(0.15) : Color.clear)
+        .accessibilityAddTraits(tagFilter == filter ? [.isSelected] : [])
     }
     private var pasteButton: some View {
         Button(action: paste) {
@@ -256,36 +297,7 @@ struct LibraryView: View {
     }
     func paste() {
         guard let part = Clipboard.read(), !part.isEmpty else { store.error = "No supported content in the clipboard."; return }
-        if let id = store.change({ $0.add(part) }) ?? nil { selected = id; compactColumn = .detail; tagFilter = nil; query = "" }
-    }
-}
-
-struct EditNote: View {
-    @Environment(\.dismiss) var dismiss
-    @State var title: String
-    @State var tags: String
-    let save: (String, [String]) -> Void
-    init(note: Note, save: @escaping (String, [String]) -> Void) { _title = State(initialValue: note.title); _tags = State(initialValue: note.tags.joined(separator: ", ")); self.save = save }
-    var body: some View {
-        NavigationStack {
-            Form {
-                TextField("Title", text: $title)
-                TextField("Tags (comma separated)", text: $tags)
-            }
-            .padding()
-            .navigationTitle("Edit note")
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
-                        save(title, tags.components(separatedBy: CharacterSet(charactersIn: ",，")))
-                        dismiss()
-                    }
-                }
-            }
-        }
+        if let id = store.change({ $0.add(part) }) ?? nil { selected = id; compactColumn = .detail; tagFilter = .all; query = "" }
     }
 }
 
