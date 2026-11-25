@@ -12,15 +12,25 @@ actor CloudKitRevisionTransport: RevisionTransport {
     private let database: CKDatabase
     private let namespace: String
     private let zone: CKRecordZone
+    private let checkpointURL: URL?
+    private var checkpoint: RemoteRevisionCheckpoint?
+    private(set) var lastRead: ReadMetrics?
+    private var fetching = false
+    struct ReadMetrics: Sendable {
+        let usedCursor: Bool
+        let downloadedRecords: Int
+        let downloadedBytes: Int
+    }
     private static let recordType = "NoteRevisionV1"
     private static let maxPayload = 128 * 1024 * 1024
 
-    init(containerIdentifier: String, environment: String, zoneName: String = "ioantNoteRevisionsV1") {
+    init(containerIdentifier: String, environment: String, zoneName: String = "ioantNoteRevisionsV1", checkpointURL: URL? = nil) {
         let container = CKContainer(identifier: containerIdentifier)
         self.container = container
         self.database = container.privateCloudDatabase
         self.namespace = containerIdentifier + ":" + environment
         self.zone = CKRecordZone(zoneName: zoneName)
+        self.checkpointURL = checkpointURL
     }
     func identity() async throws -> SyncAccount {
         guard try await container.accountStatus() == .available else { throw ProviderError.accountUnavailable }
@@ -48,26 +58,77 @@ actor CloudKitRevisionTransport: RevisionTransport {
         guard record.recordID.recordName == revision.id.uuidString else { throw ProviderError.invalidRecord }
         return revision
     }
-    /// Initial full zone-change read, with paging. A future production version must retain
-    /// zone change tokens and implement history retention before large libraries.
+    private func loadCheckpoint(expected: SyncAccount) throws -> RemoteRevisionCheckpoint? {
+        if let checkpoint {
+            try checkpoint.validate(account: expected, zone: zone.zoneID.zoneName)
+            return checkpoint
+        }
+        guard let url = checkpointURL, FileManager.default.fileExists(atPath: url.path) else { return nil }
+        let size = try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? Int.max
+        guard size <= 384 * 1024 * 1024 else { throw SyncSessionError.historyLimit }
+        let stored = try JSONDecoder().decode(RemoteRevisionCheckpoint.self, from: Data(contentsOf: url))
+        try stored.validate(account: expected, zone: zone.zoneID.zoneName)
+        return stored
+    }
+    private func persist(_ next: RemoteRevisionCheckpoint) throws {
+        if let url = checkpointURL {
+            try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
+            let data = try JSONEncoder().encode(next)
+            guard data.count <= 384 * 1024 * 1024 else { throw SyncSessionError.historyLimit }
+            try data.write(to: url, options: .atomic)
+            try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: url.path)
+        }
+        checkpoint = next
+    }
+    /// Return a complete remote graph to SyncCycle, while only downloading
+    /// modifications since the last successfully persisted server cursor.
     func fetchRevisions(expected: SyncAccount) async throws -> [SyncRevision] {
+        guard !fetching else { throw SyncSessionError.busy }
+        fetching = true
+        defer { fetching = false }
+        lastRead = nil
         try await require(expected)
+        let prior = try loadCheckpoint(expected: expected)
         do { _ = try await database.recordZone(for: zone.zoneID) }
         catch let error as CKError where error.code == .zoneNotFound || error.code == .unknownItem {
             try await require(expected)
+            guard prior == nil else { throw RemoteRevisionCheckpoint.Failure.historyDisappeared }
             return []
         }
-        // A full zone-change scan requires no queryable recordName index.
-        // Until durable change-token storage is implemented, start at nil.
-        var token: CKServerChangeToken?
-        var values: [UUID: SyncRevision] = [:]
+        let token: CKServerChangeToken?
+        if let prior {
+            // A token archive that no longer decodes can be refreshed, but the
+            // verified old snapshot remains a mandatory subset of the refresh.
+            token = try? NSKeyedUnarchiver.unarchivedObject(ofClass: CKServerChangeToken.self, from: prior.cursor)
+        } else { token = nil }
+        let scanned: (SyncJournal, CKServerChangeToken, Int, Int)
+        var usedCursor = token != nil
+        do {
+            scanned = try await scan(expected: expected, since: token, initial: token == nil ? SyncJournal() : prior!.journal)
+        } catch let error as CKError where error.code == .changeTokenExpired && token != nil {
+            usedCursor = false
+            scanned = try await scan(expected: expected, since: nil, initial: SyncJournal())
+        }
+        if let prior { try prior.requirePreserved(in: scanned.0) }
+        try await require(expected)
+        try Task.checkCancellation()
+        let archive = try NSKeyedArchiver.archivedData(withRootObject: scanned.1, requiringSecureCoding: true)
+        let next = RemoteRevisionCheckpoint(account: expected, zone: zone.zoneID.zoneName, cursor: archive, journal: scanned.0)
+        try next.validate(account: expected, zone: zone.zoneID.zoneName)
+        try persist(next)
+        lastRead = ReadMetrics(usedCursor: usedCursor, downloadedRecords: scanned.2, downloadedBytes: scanned.3)
+        return Array(scanned.0.revisions.values)
+    }
+    private func scan(expected: SyncAccount, since: CKServerChangeToken?, initial: SyncJournal) async throws -> (SyncJournal, CKServerChangeToken, Int, Int) {
+        var token = since
+        var pending: [UUID: SyncRevision] = [:]
         var receivedBytes = 0
+        var downloaded = 0
         var pages = 0
         let limits = SyncLimits.review
         while true {
             try await require(expected)
             let page = try await database.recordZoneChanges(inZoneWith: zone.zoneID, since: token, desiredKeys: ["payload", "sha256"], resultsLimit: 100)
-            // Physical deletions violate this immutable journal contract.
             guard page.deletions.isEmpty else { throw ProviderError.invalidRecord }
             pages += 1
             guard pages <= limits.revisionCount + 1 else { throw SyncSessionError.historyLimit }
@@ -78,21 +139,26 @@ actor CloudKitRevisionTransport: RevisionTransport {
                       let asset = record["payload"] as? CKAsset, let url = asset.fileURL,
                       let bytes = try url.resourceValues(forKeys: [.fileSizeKey]).fileSize,
                       bytes >= 0, bytes <= limits.payloadBytes,
-                      bytes <= limits.totalBytes - receivedBytes else { throw SyncSessionError.historyLimit }
+                      bytes <= limits.totalBytes - receivedBytes,
+                      downloaded < limits.revisionCount else { throw SyncSessionError.historyLimit }
                 receivedBytes += bytes
+                downloaded += 1
                 let revision = try decode(record)
-                if let existing = values[revision.id] {
+                if let existing = pending[revision.id] ?? initial.revisions[revision.id] {
                     guard existing == revision else { throw ProviderError.immutableCollision }
                 } else {
-                    guard values.count < limits.revisionCount else { throw SyncSessionError.historyLimit }
-                    values[revision.id] = revision
+                    guard initial.revisions.count + pending.count < limits.revisionCount else { throw SyncSessionError.historyLimit }
+                    pending[revision.id] = revision
                 }
             }
-            guard page.moreComing else { break }
             token = page.changeToken
+            if !page.moreComing { break }
         }
-        try await require(expected)
-        return Array(values.values)
+        guard let token else { throw ProviderError.invalidRecord }
+        var merged = initial
+        try merged.ingest(Array(pending.values))
+        try limits.validate(Array(merged.revisions.values))
+        return (merged, token, downloaded, receivedBytes)
     }
     func upload(_ revisions: [SyncRevision], expected: SyncAccount) async throws {
         guard !revisions.isEmpty else { return }

@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "title": "Verify durable CloudKit cursor on existing synthetic zone",
+  "steps": [
+    {
+      "name": "build_mac",
+      "runtime": "bash",
+      "script": "scripts/cloudkit/build_signed_smoke_mac.sh",
+      "timeoutSeconds": 300
+    },
+    {
+      "name": "incremental_smoke",
+      "runtime": "bash",
+      "script": "scripts/cloudkit/run_incremental_smoke.sh",
+      "timeoutSeconds": 180
+    },
+    {
+      "name": "full_regression",
+      "runtime": "bash",
+      "script": "scripts/validate.sh",
+      "timeoutSeconds": 300
+    }
+  ],
+  "artifacts": []
+}

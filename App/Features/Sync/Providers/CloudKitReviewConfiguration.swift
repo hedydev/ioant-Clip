@@ -18,6 +18,7 @@ struct CloudKitReviewConfiguration {
         #endif
     }
     func transport() -> any RevisionTransport {
-        CloudKitRevisionTransport(containerIdentifier: container, environment: environment)
+        CloudKitRevisionTransport(containerIdentifier: container, environment: environment,
+            checkpointURL: LibraryLocation.notesURL.deletingLastPathComponent().appending(path: "cloudkit-remote-checkpoint-v1.json"))
     }
 }
