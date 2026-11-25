@@ -17,7 +17,10 @@ struct ClipDetailView: View {
             if let note = current {
                 VStack(alignment: .leading, spacing: 0) {
                     VStack(alignment: .leading, spacing: 6) {
-                        ClipReaderHeader(note: note, plainPreview: $plainPreview, copiedID: $copiedID)
+                        ClipReaderHeader(note: note, plainPreview: Binding(
+                            get: { plainPreview },
+                            set: { plainPreview = $0; showingMedia = false }
+                        ), copiedID: $copiedID)
                         if !note.tags.isEmpty { TagChipRow(tags: note.tags, color: store.library.color(for:)) }
                         let suggestions = TagSuggestions.forNote(note, existingTags: tags)
                         if !suggestions.isEmpty {

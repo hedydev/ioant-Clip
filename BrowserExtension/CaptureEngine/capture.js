@@ -67,7 +67,11 @@ async function capture(mode) {
     const tag = node.tagName.toUpperCase();
     if (skip.has(tag) || node.isContentEditable || node.hidden || !wholePage && node.getAttribute('aria-hidden') === 'true' && tag !== 'SVG') return;
     const cs = getComputedStyle(node);
-    if (isVisuallyClipped(node,cs)) return;
+    // Audio without native controls has no layout box. It can still be
+    // playable through the page's custom controls and belong in the index.
+    const hasAudioSource = tag === 'AUDIO' &&
+      (node.currentSrc || node.getAttribute('src') || node.querySelector('source[src]'));
+    if (!hasAudioSource && isVisuallyClipped(node,cs)) return;
     if (['VIDEO', 'AUDIO', 'IFRAME'].includes(tag)) {
       recordMedia(node, tag, parent);
       return;
