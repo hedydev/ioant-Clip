@@ -74,6 +74,18 @@ import UIKit
         #endif
         return text.isEmpty ? nil : .init(text: text)
     }
+    static func copy(_ note: Note) {
+        let text = note.parts.map(\.text).joined(separator: "\n\n")
+        let html = note.parts.map(\.renderedHTML).joined(separator: "\n<hr>\n")
+        #if os(macOS)
+        let board = NSPasteboard.general
+        board.clearContents()
+        board.setString(html, forType: .html)
+        board.setString(text, forType: .string)
+        #else
+        UIPasteboard.general.setItems([["public.html": Data(html.utf8), "public.utf8-plain-text": text]])
+        #endif
+    }
     static func richHTML(_ data: Data) -> String? {
         guard let string = try? NSAttributedString(data: data, options: [.documentType: NSAttributedString.DocumentType.rtf], documentAttributes: nil), let html = try? string.data(from: NSRange(location: 0, length: string.length), documentAttributes: [.documentType: NSAttributedString.DocumentType.html]) else { return nil }
         return String(data: html, encoding: .utf8)
@@ -101,6 +113,7 @@ import UIKit
 struct LibraryView: View {
     @EnvironmentObject var store: LibraryStore
     @State private var selected: UUID?
+    @State private var copiedID: UUID?
     @State private var compactColumn: NavigationSplitViewColumn = .sidebar
     @State private var checked = Set<UUID>()
     @State private var selecting = false
@@ -143,10 +156,20 @@ struct LibraryView: View {
             }.navigationTitle("ioant-Note").searchable(text: $query)
                 .toolbar {
                     ToolbarItemGroup {
-                        Button { paste() } label: { Label("New from clipboard", systemImage: "doc.on.clipboard") }.keyboardShortcut("v", modifiers: .command)
-                        Button { importing = true } label: { Label("Import web capture", systemImage: "square.and.arrow.down") }
                         Button { selecting.toggle(); checked.removeAll() } label: { Label(selecting ? "Done" : "Select", systemImage: selecting ? "checkmark" : "checkmark.circle") }
                     }
+                }
+                .safeAreaInset(edge: .top, spacing: 0) {
+                    VStack(spacing: 8) {
+                        pasteButton
+                        Button { importing = true } label: {
+                            Label("Import web capture", systemImage: "square.and.arrow.down")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.bordered)
+                    }
+                    .padding(12)
+                    .background(.regularMaterial)
                 }
                 .safeAreaInset(edge: .bottom) {
                     if selecting { HStack { Text("\(checked.count) selected"); Spacer(); Button("Merge") { if let id = store.change({ $0.merge(checked) }) ?? nil { selected = id; compactColumn = .detail; selecting = false; checked.removeAll() } }.disabled(checked.count < 2); Button(role: .destructive) { deleting = checked; confirmDelete = true } label: { Image(systemName: "trash") }.disabled(checked.isEmpty) }.padding().background(.regularMaterial) }
@@ -155,14 +178,40 @@ struct LibraryView: View {
             if let note = current {
                 VStack(alignment: .leading, spacing: 0) {
                     VStack(alignment: .leading, spacing: 6) {
-                        Text(note.title).font(.title2.bold())
+                        HStack(alignment: .top) {
+                            Text(note.title).font(.title2.bold())
+                            Spacer()
+                            Button { Clipboard.copy(note); copiedID = note.id } label: {
+                                Label(copiedID == note.id ? "Copied" : "Copy note", systemImage: copiedID == note.id ? "checkmark" : "doc.on.doc")
+                            }
+                            .buttonStyle(.bordered)
+                        }
                         if !note.tags.isEmpty { Text(note.tags.joined(separator: " · ")).font(.caption).foregroundStyle(.secondary) }
                         if let source = note.parts.first?.sourceURL { Text(source).font(.caption).foregroundStyle(.secondary).lineLimit(1).textSelection(.enabled) }
                     }.padding()
                     Divider()
                     HTMLPreview(html: note.htmlDocument).id(note.id)
                 }.toolbar { ToolbarItemGroup { Button { editing = note } label: { Label("Edit title and tags", systemImage: "tag") }; Button(role: .destructive) { deleting = [note.id]; confirmDelete = true } label: { Label("Delete", systemImage: "trash") } } }
-            } else { ContentUnavailableView("No note selected", systemImage: "doc.richtext", description: Text("Paste content or import a browser capture.")) }
+            } else {
+                VStack(spacing: 16) {
+                    Image(systemName: "doc.on.clipboard")
+                        .font(.system(size: 44))
+                        .foregroundStyle(.secondary)
+                    Text("Create a note from clipboard").font(.title2.bold())
+                    Text("Copy text, images or formatted web content, then paste to create a new note.")
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                    Button(action: paste) {
+                        Label("Paste as new note", systemImage: "doc.on.clipboard")
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+                    Button("Import web capture") { importing = true }
+                        .buttonStyle(.bordered)
+                }
+                .padding(24)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
         }
         .onChange(of: store.lastIncoming) { _, id in
             if let id, !selecting { selected = id; compactColumn = .detail; tagFilter = nil; query = "" }
@@ -173,6 +222,18 @@ struct LibraryView: View {
         .sheet(item: $editing) { note in EditNote(note: note) { title, tags in _ = store.change { $0.update(note.id, title: title, tags: tags) } } }
         .confirmationDialog("Delete \(deleting.count) note(s)?", isPresented: $confirmDelete, titleVisibility: .visible) { Button("Delete", role: .destructive) { if store.change({ $0.delete(deleting) }) != nil { if let selected, deleting.contains(selected) { self.selected = nil; compactColumn = .sidebar }; checked.subtract(deleting) }; deleting.removeAll() } }
         .alert("ioant-Note", isPresented: Binding(get: { store.error != nil }, set: { if !$0 { store.error = nil } })) { Button("OK") { store.error = nil } } message: { Text(store.error ?? "") }
+    }
+    private var pasteButton: some View {
+        Button(action: paste) {
+            Label("Paste as new note", systemImage: "doc.on.clipboard")
+                .frame(maxWidth: .infinity)
+                .labelStyle(.titleAndIcon)
+        }
+        .buttonStyle(.borderedProminent)
+        .controlSize(.large)
+        .keyboardShortcut("v", modifiers: .command)
+        .accessibilityIdentifier("paste-new-note")
+        .help("Create a note from clipboard")
     }
     func paste() {
         guard let part = Clipboard.read(), !part.isEmpty else { store.error = "No supported content in the clipboard."; return }
