@@ -2,12 +2,10 @@ import SwiftUI
 
 struct SyncSettingsView: View {
     @EnvironmentObject private var store: LibraryStore
-    @Environment(\.dismiss) private var dismiss
     @State private var pending: SyncRevision?
     private var journal: SyncJournal? { store.library.syncJournal }
     var body: some View {
-        NavigationStack {
-            List {
+        List {
                 Section("sync.storage") {
                     Label("sync.local", systemImage: "checkmark.circle.fill")
                     Text("sync.local.description").font(.caption).foregroundStyle(.secondary)
@@ -44,7 +42,6 @@ struct SyncSettingsView: View {
                 }
             }
             .navigationTitle("sync.title")
-            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("common.done") { dismiss() } } }
             .confirmationDialog("sync.conflict.confirm", isPresented: Binding(get: { pending != nil }, set: { if !$0 { pending = nil } }), titleVisibility: .visible) {
                 Button("sync.conflict.keepSelected") {
                     if let revision = pending { store.resolveConflict(revision.key, revision: revision.id) }
@@ -52,10 +49,6 @@ struct SyncSettingsView: View {
                 }
                 Button("common.cancel", role: .cancel) { pending = nil }
             }
-        }
-        #if os(macOS)
-        .frame(minWidth: 480, idealWidth: 560, minHeight: 360, idealHeight: 540)
-        #endif
     }
     private func provider(_ name: String, icon: String, status: LocalizedStringKey) -> some View {
         HStack {

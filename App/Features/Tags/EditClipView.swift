@@ -32,6 +32,10 @@ struct EditClipView: View {
                     VStack(alignment: .leading, spacing: 7) {
                         Text("editor.title").font(.headline)
                         TextField("editor.title", text: $title).textFieldStyle(.roundedBorder)
+                            #if os(iOS)
+                            .textInputAutocapitalization(.never)
+                            #endif
+                            .autocorrectionDisabled()
                     }
                     Divider()
                     VStack(alignment: .leading, spacing: 8) {
@@ -73,13 +77,13 @@ struct EditClipView: View {
                                 .onSubmit { add(name, chosen: library.allTags.contains { TagColor.key($0) == TagColor.key(name) } ? nil : newColor) }
                             Button("common.add") { add(name, chosen: library.allTags.contains { TagColor.key($0) == TagColor.key(name) } ? nil : newColor) }.disabled(name.isEmpty)
                         }
-                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 28, maximum: 36), spacing: 7)], alignment: .leading, spacing: 8) {
+                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 44, maximum: 48), spacing: 7)], alignment: .leading, spacing: 8) {
                             ForEach(TagColor.allCases, id: \.self) { item in
                                 Button { newColor = item } label: {
                                     ZStack {
                                         Circle().fill(item.swiftUIColor).frame(width: 25, height: 25)
                                         if newColor == item { Image(systemName: "checkmark").font(.caption.bold()).foregroundStyle(.white) }
-                                    }.frame(width: 32, height: 32)
+                                    }.frame(width: 44, height: 44).contentShape(Rectangle())
                                 }.buttonStyle(.plain).accessibilityLabel(Text(item.label))
                                 .accessibilityAddTraits(newColor == item ? [.isSelected] : [])
                             }
@@ -90,7 +94,7 @@ struct EditClipView: View {
                         Text("tags.rules").font(.caption).foregroundStyle(.secondary)
                     }
                     if !available.isEmpty { choices("tags.existing", values: available) }
-                }.padding(20)
+                }.padding(LayoutMetrics.panel)
             }
             .navigationTitle("editor.edit")
             .toolbar {

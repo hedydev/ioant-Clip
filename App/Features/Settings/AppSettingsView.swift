@@ -19,6 +19,11 @@ struct AppSettingsView: View {
                     Text("settings.language.description").font(.caption).foregroundStyle(.secondary)
                 } header: { Text("settings.language") }
                 AppearanceSettingsSection()
+                Section("sync.title") {
+                    NavigationLink { SyncSettingsView() } label: {
+                        Label("sync.title", systemImage: "icloud")
+                    }
+                }
             }
             .navigationTitle("settings.title")
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("common.done") { dismiss() } } }

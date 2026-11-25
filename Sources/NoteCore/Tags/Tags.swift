@@ -9,6 +9,20 @@ public enum TagColor: String, Codable, CaseIterable, Sendable {
 
 public enum TagFilter: Hashable, Sendable {
     case all, untagged, tag(String)
+    /// Stable UI preference encoding; no localized names or ambiguous reserved tag names.
+    public var preference: String {
+        switch self {
+        case .all: "all"
+        case .untagged: "untagged"
+        case .tag(let name): "tag:" + name
+        }
+    }
+    public init(preference: String) {
+        if preference == "untagged" { self = .untagged }
+        else if preference.hasPrefix("tag:"), !TagColor.key(String(preference.dropFirst(4))).isEmpty {
+            self = .tag(String(preference.dropFirst(4)))
+        } else { self = .all }
+    }
     public func includes(_ note: Note) -> Bool {
         switch self {
         case .all: return true

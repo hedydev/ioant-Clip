@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "title": "Validate and launch only ioant-Clip clients for review",
+  "steps": [
+    {
+      "name": "validate",
+      "runtime": "bash",
+      "script": "scripts/validate.sh",
+      "timeoutSeconds": 900
+    },
+    {
+      "name": "relaunch_mac",
+      "runtime": "bash",
+      "script": "scripts/relaunch_mac.sh",
+      "timeoutSeconds": 120
+    },
+    {
+      "name": "launch_existing_review_iphone",
+      "runtime": "bash",
+      "script": "scripts/run_ios_visible_device.sh",
+      "timeoutSeconds": 150
+    }
+  ],
+  "artifacts": []
+}

@@ -3,104 +3,106 @@ import SwiftUI
 struct LibrarySidebar: View {
     @EnvironmentObject var store: LibraryStore
     @Environment(\.clipTheme) private var theme
+    #if os(iOS)
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    #endif
     @Binding var selected: UUID?
     @Binding var compactColumn: NavigationSplitViewColumn
     @Binding var checked: Set<UUID>
     @Binding var selecting: Bool
     @Binding var query: String
     @Binding var importing: Bool
-    @Binding var syncSettings: Bool
     @Binding var appSettings: Bool
     @Binding var deleting: Set<UUID>
     @Binding var confirmDelete: Bool
     @Binding var tagFilter: TagFilter
     let paste: () -> Void
-    var current: Note? { store.library.notes.first { $0.id == selected } }
-    var tags: [String] { store.library.allTags }
-    var filtered: [Note] { store.library.filtered(query: query, filter: tagFilter) }
+    private var compact: Bool {
+        #if os(iOS)
+        horizontalSizeClass == .compact
+        #else
+        false
+        #endif
+    }
+    private var filtered: [Note] { store.library.filtered(query: query, filter: tagFilter) }
     var body: some View {
-            List {
-                Section("tags.title") {
-                    filterRow("library.all", icon: "tray.full", filter: .all, count: store.library.notes.count)
-                    filterRow("library.untagged", icon: "tag.slash", filter: .untagged, count: store.library.notes.filter { $0.tags.isEmpty }.count)
-                    ForEach(tags, id: \.self) { tag in
-                        filterRow(tag, color: store.library.color(for: tag), filter: .tag(tag), count: store.library.notes.filter { TagFilter.tag(tag).includes($0) }.count)
+        List {
+            if !compact {
+                LibraryFilters(library: store.library, selection: tagFilter, compact: false, select: applyFilter)
+            }
+            Section("library.count \(filtered.count)") {
+                if filtered.isEmpty {
+                    Label(query.isEmpty ? LocalizedStringKey("library.noClips") : LocalizedStringKey("library.noResults"), systemImage: query.isEmpty ? "tray" : "magnifyingglass")
+                        .font(.subheadline).foregroundStyle(.secondary)
+                        .padding(.vertical, LayoutMetrics.small)
+                }
+                ForEach(filtered) { note in
+                    Button { open(note) } label: {
+                        ClipListRow(note: note, selecting: selecting, checked: checked.contains(note.id), color: store.library.color(for:))
                     }
+                    .buttonStyle(.plain)
+                    .listRowBackground((selecting ? checked.contains(note.id) : selected == note.id) ? theme.selectedRow : Color.clear)
+                    .accessibilityAddTraits((selecting ? checked.contains(note.id) : selected == note.id) ? [.isSelected] : [])
                 }
-                Section("library.count \(filtered.count)") {
-                    ForEach(filtered) { note in
-                        Button { if selecting { if checked.contains(note.id) { checked.remove(note.id) } else { checked.insert(note.id) } } else { selected = note.id; compactColumn = .detail } } label: {
-                            HStack(alignment: .top, spacing: 9) {
-                                if selecting { Image(systemName: checked.contains(note.id) ? "checkmark.circle.fill" : "circle").foregroundStyle(.tint) }
-                                VStack(alignment: .leading, spacing: 5) {
-                                    Text(note.title).font(.headline).lineLimit(2)
-                                    Text(note.parts.first?.text ?? "").font(.caption).foregroundStyle(.secondary).lineLimit(2)
-                                    Text(note.createdAt, style: .date).font(.caption2).foregroundStyle(.secondary)
-                                    if !note.tags.isEmpty { TagChipRow(tags: note.tags, color: store.library.color(for:)) }
-                                }
-                                Spacer()
-                            }.padding(.vertical, 5).contentShape(Rectangle())
-                        }.buttonStyle(.plain).listRowBackground(selected == note.id ? theme.selectedRow : Color.clear)
-                    }
+            }
+        }
+        .navigationTitle("ioant-Clip")
+        .searchable(text: $query, prompt: Text("library.search"))
+        .autocorrectionDisabled()
+        #if os(iOS)
+        .textInputAutocapitalization(.never)
+        #endif
+        .toolbar {
+            ToolbarItemGroup {
+                Button { appSettings = true } label: { Label("settings.title", systemImage: "gearshape") }
+                    .accessibilityIdentifier("clip-settings")
+                Button { selecting.toggle(); checked.removeAll() } label: {
+                    Label(LocalizedStringKey(selecting ? "common.done" : "common.select"), systemImage: selecting ? "checkmark" : "checkmark.circle")
                 }
-            }.navigationTitle("ioant-Clip").searchable(text: $query, prompt: Text("library.search"))
-                .toolbar {
-                    ToolbarItemGroup {
-                        Button { appSettings = true } label: { Label("settings.title", systemImage: "gearshape") }
-                        Button { syncSettings = true } label: { Label("sync.title", systemImage: "icloud") }
-                        Button { selecting.toggle(); checked.removeAll() } label: { Label(LocalizedStringKey(selecting ? "common.done" : "common.select"), systemImage: selecting ? "checkmark" : "checkmark.circle") }
-                    }
+                .accessibilityIdentifier("clip-select")
+            }
+        }
+        #if os(macOS)
+        .navigationSplitViewColumnWidth(min: 240, ideal: 300, max: 420)
+        #endif
+        .safeAreaInset(edge: .top, spacing: 0) {
+            VStack(spacing: LayoutMetrics.small) {
+                LibraryCaptureActions(compact: compact, paste: paste, importFile: { importing = true })
+                if compact {
+                    LibraryFilters(library: store.library, selection: tagFilter, compact: true, select: applyFilter)
                 }
-                #if os(macOS)
-                .navigationSplitViewColumnWidth(min: 220, ideal: 280, max: 380)
-                #endif
-                .safeAreaInset(edge: .top, spacing: 0) {
-                    VStack(spacing: LayoutMetrics.small) {
-                        pasteButton
-                        Button { importing = true } label: {
-                            Label("library.import", systemImage: "square.and.arrow.down")
-                                .frame(maxWidth: .infinity)
-                        }
-                        .buttonStyle(.bordered)
-                    }
-                    .padding(LayoutMetrics.medium)
-                    .background(.regularMaterial)
-                }
-                .safeAreaInset(edge: .bottom) {
-                    if selecting { HStack { Text("library.selected \(checked.count)"); Spacer(); Button("library.merge") { if let id = store.change({ $0.merge(checked) }) ?? nil { selected = id; compactColumn = .detail; selecting = false; checked.removeAll() } }.disabled(checked.count < 2); Button(role: .destructive) { deleting = checked; confirmDelete = true } label: { Image(systemName: "trash").accessibilityLabel(Text("common.delete")) }.disabled(checked.isEmpty) }.padding().background(.regularMaterial) }
-                }
+            }
+            .padding(LayoutMetrics.medium)
+            .background(.regularMaterial)
+        }
+        .safeAreaInset(edge: .bottom) {
+            if selecting {
+                LibrarySelectionBar(count: checked.count, merge: merge, delete: {
+                    deleting = checked
+                    confirmDelete = true
+                })
+            }
+        }
     }
-    private func filterRow(_ name: String, icon: String = "tag.fill", color: TagColor? = nil, filter: TagFilter, count: Int) -> some View {
-        Button {
-            tagFilter = filter
+    private func open(_ note: Note) {
+        if selecting {
+            if checked.contains(note.id) { checked.remove(note.id) } else { checked.insert(note.id) }
+        } else {
+            selected = note.id
+            compactColumn = .detail
+        }
+    }
+    private func applyFilter(_ filter: TagFilter) {
+        tagFilter = filter
+        checked.removeAll()
+        if let note = store.library.notes.first(where: { $0.id == selected }), !filter.includes(note) { selected = nil }
+    }
+    private func merge() {
+        if let id = store.change({ $0.merge(checked) }) ?? nil {
+            selected = id
+            compactColumn = .detail
+            selecting = false
             checked.removeAll()
-            if let note = current, !filter.includes(note) { selected = nil }
-        } label: {
-            HStack(spacing: 9) {
-                Image(systemName: icon).foregroundStyle(color?.swiftUIColor ?? Color.secondary)
-                filterLabel(name, filter: filter).lineLimit(1)
-                Spacer()
-                Text(count, format: .number).font(.caption).foregroundStyle(.secondary).monospacedDigit()
-            }.contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
-        .listRowBackground(tagFilter == filter ? theme.selectedFilter : Color.clear)
-        .accessibilityAddTraits(tagFilter == filter ? [.isSelected] : [])
-    }
-    private func filterLabel(_ name: String, filter: TagFilter) -> Text {
-        if case .tag = filter { return Text(verbatim: name) }
-        return Text(LocalizedStringKey(name))
-    }
-    private var pasteButton: some View {
-        Button(action: paste) {
-            Label("library.paste", systemImage: "doc.on.clipboard")
-                .frame(maxWidth: .infinity)
-                .labelStyle(.titleAndIcon)
-        }
-        .buttonStyle(.borderedProminent)
-        .controlSize(.large)
-        .keyboardShortcut("v", modifiers: .command)
-        .accessibilityIdentifier("paste-new-note")
-        .help("library.empty.title")
     }
 }

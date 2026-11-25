@@ -16,12 +16,12 @@ all_devices=[(runtime,d) for runtime,ds in inventory["devices"].items() for d in
 for runtime,d in all_devices:
     if d["state"]=="Booted" or d["name"]=="ioant-Note Review iPhone":
         print("Device:",d["name"],runtime,d["udid"],d["state"],flush=True)
-targets=[d for runtime,d in all_devices if runtime.endswith(".iOS-27-2") and d["name"]=="iPhone 18 Pro" and d["state"]=="Booted" and d.get("isAvailable",False)]
+targets=[d for runtime,d in all_devices if d["udid"]=="614FDA13-6198-452B-A6B2-94AA5591B30A" and d["name"]=="iPhone 18 Pro" and d["state"]=="Booted" and d.get("isAvailable",False)]
 if len(targets)!=1:
-    raise SystemExit("Expected exactly one booted iPhone 18 Pro (iOS 27.2); no device modified.")
+    raise SystemExit("Known review iPhone 18 Pro not booted/available; no device modified.")
 udid=targets[0]["udid"]
 print("Installing only on visible device",udid,flush=True)
 sim("install",udid,str(app),timeout=60)
 print("Installed:",sim("get_app_container",udid,"com.ioant.note.ios","app"),flush=True)
-print("Launched:",sim("launch",udid,"com.ioant.note.ios",timeout=45),flush=True)
+print("Launched:",sim("launch","--terminate-running-process",udid,"com.ioant.note.ios",timeout=45),flush=True)
 print("No device created, booted, shut down or erased.",flush=True)

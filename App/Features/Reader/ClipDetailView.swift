@@ -15,19 +15,7 @@ struct ClipDetailView: View {
             if let note = current {
                 VStack(alignment: .leading, spacing: 0) {
                     VStack(alignment: .leading, spacing: 6) {
-                        HStack(alignment: .top) {
-                            Text(note.title).font(.title2.bold())
-                            Spacer()
-                            Button { plainPreview.toggle() } label: {
-                                Label(LocalizedStringKey(plainPreview ? "reader.rich" : "reader.plain"), systemImage: plainPreview ? "doc.richtext" : "text.alignleft")
-                            }
-                            .buttonStyle(.bordered)
-                            .disabled(note.plainText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                            Button { Clipboard.copy(note); copiedID = note.id } label: {
-                                Label(LocalizedStringKey(copiedID == note.id ? "reader.copied" : "reader.copy"), systemImage: copiedID == note.id ? "checkmark" : "doc.on.doc")
-                            }
-                            .buttonStyle(.bordered)
-                        }
+                        ClipReaderHeader(note: note, plainPreview: $plainPreview, copiedID: $copiedID)
                         if !note.tags.isEmpty { TagChipRow(tags: note.tags, color: store.library.color(for:)) }
                         let suggestions = TagSuggestions.forNote(note, existingTags: tags)
                         if !suggestions.isEmpty {
@@ -44,8 +32,8 @@ struct ClipDetailView: View {
                                 }
                             }
                         }
-                        if let source = note.parts.first?.sourceURL { Text(source).font(.caption).foregroundStyle(.secondary).lineLimit(1).textSelection(.enabled) }
-                    }.padding()
+                        if let source = note.parts.first?.sourceURL { Text(verbatim: source).font(.caption).foregroundStyle(.secondary).lineLimit(1).textSelection(.enabled) }
+                    }.padding(LayoutMetrics.large)
                     Divider()
                     if plainPreview && !note.plainText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                         ScrollView {
@@ -57,7 +45,12 @@ struct ClipDetailView: View {
                     } else {
                         HTMLPreview(html: note.htmlDocument).id(note.id)
                     }
-                }.toolbar { ToolbarItemGroup { Button { editing = note } label: { Label("reader.edit", systemImage: "tag") }; Button(role: .destructive) { deleting = [note.id]; confirmDelete = true } label: { Label("common.delete", systemImage: "trash") } } }
+                }.toolbar {
+                    ToolbarItemGroup {
+                        Button { editing = note } label: { Label("reader.edit", systemImage: "tag") }
+                        Button(role: .destructive) { deleting = [note.id]; confirmDelete = true } label: { Label("common.delete", systemImage: "trash") }
+                    }
+                }
             } else {
                 VStack(spacing: LayoutMetrics.large) {
                     Image(systemName: "doc.on.clipboard")
