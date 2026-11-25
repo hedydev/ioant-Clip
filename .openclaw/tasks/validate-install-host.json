@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "title": "Validate native capture and register ioant-Note host in local Chrome and Edge",
+  "steps": [
+    {
+      "name": "validate",
+      "runtime": "bash",
+      "script": "scripts/validate.sh",
+      "timeoutSeconds": 900
+    },
+    {
+      "name": "register_native_host",
+      "runtime": "bash",
+      "script": "scripts/install_dev_host.sh",
+      "timeoutSeconds": 60
+    }
+  ],
+  "artifacts": []
+}

@@ -29,7 +29,9 @@ import UIKit
         guard ready else { return }
         let inbox = url.deletingLastPathComponent().appending(path: "CaptureInbox")
         do {
-            let result = try CaptureInbox.drain(directory: inbox, libraryURL: url, library: &library)
+            var next = library
+            let result = try CaptureInbox.drain(directory: inbox, libraryURL: url, library: &next)
+            if !result.imported.isEmpty { library = next }
             if let id = result.imported.last { lastIncoming = id }
             let newFailures = Set(result.failures).subtracting(reportedInboxFailures)
             if !newFailures.isEmpty { error = "Some incoming captures could not be imported. The files have been retained." }
@@ -208,6 +210,12 @@ struct EditNote: View {
 }
 
 final class PreviewCoordinator: NSObject, WKNavigationDelegate {
+    private var loadedHTML: String?
+    func render(_ html: String, in view: WKWebView) {
+        guard loadedHTML != html else { return }
+        loadedHTML = html
+        view.loadHTMLString(html, baseURL: nil)
+    }
     func webView(_ webView: WKWebView, decidePolicyFor action: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
         let scheme = action.request.url?.scheme ?? ""
         decisionHandler(["about", "data"].contains(scheme) && action.navigationType != .linkActivated ? .allow : .cancel)
@@ -222,13 +230,13 @@ struct HTMLPreview: NSViewRepresentable {
     let html: String
     func makeCoordinator() -> PreviewCoordinator { PreviewCoordinator() }
     func makeNSView(context: Context) -> WKWebView { previewWebView(context.coordinator) }
-    func updateNSView(_ view: WKWebView, context: Context) { view.loadHTMLString(html, baseURL: nil) }
+    func updateNSView(_ view: WKWebView, context: Context) { context.coordinator.render(html, in: view) }
 }
 #else
 struct HTMLPreview: UIViewRepresentable {
     let html: String
     func makeCoordinator() -> PreviewCoordinator { PreviewCoordinator() }
     func makeUIView(context: Context) -> WKWebView { previewWebView(context.coordinator) }
-    func updateUIView(_ view: WKWebView, context: Context) { view.loadHTMLString(html, baseURL: nil) }
+    func updateUIView(_ view: WKWebView, context: Context) { context.coordinator.render(html, in: view) }
 }
 #endif
