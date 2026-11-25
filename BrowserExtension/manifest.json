@@ -1,0 +1,8 @@
+{
+  "manifest_version": 3,
+  "name": "ioant-Note Web Capture",
+  "version": "0.1.0",
+  "description": "Save a page or selection as a styled, offline note.",
+  "permissions": ["activeTab", "scripting", "clipboardWrite"],
+  "action": {"default_popup": "popup.html", "default_title": "Save to ioant-Note"}
+}

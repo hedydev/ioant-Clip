@@ -1,0 +1,32 @@
+name: ioant-Note
+options:
+  bundleIdPrefix: com.ioant
+  deploymentTarget:
+    macOS: '14.0'
+    iOS: '17.0'
+settings:
+  base:
+    SWIFT_VERSION: '5.0'
+    GENERATE_INFOPLIST_FILE: YES
+    MARKETING_VERSION: '0.1.0'
+    CURRENT_PROJECT_VERSION: '1'
+    INFOPLIST_KEY_CFBundleDisplayName: ioant-Note
+    CODE_SIGN_STYLE: Automatic
+targets:
+  ioant-Note-macOS:
+    type: application
+    platform: macOS
+    sources: [App, Sources/NoteCore]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.ioant.note.macos
+        ENABLE_HARDENED_RUNTIME: YES
+  ioant-Note-iOS:
+    type: application
+    platform: iOS
+    sources: [App, Sources/NoteCore]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.ioant.note.ios
+        TARGETED_DEVICE_FAMILY: '1,2'
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
