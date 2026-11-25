@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Launch one dedicated development simulator for interactive user review."""
 import json, os, pathlib, subprocess, sys
+from ios_library_migration import migrate_simulator
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 CACHE = pathlib.Path("/Volumes/LunaDrive/DeveloperCache")
@@ -44,6 +45,7 @@ try:
         sim("boot",udid,timeout=60)
     sim("bootstatus",udid,"-b",timeout=120)
     sim("install",udid,str(app),timeout=60)
+    migrate_simulator(udid,sim)
     print(sim("launch",udid,bundle,timeout=45),flush=True)
     app_launched=True
     developer=pathlib.Path(run("/usr/bin/xcode-select","-p"))

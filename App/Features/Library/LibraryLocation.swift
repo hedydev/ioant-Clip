@@ -10,6 +10,8 @@ enum LibraryLocation {
         false
         #endif
     }
+    // Keep the original daily directory so Mac data and old queued captures
+    // remain available. On iOS the bundle ID still determines the sandbox.
     static var directoryName: String {
         isCloudReview ? "ioant-Clip-CloudKit-Review" : "ioant-Note"
     }

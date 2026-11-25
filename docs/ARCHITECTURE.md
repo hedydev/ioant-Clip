@@ -1,6 +1,6 @@
 # ioant-Clip architecture
 
-Hero Skills baseline: 62f7b2ac062e62de41f8fe8565583d761aeabb0f. Product is a high-fidelity content collection library, not a note editor. UI terminology: clip / collection. Preserve legacy repository, package, bundle IDs, capture envelope, persisted field names and paths until an explicit migration is approved.
+Hero Skills baseline: 62f7b2ac062e62de41f8fe8565583d761aeabb0f. Product is a high-fidelity content collection library, not a note editor. UI terminology: clip / collection. Product identity is ioant-Clip; bundle IDs and package renamed in the approved identity migration. Legacy repository registration, capture envelope, persisted field names and daily paths are deliberately preserved.
 
 | Module | Responsibility and contract |
 |---|---|
@@ -12,15 +12,15 @@ Hero Skills baseline: 62f7b2ac062e62de41f8fe8565583d761aeabb0f. Product is a hig
 | App/Platform | AppKit/UIKit clipboard and WebKit platform views |
 | App/DesignSystem | UI presentation mappings |
 | App/Localization | Resource ownership |
-| Sources/NoteCore/Notes | Note, NotePart and NoteLibrary; stable persisted schema and mutation owner |
-| Sources/NoteCore/Rendering | Pure HTML generation, source colors and offline CSP |
-| Sources/NoteCore/Persistence | Atomic file load/save |
-| Sources/NoteCore/Capture | Envelope decoding and durable inbox |
-| Sources/NoteCore/Tags | Colors, filters, deterministic suggestions (no AI) |
-| Sources/NoteCore/Sync | Revision graph, exchange and pure projection |
+| Sources/ClipCore/Notes | Note, NotePart and NoteLibrary; stable persisted schema and mutation owner |
+| Sources/ClipCore/Rendering | Pure HTML generation, source colors and offline CSP |
+| Sources/ClipCore/Persistence | Atomic file load/save |
+| Sources/ClipCore/Capture | Envelope decoding and durable inbox |
+| Sources/ClipCore/Tags | Colors, filters, deterministic suggestions (no AI) |
+| Sources/ClipCore/Sync | Revision graph, exchange and pure projection |
 | BrowserExtension | Popup and CaptureEngine modules. Layout, assets, SVG and traversal have separate owners; deterministic generated injected.js contains all helpers inside capture(mode) for chrome.scripting.executeScript. Build script checks exact generated source. |
 
-UI -> store/use case -> core, native adapters at app boundary. Core must not import SwiftUI, AppKit/UIKit, CloudKit or WebKit. Stable data owners, no duplicate stores. Native NavigationSplitView, List, Menu, Sheet, Toolbar and gestures remain unchanged. Do not change user content, cloud settings, bundle identity or source styles during structural work. Native host ID com.ioant.note.capture stays unchanged. App binary target names remain legacy for build scripts.
+UI -> store/use case -> core, native adapters at app boundary. Core must not import SwiftUI, AppKit/UIKit, CloudKit or WebKit. Stable data owners, no duplicate stores. Native NavigationSplitView, List, Menu, Sheet, Toolbar and gestures remain unchanged. Do not change user content, cloud settings, bundle identity or source styles during structural work. Current native host ID is com.ioant.clip.capture; a legacy com.ioant.note.capture alias points to the same host and inbox. Current binary/scheme names are ioant-Clip-macOS and ioant-Clip-iOS.
 
 ## Next steps
 R2 semantic localization and persistent language choice; R3 semantic theme with system/light/dark and accent choice; R4 native platform layout polish. Build and regression test both native platforms and browser capture each stage. Generated capture bundle is not a second source of truth; edit source modules and regenerate.
@@ -36,3 +36,6 @@ The navigation root remains NavigationSplitView. Compact iPhone/iPad widths use 
 
 ## Window and modal presentation contract
 Main macOS window defaults to 1200 x 800 pt, minimum content 760 x 480 pt. MainWindowSizing upgrades older small restored windows once, bounded by current screen visible frame; subsequent native restoration respects user sizing. iOS/iPadOS use native window sizing. All feature sheets use DesignSystem/Presentation/ClipSheet (native .sheet, NavigationStack, toolbar actions), sizes regular 580x580 / large 660x660 bounded by presenting content size, desktop 28 pt / mobile 20 pt page padding. Use ModalScrollPage, ModalSection and ModalDescription for wrapping and scrolling as needed; nested pages reuse the native navigation stack, not a second modal or double scroll container. Never put long descriptions in the macOS two-column Form label grid; do not clip with fixed row heights. Keep platform confirmationDialog/alert/fileImporter unchanged. Native animation, gestures and keyboard safe area remain system-owned. New feature modals must follow this contract. Geometry regression tests are not visual acceptance.
+
+## Product identity migration
+Current Xcode project ioant-Clip, schemes ioant-Clip-macOS/iOS, Swift package ClipCore, bundle IDs com.ioant.clip.macos/iOS, capture host com.ioant.clip.capture. The current signing preflight targets new IDs. Existing model names and JSON keys remain stable for Codable compatibility, no data schema migration. Mac daily Application Support/ioant-Note remains the single data owner and both host aliases target that inbox; migration relaunch gracefully stops the old app first. iOS simulator review copies the old library bytes into the new app sandbox only if absent; no automatic merging or removal. Real device sandbox transfer is not implemented. Repository URL/workspace/MCP key retained pending separate migration of infrastructure. New export suffix .ioantclip.json; existing JSON imports still work.

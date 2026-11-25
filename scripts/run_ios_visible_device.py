@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Install Note on the uniquely identified already booted user review device."""
 import json, pathlib, subprocess, plistlib, os
+from ios_library_migration import migrate_simulator
 root=pathlib.Path(__file__).resolve().parents[1]
 cache=pathlib.Path("/Volumes/LunaDrive/DeveloperCache")
 derived=cache/"projects/ioant-clip/DerivedData" if cache.is_dir() and os.access(cache,os.W_OK) else root/"DerivedData"
@@ -22,6 +23,7 @@ if len(targets)!=1:
 udid=targets[0]["udid"]
 print("Installing only on visible device",udid,flush=True)
 sim("install",udid,str(app),timeout=60)
+migrate_simulator(udid,sim)
 print("Installed:",sim("get_app_container",udid,"com.ioant.clip.ios","app"),flush=True)
 print("Launched:",sim("launch","--terminate-running-process",udid,"com.ioant.clip.ios",timeout=45),flush=True)
 print("No device created, booted, shut down or erased.",flush=True)

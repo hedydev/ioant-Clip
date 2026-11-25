@@ -8,18 +8,18 @@ Requires macOS 14+, Xcode 15+ (with iOS 17+ SDK), and XcodeGen. Run from the rep
 
     brew install xcodegen # only if missing
     xcodegen generate
-    open ioant-Note.xcodeproj
+    open ioant-Clip.xcodeproj
     swift test
 
-Select ioant-Note-macOS or ioant-Note-iOS. For an iPhone/iPad device, select your signing team in Xcode. macOS and generic iOS Simulator builds were verified for the R1 baseline; physical device installation is separate.
+Select ioant-Clip-macOS or ioant-Clip-iOS. For an iPhone/iPad device, select your signing team in Xcode. macOS and generic iOS Simulator builds were verified for the R1 baseline; physical device installation is separate.
 
 ## Chrome / Edge extension (unpacked)
 
 1. Open chrome://extensions (Edge: edge://extensions).
 2. Enable Developer mode, choose Load unpacked, select BrowserExtension.
 3. Visit a normal web page, e.g. a ChatGPT conversation. Click the extension, choose Save entire page or highlight text and choose Save selection.
-4. For one-click import on macOS, run `python3 scripts/install_native_host.py --app /absolute/path/to/ioant-Note-macOS.app` once after building. This installs the exact extension ID allowlist in the Chrome native messaging directory and a private local host. For Edge, install separately with `--browser edge` if its profile is available and permitted. Reload the unpacked extension after updating. Capture is queued locally and the app opens in the background; it imports pending captures automatically. The extension acknowledges the queue, not a confirmed database write.
-5. If direct import is unavailable, click Export capture file and manually import the .ioantnote.json file. Optionally choose Also copy styled HTML. Avoid manually importing a capture that has already been queued.
+4. For one-click import on macOS, run `python3 scripts/install_native_host.py --app /absolute/path/to/ioant-Clip-macOS.app` once after building. This installs the exact extension ID allowlist in the Chrome native messaging directory and a private local host. For Edge, install separately with `--browser edge` if its profile is available and permitted. Reload the unpacked extension after updating. Capture is queued locally and the app opens in the background; it imports pending captures automatically. The extension acknowledges the queue, not a confirmed database write.
+5. If direct import is unavailable, click Export capture file and manually import the .ioantclip.json file (legacy .ioantnote.json files remain accepted). Optionally choose Also copy styled HTML. Avoid manually importing a capture that has already been queued.
 
 The extension has no persistent host permissions. It operates on the active tab after an explicit user click, uses local native messaging or explicit file export, and does not send page content to a service. On iOS the app can import the file via Files or paste normal clipboard content. Safari extension and cross-device sync are not implemented yet.
 
@@ -36,7 +36,7 @@ The extension has no persistent host permissions. It operates on the active tab 
 SSH remote: git@github.com:hedydev/ioant-Note.git.
 
 ## High-fidelity capture (0.3)
-On ChatGPT use Latest ChatGPT answer to capture the last loaded assistant message, or Selected content to capture an explicit range. Entire page remains available. For ordinary copy/paste workflow choose Copy styled content only, then paste in Note; direct native import retains the complete capture envelope and is recommended for diagrams. Capture uses computed styles, measured layout widths, SVG diagrams as restricted offline image documents, and available canvas/raster images. It is a static snapshot, not pixel-identical or interactive; cross-origin assets, unmounted messages and embedded external frames may be missing. An incomplete-assets warning is reported. Existing plain clipboard notes cannot recover data never copied.
+On ChatGPT use Latest ChatGPT answer to capture the last loaded assistant message, or Selected content to capture an explicit range. Entire page remains available. For ordinary copy/paste workflow choose Copy styled content only, then paste in Clip; direct native import retains the complete capture envelope and is recommended for diagrams. Capture uses computed styles, measured layout widths, SVG diagrams as restricted offline image documents, and available canvas/raster images. It is a static snapshot, not pixel-identical or interactive; cross-origin assets, unmounted messages and embedded external frames may be missing. An incomplete-assets warning is reported. Existing plain clipboard notes cannot recover data never copied.
 
 ### 0.3.1 capture surface and images
 New captures have a padded, rounded source-colored reading surface. Existing snapshots with the original marker get a matching reader-side frame without rewriting saved notes. SVG data/blob images are retained as isolated vector images; local raster bytes are preserved where possible. Remote or inaccessible image sources use the available canvas fallback; lost resolution in existing bitmap captures cannot be recovered. Reload the unpacked browser extension after updating.
@@ -47,4 +47,4 @@ Entire page layout preserves the source CSS viewport, grid/flex used sizes and n
 ### Colored tags
 New notes remain untagged. Optional suggestions use only deterministic local domain/title/text rules shared on macOS and iOS; no AI model, network or inference service. Assign tags explicitly in the note header or edit sheet. Colors are shared by case-insensitive tag name; legacy libraries decode without migration. Sidebar filters all notes, untagged, and each used tag, combined with search.
 
-The product display name is ioant-Clip. Repository, app bundle identifiers, existing notes.json schema, native host identifier, extension key and file format remain stable for compatibility. See docs/ARCHITECTURE.md.
+The product is ioant-Clip. Native bundle IDs are com.ioant.clip.macos and com.ioant.clip.ios; package ClipCore; native host com.ioant.clip.capture. The legacy repository URL remains registered until a separate repository/MCP migration. The persisted notes.json schema, daily storage directory, extension key and legacy host alias remain compatible. A changed iOS bundle ID creates a new sandbox: review scripts copy the old library only if the new library is absent; physical-device migration requires explicit export/import. See docs/ARCHITECTURE.md.

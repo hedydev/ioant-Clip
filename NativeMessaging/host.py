@@ -89,6 +89,7 @@ def launch(path):
 def main():
     os.umask(0o077)
     config = json.loads(pathlib.Path(__file__).with_name("config.json").read_text())
+    # Single compatible daily inbox shared by the current and legacy host aliases.
     inbox = pathlib.Path.home() / "Library/Application Support/ioant-Note/CaptureInbox"
     serve(sys.stdin.buffer, sys.stdout.buffer, sys.argv[1] if len(sys.argv) > 1 else "", config, inbox, launch)
 
