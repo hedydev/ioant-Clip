@@ -18,9 +18,10 @@ swift test || status=1
 bash scripts/test_webkit_render.sh || status=1
 PYTHONDONTWRITEBYTECODE=1 /usr/bin/python3 scripts/test_native_host.py || status=1
 if command -v node >/dev/null; then
-  node --check BrowserExtension/popup.js || status=1
-  node --check BrowserExtension/capture.js || status=1
-  node --check BrowserExtension/viewport.js || status=1
+  node --check BrowserExtension/Popup/popup.js || status=1
+  /usr/bin/python3 scripts/build_capture_bundle.py --check || status=1
+  for source in BrowserExtension/CaptureEngine/*.js; do node --check "$source" || status=1; done
+  node --check BrowserExtension/CaptureEngine/viewport.js || status=1
   node scripts/test_viewport.js || status=1
   /usr/bin/python3 scripts/test_page_layout.py || status=1
   /usr/bin/python3 scripts/test_capture_browser.py || status=1

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "ioant-Clip Web Capture",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "description": "Save a page or selection as a styled, offline clip.",
   "permissions": [
     "activeTab",
@@ -10,7 +10,7 @@
     "nativeMessaging"
   ],
   "action": {
-    "default_popup": "popup.html",
+    "default_popup": "Popup/popup.html",
     "default_title": "Save to ioant-Clip"
   },
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA4E4VDXZarKpO4mtpsMJTr25w4sEZbEJJky0JBhR/tOgx5wf3CUNb3mWrQTWtnLao4HfyRHMbCTA2iCob73DEvIdDJ4MA9U0/RZ7NpbEItDTzVaVsl7ADDfVyuS2bcfwRuLzfnp2vpW6uq/O7fljGhJXR9jFQ/hAffuX6xU/jBXr+wJPgAEuP7A8Lip/ADh2jfpO9dSFCUzadIuLWu4edDPr4r/kVSnl6N15I1FRWpjYLfenjwi6OeHOSaPkWhLZIuD5t4mIHs/myYvK5/I52eS3lfK/OshvvIV11ttpZdPxvQdDWWzgZUBYcHr0gpAdBagIWnKSb4dzPEdL6Dq+2IwIDAQAB"

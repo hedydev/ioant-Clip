@@ -18,9 +18,9 @@ Hero Skills baseline: 62f7b2ac062e62de41f8fe8565583d761aeabb0f. Product is a hig
 | Sources/NoteCore/Capture | Envelope decoding and durable inbox |
 | Sources/NoteCore/Tags | Colors, filters, deterministic suggestions (no AI) |
 | Sources/NoteCore/Sync | Revision graph, exchange and pure projection |
-| BrowserExtension | Separate popup, injected capture and viewport scripts; further layout/asset split must preserve isolated-world execution |
+| BrowserExtension | Popup and CaptureEngine modules. Layout, assets, SVG and traversal have separate owners; deterministic generated injected.js contains all helpers inside capture(mode) for chrome.scripting.executeScript. Build script checks exact generated source. |
 
 UI -> store/use case -> core, native adapters at app boundary. Core must not import SwiftUI, AppKit/UIKit, CloudKit or WebKit. Stable data owners, no duplicate stores. Native NavigationSplitView, List, Menu, Sheet, Toolbar and gestures remain unchanged. Do not change user content, cloud settings, bundle identity or source styles during structural work. Native host ID com.ioant.note.capture stays unchanged. App binary target names remain legacy for build scripts.
 
 ## Next steps
-R2 semantic localization and persistent language choice; R3 semantic theme with system/light/dark and accent choice; R4 native platform layout polish. Build and regression test both native platforms and browser capture each stage. Deeper capture-engine decomposition requires explicit isolated-world execution contract and real Chrome regression.
+R2 semantic localization and persistent language choice; R3 semantic theme with system/light/dark and accent choice; R4 native platform layout polish. Build and regression test both native platforms and browser capture each stage. Generated capture bundle is not a second source of truth; edit source modules and regenerate.

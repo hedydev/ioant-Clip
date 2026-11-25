@@ -12,7 +12,7 @@ main {width:760px} table {width:100%;border-collapse:collapse} td {border-bottom
 <div class="track"><div class="fill"></div></div>
 <svg width="500" height="150" viewBox="0 0 500 150" xmlns="http://www.w3.org/2000/svg"><defs><marker id="a" markerWidth="5" markerHeight="5" refX="4" refY="2" orient="auto"><path d="M0 0 L5 2 L0 4 Z" fill="#f80"/></marker></defs><rect x="1" y="1" width="180" height="70" rx="8" fill="#ddd" stroke="blue"/><text x="20" y="40" fill="black">Host</text><line x1="180" y1="35" x2="350" y2="35" stroke="#f80" marker-end="url(#a)"/></svg>
 <img id="vector-image" alt="source vector" src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2220%22%20height%3D%2210%22%3E%3Crect%20width%3D%2220%22%20height%3D%2210%22%20fill%3D%22red%22%2F%3E%3C%2Fsvg%3E"><pre>const x = 1;</pre></main><pre id="result"></pre>"""
-js=(root/"BrowserExtension/capture.js").read_text()
+js=(root/"BrowserExtension/CaptureEngine/injected.js").read_text()
 checks=r"""
 (async()=>{try {
  const range=document.createRange();range.selectNodeContents(document.getElementById('target'));

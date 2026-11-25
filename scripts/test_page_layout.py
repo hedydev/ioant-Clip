@@ -1,7 +1,7 @@
 import pathlib, subprocess, tempfile, html, re
 root=pathlib.Path(__file__).resolve().parents[1]
 chrome=pathlib.Path("/Applications/Google Chrome.app/Contents/MacOS/Google Chrome")
-js=(root/"BrowserExtension/capture.js").read_text()
+js=(root/"BrowserExtension/CaptureEngine/injected.js").read_text()
 fixture=r"""<!doctype html><meta charset=utf-8><style>
 *{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden}body{background:#10151b;color:#eee;font:16px Arial}
 .shell{height:100%;display:flex;flex-direction:column;gap:8px;padding:8px}
