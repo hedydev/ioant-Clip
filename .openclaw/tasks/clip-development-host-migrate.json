@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "title": "Register current and legacy Clip capture host for signed development client",
+  "steps": [
+    {
+      "name": "migrate_host",
+      "runtime": "bash",
+      "script": "scripts/cloudkit/migrate_development_host.sh",
+      "timeoutSeconds": 60
+    }
+  ],
+  "artifacts": []
+}
