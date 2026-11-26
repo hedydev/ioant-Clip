@@ -35,14 +35,17 @@ import Foundation
         let lastSynced = checkpoint.flatMap { $0.account == account && $0.zone == zone ? $0.values : nil }
 
         try await requireAccount(account, identity: identity, store: store)
-        var record: CKRecord?
         do {
-            record = try await database.record(for: recordID)
-        } catch let error as CKError where error.code == .zoneNotFound {
+            _ = try await database.recordZone(for: recordZone.zoneID)
+        } catch let error as CKError where error.code == .zoneNotFound || error.code == .unknownItem {
             try await requireAccount(account, identity: identity, store: store)
             _ = try await database.save(recordZone)
+        }
+        let record: CKRecord?
+        do {
+            record = try await database.record(for: recordID)
         } catch let error as CKError where error.code == .unknownItem {
-            // First device with preferences for this zone initializes the record.
+            record = nil
         }
 
         let remote = try record.map(Self.decode)
