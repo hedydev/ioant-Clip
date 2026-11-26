@@ -52,6 +52,7 @@ struct ClipDetailView: View {
                     ClipReaderContent(note: note, mode: showingMedia ? .media : (plainPreview ? .plain : .original),
                                       sheetParentSize: sheetParentSize)
                         .id(note.id)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }.toolbar {
                     ToolbarItemGroup {
                         Button { editing = note } label: { Label("reader.edit", systemImage: "tag") }

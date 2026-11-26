@@ -4,8 +4,8 @@
   "steps": [
     {
       "name": "compare",
-      "runtime": "python3",
-      "script": "scripts/cloudkit/compare_conversation_captures.py",
+      "runtime": "bash",
+      "script": "scripts/cloudkit/compare_conversation_captures.sh",
       "timeoutSeconds": 45
     }
   ],
