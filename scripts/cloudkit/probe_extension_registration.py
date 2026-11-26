@@ -5,7 +5,7 @@ root=pathlib.Path(__file__).resolve().parents[2]
 cache=pathlib.Path("/Volumes/LunaDrive/DeveloperCache")
 base=cache/"projects/ioant-clip/DerivedData" if cache.is_dir() and os.access(cache,os.W_OK) else root/"DerivedData"
 mac=base/"CloudKitCaptureExtensions/macOS/Build/Products/Debug/ioant-Clip-macOS.app"
-ios=base/"CloudKitCaptureExtensions/SimulatorSharePage/Build/Products/Debug-iphonesimulator/ioant-Clip-iOS.app"
+ios=base/"CloudKitCaptureExtensions/SimulatorSyncedPreferences/Build/Products/Debug-iphonesimulator/ioant-Clip-iOS.app"
 udid="614FDA13-6198-452B-A6B2-94AA5591B30A"
 def run(*args):
     return subprocess.run(args,text=True,capture_output=True,timeout=30,check=True).stdout.strip()
@@ -56,6 +56,19 @@ notes=lambda x:{n["id"]:n for n in x["notes"]}
 print("Daily Mac/iOS note counts:",len(notes(a)),len(notes(b)),flush=True)
 print("Daily note identities equal:",set(notes(a))==set(notes(b)),flush=True)
 print("Daily note contents equal:",notes(a)==notes(b),flush=True)
+print("Daily tag palettes equal:",(a.get("tagPalette") or {}) == (b.get("tagPalette") or {}),flush=True)
+mac_defaults = plistlib.loads(subprocess.check_output(["/usr/bin/defaults","export","com.ioant.clip.macos","-"]))
+ios_defaults = plistlib.loads((data/"Library/Preferences/com.ioant.clip.ios.plist").read_bytes())
+checkpoint = "ioant.clip.cloudPreferences.checkpoint.v1"
+def preference_values(defaults):
+    state = defaults.get(checkpoint)
+    return json.loads(state)["values"] if isinstance(state, bytes) else None
+first, second = preference_values(mac_defaults), preference_values(ios_defaults)
+print("Preferences received from iCloud, Mac/iOS:",first is not None,second is not None,flush=True)
+print("Shared preference checkpoints equal:",bool(first and first == second),flush=True)
+for suffix, fallback in (("language","system"),("appearance","system"),("accent","blue")):
+    key = "ioant.clip.preferences." + suffix + ".v1"
+    print("Applied preference",suffix,"equal:", mac_defaults.get(key,fallback) == ios_defaults.get(key,fallback),flush=True)
 x,y=a.get("syncEnrollment"),b.get("syncEnrollment")
 print("Daily sync binding equal:",bool(x and y and x.get("account")==y.get("account")),flush=True)
 print("Paused states:",(x or {}).get("isPaused"),(y or {}).get("isPaused"),flush=True)

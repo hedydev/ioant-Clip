@@ -21,7 +21,7 @@ actor CloudKitRevisionTransport: RevisionTransport {
         let downloadedRecords: Int
         let downloadedBytes: Int
     }
-    private static let recordType = "NoteRevisionV1"
+    static let recordType = "NoteRevisionV1"
     private static let maxPayload = 128 * 1024 * 1024
 
     init(containerIdentifier: String, environment: String, zoneName: String = "ioantNoteRevisionsV1", checkpointURL: URL? = nil) {

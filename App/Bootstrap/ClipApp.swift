@@ -3,9 +3,20 @@ import SwiftUI
 
 @main struct ClipApp: App {
     @StateObject private var store = LibraryStore()
-    @StateObject private var language = LanguagePreferences(defaults: ClipPreferencesScope.defaults)
-    @StateObject private var theme = ThemePreferences(defaults: ClipPreferencesScope.defaults)
-    @StateObject private var cloudSync = CloudSyncController()
+    @StateObject private var language: LanguagePreferences
+    @StateObject private var theme: ThemePreferences
+    @StateObject private var cloudSync: CloudSyncController
+
+    init() {
+        let defaults = ClipPreferencesScope.defaults
+        let language = LanguagePreferences(defaults: defaults)
+        let theme = ThemePreferences(defaults: defaults)
+        _language = StateObject(wrappedValue: language)
+        _theme = StateObject(wrappedValue: theme)
+        _cloudSync = StateObject(wrappedValue: CloudSyncController(
+            preferences: CloudPreferencesSync(language: language, theme: theme, defaults: defaults)
+        ))
+    }
     var body: some Scene {
         WindowGroup(ClipPreferencesScope.windowTitle) {
             AppThemeScope(preferences: theme) {

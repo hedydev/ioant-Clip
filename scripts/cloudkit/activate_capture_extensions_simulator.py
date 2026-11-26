@@ -4,8 +4,8 @@ import json, os, pathlib, plistlib, subprocess, hashlib, time, uuid
 root = pathlib.Path(__file__).resolve().parents[2]
 cache = pathlib.Path("/Volumes/LunaDrive/DeveloperCache")
 base = cache / "projects/ioant-clip/DerivedData" if cache.is_dir() and os.access(cache, os.W_OK) else root / "DerivedData"
-app = base / "CloudKitCaptureExtensions/SimulatorSharePage/Build/Products/Debug-iphonesimulator/ioant-Clip-iOS.app"
-prior = base / "CloudKitCaptureExtensions/SimulatorPageLayout/Build/Products/Debug-iphonesimulator/ioant-Clip-iOS.app"
+app = base / "CloudKitCaptureExtensions/SimulatorSyncedPreferences/Build/Products/Debug-iphonesimulator/ioant-Clip-iOS.app"
+prior_lanes = ("SimulatorSharePage", "SimulatorPageLayout")
 bundle = "com.ioant.clip.ios"
 udid = "614FDA13-6198-452B-A6B2-94AA5591B30A"
 support = pathlib.Path("Library/Application Support")
@@ -29,8 +29,10 @@ assert any(d["udid"]==udid and d["state"]=="Booted" for ds in devices.values() f
 installed=container("app")
 assert info(installed).get("ClipCloudKitDevelopment")=="YES"
 expected_binaries = {digest(app)}
-if prior.is_dir():
-    expected_binaries.add(digest(prior))
+for lane in prior_lanes:
+    prior = base / "CloudKitCaptureExtensions" / lane / "Build/Products/Debug-iphonesimulator/ioant-Clip-iOS.app"
+    if prior.is_dir():
+        expected_binaries.add(digest(prior))
 assert digest(installed) in expected_binaries, "unexpected installed binary, no replacement"
 if active():
     sim("terminate",udid,bundle)

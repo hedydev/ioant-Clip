@@ -9,11 +9,13 @@ import SwiftUI
     @Published private(set) var phase: Phase = .idle
     @Published private(set) var pendingAccount: SyncAccount?
     @Published private(set) var lastSuccess: Date?
+    private let preferences: CloudPreferencesSync?
     private let config: CloudKitReviewConfiguration?
     private let makeTransport: () -> any RevisionTransport
     private let cycle = SyncCycle()
     private var schedule = SyncAttemptSchedule()
-    init() {
+    init(preferences: CloudPreferencesSync? = nil) {
+        self.preferences = preferences
         let config = CloudKitReviewConfiguration.current()
         self.config = config
         self.makeTransport = {
@@ -24,6 +26,7 @@ import SwiftUI
     #if CLIP_CLOUDKIT_SMOKE
     // Explicit synthetic lane only; no default library or zone is substituted.
     init(testConfiguration: CloudKitReviewConfiguration, testTransport: @escaping () -> any RevisionTransport) {
+        self.preferences = nil
         self.config = testConfiguration
         self.makeTransport = testTransport
     }
@@ -77,7 +80,9 @@ import SwiftUI
         }
         phase = .syncing
         do {
-            let result = try await cycle.run(library: store, transport: makeTransport(), expected: enrollment.account)
+            let transport = makeTransport()
+            let result = try await cycle.run(library: store, transport: transport, expected: enrollment.account)
+            try await preferences?.sync(configuration: config, account: enrollment.account, identity: transport, store: store)
             let completed = Date()
             schedule.succeeded(at: completed, confirmedRevisionCount: result.confirmedRevisionCount)
             lastSuccess = completed
