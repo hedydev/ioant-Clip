@@ -53,6 +53,17 @@ import WebKit
         let original = try await view.evaluateJavaScript("""
         (()=>{const r=e=>({x:e.getBoundingClientRect().x,y:e.getBoundingClientRect().y,w:e.getBoundingClientRect().width,h:e.getBoundingClientRect().height});return {head:r(document.querySelector('.head')),input:r(document.querySelector('input')),titles:[...document.querySelectorAll('h2')].map(r),paragraphs:[...document.querySelectorAll('p')].map(r)}})()
         """) as? [String:Any]
+        let shareBridge = try String(contentsOfFile:"Extensions/Share/PageCaptureBridge.js",encoding:.utf8)
+        let shareResult = try await view.callAsyncJavaScript(js + "\n" + shareBridge + """
+        \nreturn await new Promise(resolve => ExtensionPreprocessingJS.run({completionFunction:resolve}));
+        """,arguments:[:],in:nil,contentWorld:.page) as? [String: String]
+        guard let sharePayload = shareResult?["capture"],
+              let sharePage = try? WebCapture.decode(Data(sharePayload.utf8)),
+              sharePage.mode == "page", sharePage.html.contains("<h2"),
+              sharePage.text.contains("Second result title") else {
+            throw NSError(domain:"SafariSharePreprocessing",code:1)
+        }
+        print("PASS: Safari Share callback returned page HTML and text")
         let part=NotePart(html:html,text:text)
         let preview=previewWebView(PreviewCoordinator())
         let previewObserver=Observer()

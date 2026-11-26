@@ -73,6 +73,12 @@ for extension in (base/"PlugIns").glob("*.appex"):
     if bundle.endswith(".safari"):
         resources = extbase/"Resources" if mac else extbase
         assert (resources/"manifest.json").is_file() and (resources/"Popup/popup.html").is_file() and (resources/"CaptureEngine/injected.js").is_file()
+    if bundle.endswith(".share"):
+        attributes = info["NSExtension"]["NSExtensionAttributes"]
+        assert attributes["NSExtensionActivationRule"]["NSExtensionActivationSupportsWebPageWithMaxCount"] == 1
+        script = extbase / (attributes["NSExtensionJavaScriptPreprocessingFile"] + ".js")
+        assert "var ExtensionPreprocessingJS" in script.read_text()
+        print("PASS: Share extension bundles Safari page preprocessing")
     seen.add(bundle)
     print("Verified signed extension:",bundle)
 assert seen == set(expected)

@@ -11,13 +11,11 @@ struct LibrarySidebar: View {
     @Binding var checked: Set<UUID>
     @Binding var selecting: Bool
     @Binding var query: String
-    @Binding var importing: Bool
     @Binding var appSettings: Bool
     @Binding var storageSettings: Bool
     @Binding var deleting: Set<UUID>
     @Binding var confirmDelete: Bool
     @Binding var tagFilter: TagFilter
-    let paste: () -> Void
     private var compact: Bool {
         #if os(iOS)
         horizontalSizeClass == .compact
@@ -56,10 +54,14 @@ struct LibrarySidebar: View {
         .toolbar {
             ToolbarItemGroup {
                 CloudStorageToolbarButton { storageSettings = true }
-                Button { appSettings = true } label: { Label("settings.title", systemImage: "gearshape") }
+                Button { appSettings = true } label: {
+                    Label("settings.title", systemImage: "gearshape")
+                        .foregroundStyle(theme.action)
+                }
                     .accessibilityIdentifier("clip-settings")
                 Button { selecting.toggle(); checked.removeAll() } label: {
                     Label(LocalizedStringKey(selecting ? "common.done" : "common.select"), systemImage: selecting ? "checkmark" : "checkmark.circle")
+                        .foregroundStyle(theme.action)
                 }
                 .accessibilityIdentifier("clip-select")
             }
@@ -68,14 +70,11 @@ struct LibrarySidebar: View {
         .navigationSplitViewColumnWidth(min: 240, ideal: 300, max: 420)
         #endif
         .safeAreaInset(edge: .top, spacing: 0) {
-            VStack(spacing: LayoutMetrics.small) {
-                LibraryCaptureActions(compact: compact, paste: paste, importFile: { importing = true })
-                if compact {
-                    LibraryFilters(library: store.library, selection: tagFilter, compact: true, select: applyFilter)
-                }
+            if compact {
+                LibraryFilters(library: store.library, selection: tagFilter, compact: true, select: applyFilter)
+                    .padding(LayoutMetrics.medium)
+                    .background(.regularMaterial)
             }
-            .padding(LayoutMetrics.medium)
-            .background(.regularMaterial)
         }
         .safeAreaInset(edge: .bottom) {
             if selecting {

@@ -89,6 +89,7 @@ private struct CloudStorageSymbol: View {
 
 /// Native toolbar entry. Provider and status are distinguishable without color.
 struct CloudStorageToolbarButton: View {
+    @Environment(\.clipTheme) private var theme
     @EnvironmentObject private var store: LibraryStore
     @EnvironmentObject private var language: LanguagePreferences
     @EnvironmentObject private var controller: CloudSyncController
@@ -97,6 +98,7 @@ struct CloudStorageToolbarButton: View {
         let status = controller.presentation(for: store.library)
         Button(action: action) {
             CloudStorageSymbol(status: status)
+                .foregroundStyle(theme.action)
         }
         .accessibilityLabel(status.provider.title(language: language))
         .accessibilityValue(Text(verbatim: language.localized(status.state.title)))

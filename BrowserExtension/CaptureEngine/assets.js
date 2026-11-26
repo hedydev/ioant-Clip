@@ -1,9 +1,9 @@
 /* Bounded asset embedding and raster fallback. Shared capture budget. */
-  function createAssets(state) {
+  function createAssets(state, options) {
     const ns='http://www.w3.org/2000/svg';
-    const maxImage=12*1024*1024;
+    const maxImage = options.maxImageBytes ?? 12 * 1024 * 1024;
     const pendingImages=[];
-    const deadline=Date.now()+15000;
+    const deadline = Date.now() + (options.assetTimeoutMs ?? 15000);
     const assetCache=new Map();
     const videos = new Map();
   async function assetData(raw) {

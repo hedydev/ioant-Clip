@@ -31,6 +31,23 @@ public struct ShareCaptureComposer {
         let count = (text + links).reduce(0) { $0 + $1.utf8.count + 1 }
         guard count + ((image?.count ?? 0) + 2) / 3 * 4 <= WebCapture.maxBytes else { throw WebCapture.ImportError.tooLarge }
     }
+    public static func webPageEnvelope(_ results: [String: Any]) throws -> Data {
+        switch results["error"] as? String {
+        case "error_large": throw WebCapture.ImportError.tooLarge
+        case "error_empty": throw WebCapture.ImportError.empty
+        case .some: throw WebCapture.ImportError.unsupported
+        case nil: break
+        }
+        guard let payload = results["capture"] as? String else { throw WebCapture.ImportError.unsupported }
+        let data = Data(payload.utf8)
+        let page = try WebCapture.decode(data)
+        guard page.mode == "page", !page.html.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+              let url = URL(string: page.sourceURL) else { throw WebCapture.ImportError.unsupported }
+        var source = Self()
+        try source.addURL(url)
+        return data
+    }
+
     public func envelope() throws -> Data {
         var combined = text.joined(separator: "\n")
         for link in links where !combined.contains(link) {

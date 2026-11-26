@@ -1,8 +1,8 @@
 import UIKit
 import UniformTypeIdentifiers
 
-/// A deliberate Save tap is required. Sources supply the content; no browser
-/// DOM scraping or network fetch is performed by the share extension.
+/// A deliberate Save tap is required. Safari supplies its page capture
+/// through the same share item channel as other source attachments.
 final class ShareViewController: UIViewController {
     private let status = UILabel()
     private let save = UIButton(type: .system)
@@ -50,37 +50,8 @@ final class ShareViewController: UIViewController {
                 let items = (extensionContext?.inputItems as? [NSExtensionItem]) ?? []
                 let providers = items.flatMap { $0.attachments ?? [] }
                 guard providers.count <= ShareCaptureComposer.maxProviders else { throw WebCapture.ImportError.unsupported }
-                var composer = ShareCaptureComposer()
-                for item in items {
-                    if let text = item.attributedContentText?.string { try composer.addText(text) }
-                }
-                for provider in providers {
-                    // A file URL offered by an image provider is not a web link.
-                    if provider.hasItemConformingToTypeIdentifier(UTType.image.identifier) {
-                        let value = try await provider.loadItem(forTypeIdentifier: UTType.image.identifier)
-                        let image: UIImage?
-                        if let value = value as? UIImage { image = value }
-                        else if let data = value as? Data, data.count <= WebCapture.maxBytes { image = UIImage(data: data) }
-                        else if let file = value as? URL, file.isFileURL,
-                                let size = try file.resourceValues(forKeys: [.fileSizeKey]).fileSize,
-                                size <= WebCapture.maxBytes { image = UIImage(contentsOfFile: file.path) }
-                        else { image = nil }
-                        guard let image, image.size.width * image.size.height * image.scale * image.scale <= 24_000_000,
-                              let data = image.pngData() else { throw WebCapture.ImportError.tooLarge }
-                        try composer.addPNG(data)
-                    } else if provider.hasItemConformingToTypeIdentifier(UTType.url.identifier) {
-                        let value = try await provider.loadItem(forTypeIdentifier: UTType.url.identifier)
-                        guard let link = (value as? URL) ?? (value as? String).flatMap(URL.init(string:)) else {
-                            throw WebCapture.ImportError.unsupported
-                        }
-                        try composer.addURL(link)
-                    } else if provider.hasItemConformingToTypeIdentifier(UTType.plainText.identifier) {
-                        let value = try await provider.loadItem(forTypeIdentifier: UTType.plainText.identifier)
-                        guard let text = (value as? String) ?? (value as? NSAttributedString)?.string else { throw WebCapture.ImportError.unsupported }
-                        try composer.addText(text)
-                    } else { throw WebCapture.ImportError.unsupported }
-                }
-                _ = try SharedCaptureInbox.enqueue(composer.envelope())
+                let envelope = try await captureEnvelope(items: items, providers: providers)
+                _ = try SharedCaptureInbox.enqueue(envelope)
                 try? SharedExtensionEvidence.record(.share, activity: .queued)
                 extensionContext?.completeRequest(returningItems: [], completionHandler: nil)
             } catch {
@@ -94,5 +65,47 @@ final class ShareViewController: UIViewController {
                 save.isEnabled = true
             }
         }
+    }
+
+    private func captureEnvelope(items: [NSExtensionItem], providers: [NSItemProvider]) async throws -> Data {
+        let propertyList = UTType.propertyList.identifier
+        for provider in providers where provider.hasItemConformingToTypeIdentifier(propertyList) {
+            let item = try await provider.loadItem(forTypeIdentifier: propertyList)
+            guard let payload = item as? [String: Any],
+                  let results = payload[NSExtensionJavaScriptPreprocessingResultsKey] as? [String: Any] else { continue }
+            return try ShareCaptureComposer.webPageEnvelope(results)
+        }
+
+        var composer = ShareCaptureComposer()
+        for item in items {
+            if let text = item.attributedContentText?.string { try composer.addText(text) }
+        }
+        for provider in providers {
+            // A file URL offered by an image provider is not a web link.
+            if provider.hasItemConformingToTypeIdentifier(UTType.image.identifier) {
+                let value = try await provider.loadItem(forTypeIdentifier: UTType.image.identifier)
+                let image: UIImage?
+                if let value = value as? UIImage { image = value }
+                else if let data = value as? Data, data.count <= WebCapture.maxBytes { image = UIImage(data: data) }
+                else if let file = value as? URL, file.isFileURL,
+                        let size = try file.resourceValues(forKeys: [.fileSizeKey]).fileSize,
+                        size <= WebCapture.maxBytes { image = UIImage(contentsOfFile: file.path) }
+                else { image = nil }
+                guard let image, image.size.width * image.size.height * image.scale * image.scale <= 24_000_000,
+                      let data = image.pngData() else { throw WebCapture.ImportError.tooLarge }
+                try composer.addPNG(data)
+            } else if provider.hasItemConformingToTypeIdentifier(UTType.url.identifier) {
+                let value = try await provider.loadItem(forTypeIdentifier: UTType.url.identifier)
+                guard let link = (value as? URL) ?? (value as? String).flatMap(URL.init(string:)) else {
+                    throw WebCapture.ImportError.unsupported
+                }
+                try composer.addURL(link)
+            } else if provider.hasItemConformingToTypeIdentifier(UTType.plainText.identifier) {
+                let value = try await provider.loadItem(forTypeIdentifier: UTType.plainText.identifier)
+                guard let text = (value as? String) ?? (value as? NSAttributedString)?.string else { throw WebCapture.ImportError.unsupported }
+                try composer.addText(text)
+            } else { throw WebCapture.ImportError.unsupported }
+        }
+        return try composer.envelope()
     }
 }

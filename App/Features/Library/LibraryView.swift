@@ -31,7 +31,7 @@ struct LibraryView: View {
     var filtered: [Note] { store.library.filtered(query: query, filter: tagFilter) }
     var body: some View {
         NavigationSplitView(preferredCompactColumn: $compactColumn) {
-            LibrarySidebar(selected: $selected, compactColumn: $compactColumn, checked: $checked, selecting: $selecting, query: $query, importing: $importing, appSettings: $appSettings, storageSettings: $storageSettings, deleting: $deleting, confirmDelete: $confirmDelete, tagFilter: filterBinding, paste: paste)
+            LibrarySidebar(selected: $selected, compactColumn: $compactColumn, checked: $checked, selecting: $selecting, query: $query, appSettings: $appSettings, storageSettings: $storageSettings, deleting: $deleting, confirmDelete: $confirmDelete, tagFilter: filterBinding)
         } detail: {
             ClipDetailView(current: current, sheetParentSize: sheetParentSize, tags: tags, plainPreview: $plainPreview, copiedID: $copiedID, editing: $editing, deleting: $deleting, confirmDelete: $confirmDelete, importing: $importing, paste: paste)
         }

@@ -37,7 +37,16 @@ for platform, suffix in (("macOS","macos"), ("iOS","ios")):
     deps = [{"target":safari,"embed":True}]
     if platform == "iOS":
         share = target + "-Share"
-        targets[share] = {"type":"app-extension","platform":"iOS","sources":extension_sources("iOSShareSources","Extensions/Share/ShareViewController.swift",localized=True),"settings":{"base":{"PRODUCT_BUNDLE_IDENTIFIER":"com.ioant.clip.ios.share","INFOPLIST_FILE":"Config/ShareExtension-Info.plist","CODE_SIGN_ENTITLEMENTS":"Config/CaptureExtension.entitlements","APPLICATION_EXTENSION_API_ONLY":"YES","SKIP_INSTALL":"YES","TARGETED_DEVICE_FAMILY":"1,2"}}}
+        share_resources = generated / "iOSShareResources"
+        share_resources.mkdir(exist_ok=True)
+        preprocessor = share_resources / "ClipPageCapture.js"
+        preprocessor.write_text(
+            (source / "CaptureEngine/injected.js").read_text()
+            + "\n" + (root / "Extensions/Share/PageCaptureBridge.js").read_text()
+        )
+        share_sources = extension_sources("iOSShareSources","Extensions/Share/ShareViewController.swift",localized=True)
+        share_sources.append({"path":str(preprocessor.relative_to(root)), "buildPhase":"resources"})
+        targets[share] = {"type":"app-extension","platform":"iOS","sources":share_sources,"settings":{"base":{"PRODUCT_BUNDLE_IDENTIFIER":"com.ioant.clip.ios.share","INFOPLIST_FILE":"Config/ShareExtension-Info.plist","CODE_SIGN_ENTITLEMENTS":"Config/CaptureExtension.entitlements","APPLICATION_EXTENSION_API_ONLY":"YES","SKIP_INSTALL":"YES","TARGETED_DEVICE_FAMILY":"1,2"}}}
         deps.append({"target":share,"embed":True})
     settings = {"PRODUCT_BUNDLE_IDENTIFIER":"com.ioant.clip."+suffix,"INFOPLIST_FILE":"Config/CloudKitReview-Info.plist","CODE_SIGN_ENTITLEMENTS":"Config/CloudKitExtensions.entitlements","CLIP_CLOUDKIT_CONTAINER":"iCloud.com.ioant.clip","CLIP_CLOUDKIT_SMOKE":"NO","CLIP_CLOUDKIT_UI_REVIEW":"NO","CLIP_CLOUDKIT_DEVELOPMENT":"YES","SWIFT_ACTIVE_COMPILATION_CONDITIONS":"$(inherited) CLIP_CLOUDKIT_REVIEW CLIP_CLOUDKIT_DEVELOPMENT CLIP_CAPTURE_EXTENSIONS"}
     if platform=="macOS": settings["ENABLE_HARDENED_RUNTIME"]="YES"

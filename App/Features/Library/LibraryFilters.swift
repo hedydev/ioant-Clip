@@ -1,4 +1,7 @@
 import SwiftUI
+#if os(iOS)
+import UIKit
+#endif
 
 /// Compact widths use a native menu; regular widths keep the full sidebar.
 struct LibraryFilters: View {
@@ -26,6 +29,17 @@ struct LibraryFilters: View {
         if case .tag(let name) = filter { return library.color(for: name).swiftUIColor }
         return theme.secondaryText
     }
+    private func menuIcon(_ filter: TagFilter) -> Image {
+        let symbol = selection == filter ? "checkmark" : icon(filter)
+        #if os(iOS)
+        if let image = UIImage(systemName: symbol) {
+            let tint = selection == filter ? theme.action : color(filter)
+            return Image(uiImage: image.withTintColor(UIColor(tint), renderingMode: .alwaysOriginal))
+        }
+        #endif
+        return Image(systemName: symbol)
+    }
+
     private func row(_ filter: TagFilter) -> some View {
         HStack(spacing: LayoutMetrics.small) {
             Image(systemName: icon(filter)).foregroundStyle(color(filter))
@@ -42,7 +56,7 @@ struct LibraryFilters: View {
             Menu {
                 ForEach(filters, id: \.self) { filter in
                     Button { select(filter) } label: {
-                        Label { title(filter) } icon: { Image(systemName: selection == filter ? "checkmark" : icon(filter)) }
+                        Label { title(filter) } icon: { menuIcon(filter) }
                     }
                 }
             } label: {

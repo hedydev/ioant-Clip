@@ -42,6 +42,16 @@ final class ExtensionCaptureTests: XCTestCase {
         XCTAssertThrowsError(try composer.addPNG(png))
         XCTAssertThrowsError(try composer.addURL(URL(fileURLWithPath:"/example")))
     }
+    func testSafariShareUsesTheRenderedPageEnvelope() throws {
+        let capture = WebCapture(version: 1, title: "Example", sourceURL: "https://example.com/", mode: "page",
+                                 html: "<main><h1>Example article</h1></main>", text: "Example article", truncated: false)
+        let payload = String(decoding: try JSONEncoder().encode(capture), as: UTF8.self)
+        let envelope = try ShareCaptureComposer.webPageEnvelope(["capture": payload])
+        XCTAssertEqual(try WebCapture.decode(envelope), capture)
+        XCTAssertThrowsError(try ShareCaptureComposer.webPageEnvelope(["error": "error_empty"]))
+        XCTAssertThrowsError(try ShareCaptureComposer.webPageEnvelope(["capture": payload.replacingOccurrences(of: "https:", with: "file:")]))
+    }
+
     func testShareQueueAndEvidence() throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }
