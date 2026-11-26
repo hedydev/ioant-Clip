@@ -41,7 +41,7 @@
   root.style.colorScheme = channels?.length === 3 && (channels[0]*.2126 + channels[1]*.7152 + channels[2]*.0722) < 128 ? 'dark' : 'light';
     return {root,stage};
   }
-  function createLayout({source,wholePage,stage,queueBackground}) {
+  function createLayout({source,wholePage,stage,queueBackground,conversation}) {
   const css = 'display box-sizing visibility clip contain content-visibility overflow-anchor font-stretch font-feature-settings font-kerning font-variant-ligatures text-transform text-rendering text-size-adjust -webkit-text-size-adjust writing-mode unicode-bidi text-decoration-line text-decoration-style text-decoration-color text-decoration-thickness text-underline-offset text-shadow tab-size list-style-position column-count column-gap column-width column-span break-before break-after break-inside isolation mix-blend-mode filter backdrop-filter -webkit-line-clamp -webkit-box-orient -webkit-box-align -webkit-box-pack -webkit-box-flex cursor pointer-events border-top-left-radius border-top-right-radius border-bottom-left-radius border-bottom-right-radius display box-sizing color background-color background-image font-family font-size font-weight font-style font-variant-numeric line-height letter-spacing text-align text-decoration white-space overflow-wrap word-break list-style-type padding-top padding-right padding-bottom padding-left margin-top margin-right margin-bottom margin-left border-top border-right border-bottom border-left border-radius box-shadow opacity flex flex-direction flex-wrap flex-grow flex-shrink flex-basis justify-content align-items align-self gap row-gap column-gap grid-template-columns grid-template-rows grid-template-areas grid-column grid-row vertical-align min-width max-width min-height max-height border-collapse border-spacing table-layout overflow-x overflow-y position top right bottom left transform transform-origin text-indent width height z-index object-fit object-position background-size background-position background-repeat background-origin background-clip box-decoration-break align-content justify-items justify-self grid-auto-flow grid-auto-columns grid-auto-rows order text-overflow direction aspect-ratio float clear overflow-wrap clip-path'.split(' ');
   function nodeCanGrow(src, cs) {
     const flowingBlock = /^(block|inline-block|flow-root|list-item)$/.test(cs.display);
@@ -53,7 +53,33 @@
       cs.overflowY === 'visible' && cs.maxHeight === 'none' &&
       !/\b(size|strict|inline-size)\b/.test(cs.contain);
   }
+  function applyConversationStyles(src, dst, cs) {
+    // A conversation flows as a document. Virtual-list and app-shell geometry
+    // are only meaningful while the original live application is running.
+    for (const prop of ['color','font-weight','font-style','text-decoration-line','background-color',
+                        'list-style-type','text-align','direction']) {
+      const value = cs.getPropertyValue(prop);
+      if (safeCSS(value)) dst.style.setProperty(prop,value);
+    }
+    dst.style.overflowWrap = 'anywhere';
+    if (src.matches('table')) {
+      dst.style.width = '100%';
+      dst.style.tableLayout = 'fixed';
+    }
+    if (src.matches('pre,code')) {
+      dst.style.whiteSpace = 'pre-wrap';
+      dst.style.fontFamily = 'monospace';
+    }
+    if (src.matches('img,svg,canvas')) {
+      dst.style.maxWidth = '100%';
+      dst.style.height = 'auto';
+    }
+  }
   function applyStyles(src, dst, cs) {
+    if (conversation) {
+      applyConversationStyles(src,dst,cs);
+      return;
+    }
     for (const prop of css) {
       const value = cs.getPropertyValue(prop);
       if (safeCSS(value)) dst.style.setProperty(prop,value);

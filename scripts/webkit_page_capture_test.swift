@@ -239,6 +239,7 @@ import WebKit
         """) as? Bool
         guard homeLayout == true else { throw NSError(domain:"HomeGeometry",code:1) }
         print("PASS: YouTube home preserved the navigation, side rail, and loaded feed grid")
+        try await checkConversation(js, in: view, window: window)
         // Make a real local movie so validation covers fetching a whole asset,
         // opening it for metadata inspection, and serializing it for playback.
         window.contentView = view
@@ -262,6 +263,66 @@ import WebKit
         guard savedMovie == true else { throw NSError(domain:"PlayableVideoCapture",code:1) }
         print("PASS: whole-page capture embedded a complete MP4 after WebKit read its video metadata")
         print("PASS: WebKit source-to-production-reader layout, hidden labels, inert input, pseudo-elements and result text geometry")
+    }
+
+    @MainActor private static func checkConversation(_ js: String, in view: WKWebView, window: NSWindow) async throws {
+        window.contentView = view
+        let observer = Observer()
+        view.navigationDelegate = observer
+        view.loadHTMLString("""
+        <!doctype html><meta charset="utf-8"><style>
+        body{margin:0;background:#fff;color:#101010}
+        main{width:1100px;height:200px;overflow:hidden;position:absolute;left:80px;top:80px}
+        .deferred{content-visibility:auto;contain-intrinsic-size:500px;height:340px}
+        table{width:800px;white-space:nowrap}
+        </style><nav>Sidebar chrome <svg width="16" height="16"><circle r="5"></circle></svg></nav>
+        <main>
+          <div data-message-author-role="user"><p>Fixture first question</p></div>
+          <div style="height:1200px"></div>
+          <section class="deferred"><div data-message-author-role="assistant">
+            <h2>Fixture below-fold answer</h2><table><tr><td>Fixture saved cell</td></tr></table>
+            <button aria-label="Open attachment"><img alt="Fixture attachment" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jH1sAAAAASUVORK5CYII="></button>
+            <button><svg width="16" height="16"><circle r="5"></circle></svg>Copy answer control</button>
+          </div></section>
+          <div hidden><div data-message-author-role="assistant">Hidden conversation branch</div></div>
+        </main><form><textarea>Private draft text</textarea></form>
+        """, baseURL: nil)
+        try await wait(observer)
+        let script = js.replacingOccurrences(
+            of: "const conversationURL = new URL(location.href);",
+            with: "const conversationURL = new URL('https://chatgpt.com/g/project/c/fixture');"
+        )
+        let capture = try await view.callAsyncJavaScript(script + "\nreturn await capture('page');",
+            arguments: [:], in: nil, contentWorld: .page) as? [String:Any]
+        guard let html = capture?["html"] as? String, let text = capture?["text"] as? String,
+              text.contains("Fixture first question"), text.contains("Fixture below-fold answer"),
+              text.contains("Fixture saved cell"), !text.contains("Sidebar chrome"),
+              !text.contains("Copy answer control"), !html.contains("Hidden conversation branch"),
+              !html.contains("Private draft text"), !html.contains("data:image/svg"),
+              !html.contains("data-ioant-layout=\"page\""), html.contains("data-ioant-conversation") else {
+            throw NSError(domain: "ConversationCapture", code: 1)
+        }
+        let note = Note(title: "Conversation fixture", parts: [NotePart(html: html, text: text, captureMode: "page")])
+        guard note.media.map(\.kind) == [.image] else { throw NSError(domain: "ConversationMedia", code: 1) }
+        let preview = WKWebView(frame: NSRect(x: 0, y: 0, width: 375, height: 640))
+        let container = NSView(frame: view.frame)
+        container.addSubview(preview)
+        window.contentView = container
+        let previewObserver = Observer()
+        preview.navigationDelegate = previewObserver
+        preview.loadHTMLString(note.htmlDocument, baseURL: nil)
+        try await wait(previewObserver)
+        let layoutOK = try await preview.evaluateJavaScript("""
+        (() => {
+            const turns = [...document.querySelectorAll('[data-ioant-turn]')];
+            const bounds = turns[1]?.getBoundingClientRect();
+            return turns.length === 2 && innerWidth === 375 && bounds.top < 180 && bounds.height > 35 &&
+                document.querySelector('table').getBoundingClientRect().right <= innerWidth &&
+                document.documentElement.scrollWidth <= innerWidth;
+        })()
+        """) as? Bool
+        guard layoutOK == true else { throw NSError(domain: "ConversationReaderGeometry", code: 1) }
+        print("PASS: ChatGPT page captured mounted messages and attachments in mobile-width document flow")
     }
 
     private static func fixtureMovie() async throws -> Data {

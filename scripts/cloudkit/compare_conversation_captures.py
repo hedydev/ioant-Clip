@@ -89,3 +89,12 @@ for number, (identifier, _, parts) in enumerate(mac_notes, 1):
     other = ios_by_id.get(identifier)
     print(json.dumps(dict(mac_newest_first=number, on_simulator=other is not None,
                           same_saved_parts=other == parts, parts=describe(parts)), sort_keys=True), flush=True)
+
+# Compare substantial selected lines against the page's saved plain text.
+page = next((part for _, _, parts in mac_notes for part in parts if part.get("captureMode") == "page"), None)
+selection = next((part for _, _, parts in mac_notes for part in parts if part.get("captureMode") == "selection"), None)
+if page and selection:
+    page_text = "".join(page.get("text", "").split())
+    lines = ["".join(line.split()) for line in selection.get("text", "").splitlines()]
+    lines = [line for line in lines if len(line) >= 8]
+    print("Selected lines present in page text:", sum(line in page_text for line in lines), "of", len(lines), flush=True)

@@ -44,7 +44,7 @@ async function capture(mode, options = {}) {
   root.style.colorScheme = channels?.length === 3 && (channels[0]*.2126 + channels[1]*.7152 + channels[2]*.0722) < 128 ? 'dark' : 'light';
     return {root,stage};
   }
-  function createLayout({source,wholePage,stage,queueBackground}) {
+  function createLayout({source,wholePage,stage,queueBackground,conversation}) {
   const css = 'display box-sizing visibility clip contain content-visibility overflow-anchor font-stretch font-feature-settings font-kerning font-variant-ligatures text-transform text-rendering text-size-adjust -webkit-text-size-adjust writing-mode unicode-bidi text-decoration-line text-decoration-style text-decoration-color text-decoration-thickness text-underline-offset text-shadow tab-size list-style-position column-count column-gap column-width column-span break-before break-after break-inside isolation mix-blend-mode filter backdrop-filter -webkit-line-clamp -webkit-box-orient -webkit-box-align -webkit-box-pack -webkit-box-flex cursor pointer-events border-top-left-radius border-top-right-radius border-bottom-left-radius border-bottom-right-radius display box-sizing color background-color background-image font-family font-size font-weight font-style font-variant-numeric line-height letter-spacing text-align text-decoration white-space overflow-wrap word-break list-style-type padding-top padding-right padding-bottom padding-left margin-top margin-right margin-bottom margin-left border-top border-right border-bottom border-left border-radius box-shadow opacity flex flex-direction flex-wrap flex-grow flex-shrink flex-basis justify-content align-items align-self gap row-gap column-gap grid-template-columns grid-template-rows grid-template-areas grid-column grid-row vertical-align min-width max-width min-height max-height border-collapse border-spacing table-layout overflow-x overflow-y position top right bottom left transform transform-origin text-indent width height z-index object-fit object-position background-size background-position background-repeat background-origin background-clip box-decoration-break align-content justify-items justify-self grid-auto-flow grid-auto-columns grid-auto-rows order text-overflow direction aspect-ratio float clear overflow-wrap clip-path'.split(' ');
   function nodeCanGrow(src, cs) {
     const flowingBlock = /^(block|inline-block|flow-root|list-item)$/.test(cs.display);
@@ -56,7 +56,33 @@ async function capture(mode, options = {}) {
       cs.overflowY === 'visible' && cs.maxHeight === 'none' &&
       !/\b(size|strict|inline-size)\b/.test(cs.contain);
   }
+  function applyConversationStyles(src, dst, cs) {
+    // A conversation flows as a document. Virtual-list and app-shell geometry
+    // are only meaningful while the original live application is running.
+    for (const prop of ['color','font-weight','font-style','text-decoration-line','background-color',
+                        'list-style-type','text-align','direction']) {
+      const value = cs.getPropertyValue(prop);
+      if (safeCSS(value)) dst.style.setProperty(prop,value);
+    }
+    dst.style.overflowWrap = 'anywhere';
+    if (src.matches('table')) {
+      dst.style.width = '100%';
+      dst.style.tableLayout = 'fixed';
+    }
+    if (src.matches('pre,code')) {
+      dst.style.whiteSpace = 'pre-wrap';
+      dst.style.fontFamily = 'monospace';
+    }
+    if (src.matches('img,svg,canvas')) {
+      dst.style.maxWidth = '100%';
+      dst.style.height = 'auto';
+    }
+  }
   function applyStyles(src, dst, cs) {
+    if (conversation) {
+      applyConversationStyles(src,dst,cs);
+      return;
+    }
     for (const prop of css) {
       const value = cs.getPropertyValue(prop);
       if (safeCSS(value)) dst.style.setProperty(prop,value);
@@ -438,13 +464,19 @@ async function capture(mode, options = {}) {
   }
   if (!source) throw new Error('error_empty');
   const wholePage = mode === 'page';
+  const conversationURL = new URL(location.href);
+  const chatConversation = wholePage && ['chatgpt.com','chat.openai.com'].includes(conversationURL.hostname) &&
+    /\/(?:c|share)\/[^/]+(?:\/|$)/.test(conversationURL.pathname);
+  const fixedLayout = wholePage && !chatConversation;
   const skip = new Set('SCRIPT STYLE LINK META NOSCRIPT OBJECT EMBED INPUT TEXTAREA SELECT OPTION TEMPLATE HEAD FORM BUTTON'.split(' '));
-  if (wholePage) { skip.delete('FORM'); skip.delete('BUTTON'); skip.delete('INPUT'); skip.delete('TEXTAREA'); skip.delete('SELECT'); }
+  if (fixedLayout) { skip.delete('FORM'); skip.delete('BUTTON'); skip.delete('INPUT'); skip.delete('TEXTAREA'); skip.delete('SELECT'); }
   const allowed = new Set('A ABBR ARTICLE ASIDE B BLOCKQUOTE BR CAPTION CODE DD DEL DETAILS DIV DL DT EM FIGCAPTION FIGURE FOOTER H1 H2 H3 H4 H5 H6 HEADER HR I IMG KBD LI MAIN MARK NAV OL P PRE Q S SAMP SECTION SMALL SPAN STRONG SUB SUMMARY SUP TABLE TBODY TD TH THEAD TFOOT TR U UL VAR WBR MATH COL COLGROUP'.split(' '));
   const state={nodes:0,svgNodes:0,imageBytes:0,truncated:false,missing:0};
-  const {root,stage}=createSurface(source,wholePage);
+  const {root,stage}=createSurface(source,fixedLayout);
   const {attachData,snapshotImage,queueBackground,queuePoster,queueVideo,finish}=createAssets(state,options);
-  const {applyStyles,isVisuallyClipped,appendPseudo}=createLayout({source,wholePage,stage,queueBackground});
+  const {applyStyles,isVisuallyClipped,appendPseudo}=createLayout({
+    source,wholePage:fixedLayout,stage,queueBackground,conversation:chatConversation
+  });
   const {snapshotSVG}=createSVG(state,attachData);
   function recordMedia(node, tag, parent, pageLink) {
     let kind = tag.toLowerCase();
@@ -488,7 +520,17 @@ async function capture(mode, options = {}) {
     }
     if (node.nodeType !== Node.ELEMENT_NODE) return;
     const tag = node.tagName.toUpperCase();
-    if (skip.has(tag) || node.isContentEditable || node.hidden || !wholePage && node.getAttribute('aria-hidden') === 'true' && tag !== 'SVG') return;
+    if (node.isContentEditable || node.hidden || !fixedLayout && node.getAttribute('aria-hidden') === 'true' && tag !== 'SVG') return;
+    if (chatConversation && (tag === 'BUTTON' || node.getAttribute('role') === 'button')) {
+      if (!isVisuallyClipped(node,getComputedStyle(node))) {
+        // Image attachments can be buttons. Keep the media inside them, not the control icons.
+        for (const child of node.querySelectorAll('img,video,audio,canvas')) {
+          if (!child.closest('[hidden],[aria-hidden="true"]')) visit(child,parent,pageLayout);
+        }
+      }
+      return;
+    }
+    if (skip.has(tag)) return;
     const cs = getComputedStyle(node);
     // Audio without native controls has no layout box. It can still be
     // playable through the page's custom controls and belong in the index.
@@ -511,7 +553,7 @@ async function capture(mode, options = {}) {
     // Keep empty, inert geometry for visible controls rather than removing a
     // flex/grid item. Do not copy current field values (passwords, tokens,
     // personal inputs), form actions, names, or interactive behavior.
-    if (wholePage && ['INPUT','TEXTAREA','SELECT'].includes(tag)) {
+    if (fixedLayout && ['INPUT','TEXTAREA','SELECT'].includes(tag)) {
       if (tag === 'INPUT' && node.type === 'hidden') return;
       const dst = document.createElement('span');
       dst.setAttribute('data-ioant-control', tag.toLowerCase());
@@ -559,9 +601,9 @@ async function capture(mode, options = {}) {
     if (tag === 'A' && /^https?:\/\//i.test(node.href)) dst.setAttribute('data-source-href',node.href);
     if (tag === 'DETAILS') dst.open = wholePage ? node.open : true;
     parent.append(dst);
-    if (wholePage && !['IMG','BR','HR','WBR','COL'].includes(tag)) appendPseudo(node,dst,'::before');
+    if (fixedLayout && !['IMG','BR','HR','WBR','COL'].includes(tag)) appendPseudo(node,dst,'::before');
     for (const child of node.childNodes) { if (state.nodes >= 18000) { state.truncated = true; break; } visit(child,dst,pageLayout); }
-    if (wholePage && !['IMG','BR','HR','WBR','COL'].includes(tag)) appendPseudo(node,dst,'::after');
+    if (fixedLayout && !['IMG','BR','HR','WBR','COL'].includes(tag)) appendPseudo(node,dst,'::after');
   }
   function appendVideoPreview(node, parent, style) {
     const frame = document.createElement('div');
@@ -764,7 +806,28 @@ async function capture(mode, options = {}) {
     }
     return true;
   }
-  if (!captureYouTubePage()) visit(source,stage);
+  function captureConversation() {
+    const roles = '[data-message-author-role="user"], [data-message-author-role="assistant"]';
+    const turns = [...document.querySelectorAll(roles)].filter(node =>
+      !node.parentElement?.closest(roles) && !node.closest('[hidden],[inert],[aria-hidden="true"]') &&
+      !isVisuallyClipped(node,getComputedStyle(node)));
+    root.setAttribute('data-ioant-conversation','');
+    root.style.width = '100%';
+    root.style.maxWidth = '900px';
+    for (const turn of turns) {
+      const message = document.createElement('article');
+      message.setAttribute('data-ioant-turn',turn.getAttribute('data-message-author-role'));
+      message.style.cssText = 'padding-block:12px;border-bottom:1px solid rgba(128,128,128,.25);';
+      visit(turn,message);
+      if (message.textContent.trim() || message.querySelector('img[src], [data-ioant-media]')) {
+        stage.append(message);
+      }
+      if (state.nodes >= 18000) { state.truncated = true; break; }
+    }
+  }
+
+  if (chatConversation) captureConversation();
+  else if (!captureYouTubePage()) visit(source,stage);
   await finish();
   const html = root.outerHTML;
   // innerText of the attached original is not used for selections: it could include text outside the selection.
@@ -775,7 +838,8 @@ async function capture(mode, options = {}) {
     if (node.nodeType !== Node.ELEMENT_NODE) return '';
     if (node.hasAttribute('data-ioant-control') || node.hasAttribute('data-ioant-media')) return '';
     const value = Array.from(node.childNodes,capturedText).join('');
-    const block = /^(block|flex|grid|table|list-item|flow-root)/.test(node.style.display);
+    const block = /^(block|flex|grid|table|list-item|flow-root)/.test(node.style.display) ||
+      chatConversation && /^(ARTICLE|BLOCKQUOTE|DIV|H[1-6]|LI|P|PRE|SECTION|TABLE|TH|TD|TR)$/.test(node.tagName);
     return block || node.tagName === 'BR' ? '\n'+value+'\n' : value;
   }
   const text = (range ? range.toString() : wholePage ? capturedText(root).replace(/\n{3,}/g,'\n\n').trim() : source.innerText || root.textContent).slice(0,2_000_000);
