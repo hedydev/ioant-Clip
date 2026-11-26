@@ -152,6 +152,61 @@ import WebKit
         """) as? Bool
         guard watchLayout == true else { throw NSError(domain:"WatchGeometry",code:1) }
         print("PASS: watch capture retained the original header, player size, title, playlist and related column")
+        let homeObserver = Observer()
+        view.navigationDelegate = homeObserver
+        window.contentView = view
+        view.loadHTMLString("""
+        <!doctype html><title>YouTube</title><style>
+        body{margin:0}#masthead-container{position:fixed;inset:0 0 auto;height:56px;background:#eee}
+        #guide-content{position:fixed;left:0;top:56px;width:200px;height:700px;background:#eee}
+        ytd-browse{display:block;margin:68px 20px 0 216px}
+        ytd-rich-grid-renderer{display:grid;grid-template-columns:repeat(2,260px);gap:16px}
+        ytd-rich-item-renderer{display:block;min-height:500px;background:#eee}
+        .overlay{position:fixed;inset:0;background:white}
+        </style>
+        <div id="masthead-container"><nav>Fixture home navigation</nav></div>
+        <div id="guide-content">Fixture guide rail</div>
+        <ytd-browse page-subtype="home">
+          <h1>Fixture home feed</h1>
+          <ytd-rich-grid-renderer>
+            <ytd-rich-item-renderer><h2>Fixture first video</h2></ytd-rich-item-renderer>
+            <ytd-rich-item-renderer><h2>Fixture second video</h2></ytd-rich-item-renderer>
+            <ytd-rich-item-renderer><h2>Fixture below-fold video</h2></ytd-rich-item-renderer>
+          </ytd-rich-grid-renderer>
+          <div class="overlay">Transient home overlay</div>
+        </ytd-browse>
+        <div class="overlay">App-wide transient overlay</div>
+        """,baseURL:nil)
+        try await wait(homeObserver)
+        let homeScript = js.replacingOccurrences(
+            of: "const pageURL = new URL(location.href);",
+            with: "const pageURL = new URL('https://www.youtube.com/');"
+        )
+        let home = try await view.callAsyncJavaScript(homeScript + "\nreturn await capture('page');",arguments:[:],in:nil,contentWorld:.page) as? [String:Any]
+        guard let homeHTML = home?["html"] as? String, let homeText = home?["text"] as? String,
+              homeText.contains("Fixture home navigation"), homeText.contains("Fixture guide rail"),
+              homeText.contains("Fixture below-fold video"),
+              !homeHTML.contains("Transient home overlay"), !homeHTML.contains("App-wide transient overlay") else {
+            throw NSError(domain:"HomeCapture",code:1)
+        }
+        let homePreviewObserver = Observer()
+        preview.navigationDelegate = homePreviewObserver
+        window.contentView = preview
+        preview.loadHTMLString(Note.document(for: NotePart(html:homeHTML,text:homeText)),baseURL:nil)
+        try await wait(homePreviewObserver)
+        let homeLayout = try await preview.evaluateJavaScript("""
+        (() => {
+            const header = document.querySelector('header').getBoundingClientRect();
+            const rail = document.querySelector('aside').getBoundingClientRect();
+            const feed = document.querySelector('main').getBoundingClientRect();
+            const tiles = Array.from(document.querySelectorAll('h2'), node => node.getBoundingClientRect());
+            return tiles.length === 3 && feed.top >= header.bottom && feed.left >= rail.right &&
+                Math.abs(tiles[0].top - tiles[1].top) <= 2 && tiles[1].left > tiles[0].left &&
+                tiles[2].top > tiles[0].top;
+        })()
+        """) as? Bool
+        guard homeLayout == true else { throw NSError(domain:"HomeGeometry",code:1) }
+        print("PASS: YouTube home preserved the navigation, side rail, and loaded feed grid")
         print("PASS: WebKit source-to-production-reader layout, hidden labels, inert input, pseudo-elements and result text geometry")
     }
     @MainActor private static func wait(_ observer:Observer) async throws {

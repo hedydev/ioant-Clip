@@ -386,7 +386,7 @@ async function capture(mode) {
     if (tag === 'VIDEO' && node.poster) queuePoster(node.poster, marker);
     parent.append(marker);
   }
-  function visit(node, parent, watch = null) {
+  function visit(node, parent, pageLayout = null) {
     if (++state.nodes > 18000) { state.truncated = true; return; }
     if (range && !range.intersectsNode(node)) return;
     if (node.nodeType === Node.TEXT_NODE) {
@@ -403,11 +403,11 @@ async function capture(mode) {
     const hasAudioSource = tag === 'AUDIO' &&
       (node.currentSrc || node.getAttribute('src') || node.querySelector('source[src]'));
     if (!hasAudioSource && isVisuallyClipped(node,cs)) return;
-    if (node === watch?.player) {
-      appendWatchPlayer(node, parent, cs, watch);
+    if (node === pageLayout?.player) {
+      appendWatchPlayer(node, parent, cs, pageLayout);
       return;
     }
-    if (watch && node !== watch.region && cs.position === 'fixed') return;
+    if (pageLayout && node !== pageLayout.region && cs.position === 'fixed') return;
     if (['VIDEO', 'AUDIO', 'IFRAME'].includes(tag)) {
       recordMedia(node, tag, parent);
       return;
@@ -442,7 +442,7 @@ async function capture(mode) {
     }
     const dst = document.createElement(allowed.has(tag) ? tag.toLowerCase() : 'div');
     applyStyles(node,dst,cs);
-    if (node === watch?.region) {
+    if (node === pageLayout?.region) {
       dst.style.position = 'relative';
       dst.style.inset = 'auto';
       dst.style.margin = '0';
@@ -464,7 +464,7 @@ async function capture(mode) {
     if (tag === 'DETAILS') dst.open = wholePage ? node.open : true;
     parent.append(dst);
     if (wholePage && !['IMG','BR','HR','WBR','COL'].includes(tag)) appendPseudo(node,dst,'::before');
-    for (const child of node.childNodes) { if (state.nodes >= 18000) { state.truncated = true; break; } visit(child,dst,watch); }
+    for (const child of node.childNodes) { if (state.nodes >= 18000) { state.truncated = true; break; } visit(child,dst,pageLayout); }
     if (wholePage && !['IMG','BR','HR','WBR','COL'].includes(tag)) appendPseudo(node,dst,'::after');
   }
   function appendWatchPlayer(node, parent, style, watch) {
@@ -501,43 +501,61 @@ async function capture(mode) {
     queuePoster(poster,image,'src');
   }
 
-  function captureWatchLayout(pageURL, videoID) {
-    const visible = selector => Array.from(document.querySelectorAll(selector)).find(node => {
+  function visibleRegion(selector, scope = document) {
+    return Array.from(scope.querySelectorAll(selector)).find(node => {
       const bounds = node.getBoundingClientRect();
       return bounds.width > 0 && bounds.height > 0 && !isVisuallyClipped(node,getComputedStyle(node));
     });
-    const content = visible('ytd-watch-flexy, ytm-watch');
-    const player = visible('#movie_player, .html5-video-player');
-    if (!content || !player || !content.contains(player)) return false;
+  }
 
+  function appendYouTubeLayout(content, options = {}) {
     function appendRegion(region, name, topGap) {
       const bounds = region.getBoundingClientRect();
       const wrapper = document.createElement(name);
       wrapper.style.display = 'block';
       wrapper.style.boxSizing = 'border-box';
       wrapper.style.width = bounds.width + 'px';
-      wrapper.style.marginLeft = Math.max(0,bounds.left + window.scrollX) + 'px';
-      wrapper.style.marginTop = topGap + 'px';
-      visit(region,wrapper,{region,player,title:document.title,url:pageURL.href,videoID});
+      const left = Math.max(0,bounds.left + window.scrollX) + 'px';
+      if (name === 'aside') {
+        wrapper.style.position = 'absolute';
+        wrapper.style.left = left;
+        wrapper.style.top = topGap + 'px';
+      } else {
+        wrapper.style.marginLeft = left;
+        wrapper.style.marginTop = topGap + 'px';
+      }
+      visit(region,wrapper,{...options,region});
       stage.append(wrapper);
     }
 
-    const header = visible('#masthead-container, ytd-masthead, ytm-mobile-topbar-renderer');
+    const header = visibleRegion('#masthead-container, ytd-masthead, ytm-mobile-topbar-renderer');
     const separateHeader = header && !content.contains(header) ? header : null;
     if (separateHeader) appendRegion(separateHeader,'header',0);
     const headerHeight = separateHeader?.getBoundingClientRect().height || 0;
     const contentTop = content.getBoundingClientRect().top + window.scrollY;
     appendRegion(content,'main',Math.max(0,contentTop - headerHeight));
+    if (options.guide) appendRegion(options.guide,'aside',headerHeight);
     return true;
   }
 
-  function captureWatchPage() {
+  function captureYouTubePage() {
     const pageURL = new URL(location.href);
-    const videoID = pageURL.searchParams.get('v');
-    if (!wholePage || !['www.youtube.com','youtube.com','m.youtube.com'].includes(pageURL.hostname) ||
-        pageURL.pathname !== '/watch' || !/^[\w-]{11}$/.test(videoID || '')) return false;
+    if (!wholePage || !['www.youtube.com','youtube.com','m.youtube.com'].includes(pageURL.hostname)) return false;
+    if (pageURL.pathname === '/') {
+      const feed = visibleRegion('ytd-browse[page-subtype="home"], ytm-browse, ytd-rich-grid-renderer');
+      if (!feed || !(feed.innerText?.trim() || feed.querySelector('img[src]'))) throw new Error('error_empty');
+      const guide = visibleRegion('#guide-content, ytd-mini-guide-renderer');
+      // Include the guide only when it occupies its own space beside the feed.
+      const sideRail = guide && !feed.contains(guide) &&
+        guide.getBoundingClientRect().right <= feed.getBoundingClientRect().left + 1 ? guide : null;
+      return appendYouTubeLayout(feed,{guide:sideRail});
+    }
 
-    if (captureWatchLayout(pageURL,videoID)) return true;
+    const videoID = pageURL.searchParams.get('v');
+    if (pageURL.pathname !== '/watch' || !/^[\w-]{11}$/.test(videoID || '')) return false;
+    const watchContent = visibleRegion('ytd-watch-flexy, ytm-watch');
+    const player = watchContent && visibleRegion('#movie_player, .html5-video-player',watchContent);
+    if (player) return appendYouTubeLayout(watchContent,{player,title:document.title,url:pageURL.href,videoID});
 
     // Watch pages use custom player layers and transient overlays. Keep the
     // watch content readable in a static document without cloning those layers.
@@ -618,7 +636,7 @@ async function capture(mode) {
     }
     return true;
   }
-  if (!captureWatchPage()) visit(source,stage);
+  if (!captureYouTubePage()) visit(source,stage);
   await finish();
   const html = root.outerHTML;
   // innerText of the attached original is not used for selections: it could include text outside the selection.
