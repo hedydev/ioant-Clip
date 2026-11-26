@@ -281,9 +281,9 @@ import WebKit
           <div style="height:1200px"></div>
           <section class="deferred"><div data-message-author-role="assistant">
             <h2>Fixture below-fold answer</h2><table><tr><td>Fixture saved cell</td></tr></table>
-            <button aria-label="Open attachment"><img alt="Fixture attachment" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jH1sAAAAASUVORK5CYII="></button>
             <button><svg width="16" height="16"><circle r="5"></circle></svg>Copy answer control</button>
           </div></section>
+          <div data-message-author-role="user"><button aria-label="Open attachment"><img alt="Fixture attachment" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jH1sAAAAASUVORK5CYII="></button></div>
           <div hidden><div data-message-author-role="assistant">Hidden conversation branch</div></div>
         </main><form><textarea>Private draft text</textarea></form>
         """, baseURL: nil)
@@ -316,7 +316,7 @@ import WebKit
         (() => {
             const turns = [...document.querySelectorAll('[data-ioant-turn]')];
             const bounds = turns[1]?.getBoundingClientRect();
-            return turns.length === 2 && innerWidth === 375 && bounds.top < 180 && bounds.height > 35 &&
+            return turns.length === 3 && innerWidth === 375 && bounds.top < 180 && bounds.height > 35 &&
                 document.querySelector('table').getBoundingClientRect().right <= innerWidth &&
                 document.documentElement.scrollWidth <= innerWidth;
         })()

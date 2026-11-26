@@ -819,7 +819,8 @@ async function capture(mode, options = {}) {
       message.setAttribute('data-ioant-turn',turn.getAttribute('data-message-author-role'));
       message.style.cssText = 'padding-block:12px;border-bottom:1px solid rgba(128,128,128,.25);';
       visit(turn,message);
-      if (message.textContent.trim() || message.querySelector('img[src], [data-ioant-media]')) {
+      // Images receive their embedded source when the asset queue finishes.
+      if (message.textContent.trim() || message.querySelector('img, [data-ioant-media]')) {
         stage.append(message);
       }
       if (state.nodes >= 18000) { state.truncated = true; break; }
