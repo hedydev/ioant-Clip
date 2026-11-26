@@ -36,20 +36,41 @@ if (typeof document !== 'undefined') {
     try {
       const [tab] = await chrome.tabs.query({active:true,currentWindow:true});
       if (!tab?.id) throw new Error('error_no_tab');
+      const canScreenshot = typeof chrome.tabs.captureVisibleTab === 'function';
+      const watchPage = mode === 'page' && isYouTubeWatchURL(tab.url);
+      let visual;
       let data;
+      if (mode === 'viewport' || watchPage && canScreenshot) {
+        if (!canScreenshot) throw new Error('error_viewport_unavailable');
+        try {
+          const [meta] = await chrome.scripting.executeScript({target:{tabId:tab.id},func:()=>({title:document.title,sourceURL:location.href,width:window.innerWidth})});
+          const [before] = await chrome.tabs.query({active:true,windowId:tab.windowId});
+          if (before?.id !== tab.id || before.url !== tab.url) throw new Error('error_tab_changed');
+          const image = await chrome.tabs.captureVisibleTab(tab.windowId,{format:'png'});
+          const [after] = await chrome.tabs.query({active:true,windowId:tab.windowId});
+          if (after?.id !== tab.id || after.url !== tab.url) throw new Error('error_tab_changed');
+          visual = {meta:meta?.result,image};
+        } catch(error) {
+          if (mode === 'viewport' || error?.message === 'error_tab_changed') throw error;
+        }
+      }
       if (mode === 'viewport') {
-        if (typeof chrome.tabs.captureVisibleTab !== 'function') throw new Error('error_viewport_unavailable');
-        const [meta] = await chrome.scripting.executeScript({target:{tabId:tab.id},func:()=>({title:document.title,sourceURL:location.href,width:window.innerWidth})});
-        const [before] = await chrome.tabs.query({active:true,windowId:tab.windowId});
-        if (before?.id !== tab.id || before.url !== tab.url) throw new Error('error_tab_changed');
-        const image = await chrome.tabs.captureVisibleTab(tab.windowId,{format:'png'});
-        const [after] = await chrome.tabs.query({active:true,windowId:tab.windowId});
-        if (after?.id !== tab.id || after.url !== tab.url) throw new Error('error_tab_changed');
-        data = viewportCapture(meta?.result,image);
+        data = viewportCapture(visual?.meta,visual?.image);
       } else {
         const [response] = await chrome.scripting.executeScript({target:{tabId:tab.id},func:capture,args:[mode]});
         if (!response?.result) throw new Error(response?.error || 'error_capture');
         data = response.result;
+        if (mode === 'page' && isYouTubeWatchURL(data.sourceURL)) {
+          if (watchPage && data.sourceURL !== tab.url) throw new Error('error_tab_changed');
+          if (visual) {
+            try {
+              data = captureWithViewport(data,visual.meta,visual.image,message('popup_page'));
+            } catch(error) {
+              if (error?.message === 'error_tab_changed') throw error;
+              data.truncated = true;
+            }
+          } else data.truncated = true;
+        }
       }
       latestCapture = data;
       let resultMessage;

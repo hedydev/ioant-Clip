@@ -8,3 +8,22 @@ function viewportCapture(meta, image) {
   if(new TextEncoder().encode(JSON.stringify(result)).length>32*1024*1024) throw new Error('error_snapshot_large');
   return result;
 }
+
+function isYouTubeWatchURL(value) {
+  try {
+    const url = new URL(value);
+    return ['www.youtube.com','youtube.com','m.youtube.com'].includes(url.hostname) &&
+      url.pathname === '/watch' && /^[\w-]{11}$/.test(url.searchParams.get('v') || '');
+  } catch { return false; }
+}
+
+function captureWithViewport(data, meta, image, detailsLabel) {
+  if (!meta || data.sourceURL !== meta.sourceURL) throw new Error('error_tab_changed');
+  const snapshot = viewportCapture(meta,image);
+  const label = detailsLabel.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const html = snapshot.html + '<details style="margin:16px auto;max-width:1200px">' +
+    '<summary style="padding:8px;cursor:pointer">'+label+'</summary>'+data.html+'</details>';
+  const result = {...data,html};
+  if (new TextEncoder().encode(JSON.stringify(result)).length > 32*1024*1024) throw new Error('error_snapshot_large');
+  return result;
+}

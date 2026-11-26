@@ -1,6 +1,15 @@
 const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
-const c={TextEncoder}; vm.createContext(c);vm.runInContext(fs.readFileSync('BrowserExtension/CaptureEngine/viewport.js','utf8'),c);
+const c={TextEncoder,URL}; vm.createContext(c);vm.runInContext(fs.readFileSync('BrowserExtension/CaptureEngine/viewport.js','utf8'),c);
 const result=c.viewportCapture({title:'Fixture',sourceURL:'https://example.test',width:1200},'data:image/png;base64,AA==');
 assert.equal(result.mode,'viewport');assert.match(result.html,/width:1232px/);assert.match(result.html,/data:image\/png;base64,AA==/);
 assert.throws(()=>c.viewportCapture({sourceURL:'https://example.test'},'https://example.test/image.png'));
+const watch = {sourceURL:'https://www.youtube.com/watch?v=gOMhN-hfMtY',title:'Fixture',width:1063};
+const page = {sourceURL:watch.sourceURL,title:'Fixture',mode:'page',text:'Playlist',html:'<article>Playlist</article>'};
+const combined = c.captureWithViewport(page,watch,'data:image/png;base64,AA==','Entire page <details>');
+assert.equal(combined.mode,'page');
+assert.equal(combined.text,'Playlist');
+assert.match(combined.html, /<img[\s\S]*<details[\s\S]*Entire page &lt;details&gt;[\s\S]*<article>Playlist/);
+assert.equal(c.isYouTubeWatchURL(watch.sourceURL),true);
+assert.equal(c.isYouTubeWatchURL('https://example.test/watch?v=gOMhN-hfMtY'),false);
+assert.throws(()=>c.captureWithViewport(page,{...watch,sourceURL:'https://example.test'},'data:image/png;base64,AA==','Details'),/error_tab_changed/);
 console.log('Viewport envelope tests passed');
