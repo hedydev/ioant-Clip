@@ -24,12 +24,15 @@ import WebKit
         main{margin:20px 0 0 140px;width:650px}
         .sticky{position:sticky;top:120px;z-index:2;height:20px}
         .result-link{display:flex}
+        .featured{display:grid;grid-template-columns:240px 120px;grid-template-rows:135px;gap:12px;grid-template-areas:"feature details"}
+        .featured-video{display:block;grid-area:feature}
+        .featured-details{grid-area:details}
         article{margin:0 0 22px} h2{font-size:22px;line-height:30px;margin:0 0 8px;font-weight:400;overflow-wrap:normal}
         p{line-height:24px;margin:0;overflow-wrap:normal}
         .marker::before{content:"◆ ";color:#acf}.marker::after{content:"";display:inline-block;width:8px;height:8px;background:#acf}
         .clip{position:absolute;width:1px;height:1px;clip-path:inset(50%);overflow:hidden}
         </style><div class="head"><a class="sr">Skip to main content</a><a class="sr">Accessibility help</a><span class="brand">Search brand</span><input class="search" type="search" placeholder="Search" value="private field value"><button>Search</button></div>
-        <main><nav class="sticky">Filters</nav><article><a class="result-link"><h2>A long result title wrapping correctly over multiple words in the original search results</h2></a><p class="marker">First description with ordinary line wrapping.</p></article><article><h2>Second result title</h2><p>Second description</p></article><a class="clip">Hidden clipped help</a><video controls title="Fixture video" src="data:video/mp4;base64,AA=="></video><a href="https://www.tiktok.com/@fixture/video/123?tracking=example"><video style="width:240px;height:135px" preload="none" title="Fixture short video" src="blob:https://www.tiktok.com/fixture" poster="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jH1sAAAAASUVORK5CYII="></video></a><audio title="Fixture audio" src="data:audio/mpeg;base64,AA=="></audio></main>
+        <main><nav class="sticky">Filters</nav><article><a class="result-link"><h2>A long result title wrapping correctly over multiple words in the original search results</h2></a><p class="marker">First description with ordinary line wrapping.</p></article><article><h2>Second result title</h2><p>Second description</p></article><a class="clip">Hidden clipped help</a><video controls title="Fixture video" src="data:video/mp4;base64,AA=="></video><section class="featured"><a class="featured-video" href="https://www.tiktok.com/@fixture/video/123?tracking=example"><video style="width:240px;height:135px" preload="none" title="Fixture short video" src="blob:https://www.tiktok.com/fixture" poster="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jH1sAAAAASUVORK5CYII="></video></a><aside class="featured-details">Fixture neighboring card</aside></section><audio title="Fixture audio" src="data:audio/mpeg;base64,AA=="></audio></main>
         """,baseURL:nil)
         try await wait(observer)
         let result = try await view.callAsyncJavaScript(js + "\nreturn await capture('page');",arguments:[:],in:nil,contentWorld:.page)
@@ -63,7 +66,12 @@ import WebKit
         (() => {
             const frame = document.querySelectorAll('[data-ioant-video-preview]')[1];
             const bounds = frame.getBoundingClientRect();
+            const grid = frame.closest('section');
+            const gridBounds = grid.getBoundingClientRect();
+            const neighbor = grid.querySelector('aside').getBoundingClientRect();
             return bounds.width === 240 && bounds.height === 135 &&
+                Math.abs(bounds.left - gridBounds.left) <= 2 && Math.abs(bounds.top - gridBounds.top) <= 2 &&
+                Math.abs(neighbor.left - bounds.right - 12) <= 2 && Math.abs(neighbor.top - bounds.top) <= 2 &&
                 frame.querySelector('img').getAttribute('src')?.startsWith('data:image/png;base64,');
         })()
         """) as? Bool
