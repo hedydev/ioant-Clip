@@ -90,7 +90,7 @@ private struct ClipReaderContent: View {
     private enum Prepared: Sendable {
         case html(String)
         case plain(String)
-        case media([NoteMedia])
+        case media([ClipMediaSection])
     }
 
     private struct Request: Equatable {
@@ -119,8 +119,8 @@ private struct ClipReaderContent: View {
                             .textSelection(.enabled)
                             .padding(LayoutMetrics.large)
                     }
-                case .media(let items):
-                    ClipMediaView(items: items, parentSize: sheetParentSize)
+                case .media(let sections):
+                    ClipMediaView(sections: sections, parentSize: sheetParentSize)
                 }
             } else {
                 ReaderLoadingView()
@@ -136,7 +136,7 @@ private struct ClipReaderContent: View {
             let content = await Task.detached(priority: .userInitiated) {
                 switch mode {
                 case .original: Prepared.html(note.htmlDocument)
-                case .media: Prepared.media(note.media)
+                case .media: Prepared.media(ClipMediaSection.group(note.media))
                 case .plain:
                     Self.preparePlainText(for: note)
                 }
@@ -152,23 +152,16 @@ private struct ClipReaderContent: View {
 }
 
 struct ReaderLoadingView: View {
-    var compact = false
     @State private var visible = false
 
     var body: some View {
-        Group {
-            if compact {
-                ProgressView().controlSize(.small)
-            } else {
-                ProgressView("reader.loading")
+        ProgressView("reader.loading")
+            .opacity(visible ? 1 : 0)
+            .accessibilityHidden(!visible)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .task {
+                try? await Task.sleep(for: .milliseconds(150))
+                if !Task.isCancelled { visible = true }
             }
-        }
-        .opacity(visible ? 1 : 0)
-        .accessibilityHidden(!visible)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .task {
-            try? await Task.sleep(for: .milliseconds(150))
-            if !Task.isCancelled { visible = true }
-        }
     }
 }

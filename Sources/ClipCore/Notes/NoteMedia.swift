@@ -24,12 +24,14 @@ public struct NoteMedia: Equatable, Sendable {
         return Self.document(markup, vectorBackground: kind == .svg)
     }
 
+    public var thumbnailSource: String? {
+        poster ?? (kind == .image || kind == .svg ? embedded : nil)
+    }
+
     public var thumbnailDocument: String? {
-        if let poster {
-            return Self.document("<img src=\"\(NotePart.escape(poster))\" alt=\"\">",
-                                 vectorBackground: poster.prefix(100).lowercased().hasPrefix("data:image/svg+xml"))
-        }
-        return kind == .image || kind == .svg ? previewDocument : nil
+        guard let source = thumbnailSource else { return nil }
+        return Self.document("<img src=\"\(NotePart.escape(source))\" alt=\"\(NotePart.escape(title))\">",
+                             vectorBackground: source.prefix(100).lowercased().hasPrefix("data:image/svg+xml"))
     }
 
     private static func document(_ markup: String, vectorBackground: Bool) -> String {
@@ -97,7 +99,7 @@ public struct NoteMedia: Equatable, Sendable {
                    !seen.insert(kind.rawValue + key).inserted { return }
                 let title = values["alt"] ?? values["title"] ?? ""
                 let poster = (values["data-ioant-media-poster"] ?? values["poster"]).flatMap {
-                    $0.lowercased().hasPrefix("data:image/") ? $0 : nil
+                    $0.prefix(11).lowercased() == "data:image/" ? $0 : nil
                 }
                 items.append(Self(kind: kind, title: title, embedded: embedded, poster: poster, source: source))
             }
@@ -106,7 +108,7 @@ public struct NoteMedia: Equatable, Sendable {
     }
 
     private static func webURL(_ value: String, relativeTo base: String?) -> URL? {
-        guard !value.isEmpty,
+        guard !value.isEmpty, value.prefix(5).lowercased() != "data:",
               let url = URL(string: value, relativeTo: base.flatMap { URL(string: $0) })?.absoluteURL,
               let scheme = url.scheme?.lowercased(), ["https", "http"].contains(scheme),
               url.host != nil else { return nil }

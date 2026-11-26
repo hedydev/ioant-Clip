@@ -6,8 +6,8 @@ final class PreviewCoordinator: NSObject, WKNavigationDelegate {
     private var pendingNavigation: WKNavigation?
     var onLoad: ((Bool) -> Void)?
 
-    func render(_ html: String, in view: WKWebView) {
-        guard loadedHTML != html else { return }
+    func render(_ html: String, in view: WKWebView, force: Bool = false) {
+        guard force || loadedHTML != html else { return }
         loadedHTML = html
         pendingNavigation = view.loadHTMLString(html, baseURL: nil)
         if pendingNavigation == nil {

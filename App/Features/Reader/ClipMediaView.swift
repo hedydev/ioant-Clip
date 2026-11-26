@@ -1,30 +1,43 @@
 import SwiftUI
 
+struct ClipMediaSection: Identifiable, Sendable {
+    struct Item: Identifiable, Sendable {
+        let id = UUID()
+        let media: NoteMedia
+    }
+
+    let id: NoteMedia.Kind
+    let items: [Item]
+
+    static func group(_ media: [NoteMedia]) -> [Self] {
+        let groups = Dictionary(grouping: media, by: \.kind)
+        return NoteMedia.Kind.allCases.compactMap { kind in
+            groups[kind].map { Self(id: kind, items: $0.map { Item(media: $0) }) }
+        }
+    }
+}
+
 struct ClipMediaView: View {
-    let items: [NoteMedia]
+    let sections: [ClipMediaSection]
     let parentSize: CGSize
     @State private var preview: NoteMedia?
+    @StateObject private var thumbnails = MediaThumbnailStore()
 
     var body: some View {
-        if items.isEmpty {
+        if sections.isEmpty {
             ContentUnavailableView("reader.media.empty", systemImage: "photo.on.rectangle.angled")
         } else {
             ScrollView {
-                VStack(alignment: .leading, spacing: LayoutMetrics.large) {
-                    ForEach(NoteMedia.Kind.allCases, id: \.self) { kind in
-                        let group = items.filter { $0.kind == kind }
-                        if !group.isEmpty {
-                            Text(label(kind)).font(.headline)
-                            if group.count == 1, let item = group.first {
-                                card(item)
-                                    .frame(maxWidth: 280)
-                                    .frame(maxWidth: .infinity)
-                            } else {
-                                LazyVGrid(columns: [GridItem(.adaptive(minimum: 180), alignment: .top)], alignment: .leading) {
-                                    ForEach(group.indices, id: \.self) { index in
-                                        card(group[index])
-                                    }
-                                }
+                LazyVStack(alignment: .leading, spacing: LayoutMetrics.large) {
+                    ForEach(sections) { section in
+                        Text(label(section.id)).font(.headline)
+                        if section.items.count == 1, let item = section.items.first {
+                            card(item)
+                                .frame(maxWidth: 280)
+                                .frame(maxWidth: .infinity)
+                        } else {
+                            LazyVGrid(columns: [GridItem(.adaptive(minimum: 180), alignment: .top)], alignment: .leading) {
+                                ForEach(section.items) { item in card(item) }
                             }
                         }
                     }
@@ -60,23 +73,15 @@ struct ClipMediaView: View {
         }
     }
 
-    private func card(_ item: NoteMedia) -> some View {
+    private func card(_ item: ClipMediaSection.Item) -> some View {
         Button {
-            preview = item
+            preview = item.media
         } label: {
             VStack(alignment: .leading, spacing: 8) {
-                if let html = item.thumbnailDocument {
-                    ReaderHTMLPreview(html: html, compact: true)
-                        .allowsHitTesting(false)
-                        .accessibilityHidden(true)
-                        .frame(height: 100)
-                } else {
-                    Image(systemName: item.kind == .audio ? "waveform" : item.kind == .video ? "film" : "photo")
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 100)
-                        .accessibilityHidden(true)
-                }
-                title(item).font(.subheadline).lineLimit(2)
+                MediaThumbnailView(item: item, thumbnails: thumbnails)
+                    .frame(height: 100)
+                    .accessibilityHidden(true)
+                title(item.media).font(.subheadline).lineLimit(2)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(8)
@@ -95,6 +100,39 @@ struct ClipMediaView: View {
         case .svg: "reader.media.svg"
         case .video: "reader.media.video"
         case .audio: "reader.media.audio"
+        }
+    }
+}
+
+private struct MediaThumbnailView: View {
+    let item: ClipMediaSection.Item
+    let thumbnails: MediaThumbnailStore
+    @State private var image: CGImage?
+
+    var body: some View {
+        Group {
+            if let image {
+                Image(decorative: image, scale: 1)
+                    .resizable()
+                    .scaledToFit()
+            } else {
+                Image(systemName: placeholder)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .task(id: item.id) {
+            let loaded = await thumbnails.image(for: item.id, media: item.media)
+            if !Task.isCancelled { image = loaded }
+        }
+        .onDisappear { image = nil }
+    }
+
+    private var placeholder: String {
+        switch item.media.kind {
+        case .image, .svg: "photo"
+        case .video: "film"
+        case .audio: "waveform"
         }
     }
 }

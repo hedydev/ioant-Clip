@@ -1,5 +1,6 @@
 import AppKit
 import WebKit
+import ImageIO
 import Foundation
 
 @main struct RenderTest {
@@ -13,13 +14,14 @@ import Foundation
         do {
             try await verify(single, red: true, green: false)
             try await verify(merged, red: true, green: true)
+            try await verifyThumbnails()
             print("WebKit real snapshot: single and merged rich content visible")
         } catch {
             fputs("WebKit render regression: \(error)\n", stderr)
             exit(1)
         }
     }
-    enum TestError: Error { case pixelsMissing(String,Int,Int), noBitmap, navigationTimeout, navigationFailed }
+    enum TestError: Error { case pixelsMissing(String,Int,Int), noBitmap, navigationTimeout, navigationFailed, thumbnailFailed }
     @MainActor static func verify(_ note: Note, red: Bool, green: Bool) async throws {
         let coordinator = PreviewCoordinator()
         let view = previewWebView(coordinator)
@@ -62,6 +64,43 @@ import Foundation
         } while Date() < deadline
         throw TestError.pixelsMissing(note.title, reds, greens)
     }
+    @MainActor static func verifyThumbnails() async throws {
+        guard let graphics = CGContext(data: nil, width: 1600, height: 800, bitsPerComponent: 8, bytesPerRow: 0,
+                                       space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
+        else { throw TestError.thumbnailFailed }
+        graphics.setFillColor(red: 0, green: 0.8, blue: 0, alpha: 1)
+        graphics.fill(CGRect(x: 0, y: 0, width: 1600, height: 800))
+        let data = NSMutableData()
+        guard let raster = graphics.makeImage(), let encoder = CGImageDestinationCreateWithData(data as CFMutableData, "public.png" as CFString, 1, nil)
+        else { throw TestError.thumbnailFailed }
+        CGImageDestinationAddImage(encoder, raster, nil)
+        guard CGImageDestinationFinalize(encoder) else { throw TestError.thumbnailFailed }
+        let html = "<img src='data:image/png;base64,\(data.base64EncodedString())'>"
+        let media = Note(title: "Thumbnail fixture", parts: [NotePart(html: html)]).media
+        let store = MediaThumbnailStore()
+        guard let item = media.first else { throw TestError.thumbnailFailed }
+        let id = UUID()
+        guard let thumb = await store.image(for: id, media: item), thumb.width == 320, thumb.height == 160,
+              let reused = await store.image(for: id, media: item), reused === thumb
+        else { throw TestError.thumbnailFailed }
+
+        let svg = "<svg xmlns='http://www.w3.org/2000/svg' width='80' height='60'><rect width='80' height='60' fill='red'/></svg>"
+        let source = "<img src='data:image/svg+xml;base64,\(Data(svg.utf8).base64EncodedString())'>"
+        guard let vector = Note(title: "SVG fixture", parts: [NotePart(html: source)]).media.first else {
+            throw TestError.thumbnailFailed
+        }
+        async let first = store.image(for: UUID(), media: vector)
+        async let second = store.image(for: UUID(), media: vector)
+        let thumbs = await [first, second]
+        for image in thumbs {
+            guard let image else { throw TestError.thumbnailFailed }
+            let bitmap = NSBitmapImageRep(cgImage: image)
+            guard let color = bitmap.colorAt(x: bitmap.pixelsWide / 2, y: bitmap.pixelsHigh / 2)?.usingColorSpace(.deviceRGB),
+                  color.redComponent > 0.7, color.greenComponent < 0.35 else { throw TestError.thumbnailFailed }
+        }
+        print("Media thumbnails: bounded raster, cache reuse, and serial SVG snapshots passed")
+    }
+
 }
 
 /// Preserve production navigation policy in the real WebKit fixture.

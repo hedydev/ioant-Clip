@@ -27,7 +27,6 @@ struct HTMLPreview: UIViewRepresentable {
 
 struct ReaderHTMLPreview: View {
     let html: String
-    var compact = false
     @State private var loadedHTML: String?
     @State private var succeeded = false
 
@@ -41,13 +40,9 @@ struct ReaderHTMLPreview: View {
         .accessibilityHidden(!finished || !succeeded)
         .overlay {
             if !finished {
-                ReaderLoadingView(compact: compact)
+                ReaderLoadingView()
             } else if !succeeded {
-                if compact {
-                    Image(systemName: "photo.badge.exclamationmark").foregroundStyle(.secondary)
-                } else {
-                    ContentUnavailableView("reader.preview.error", systemImage: "doc.badge.exclamationmark")
-                }
+                ContentUnavailableView("reader.preview.error", systemImage: "doc.badge.exclamationmark")
             }
         }
     }
