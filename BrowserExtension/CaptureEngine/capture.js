@@ -25,7 +25,7 @@ async function capture(mode) {
   const {attachData,snapshotImage,queueBackground,queuePoster,finish}=createAssets(state);
   const {applyStyles,isVisuallyClipped,appendPseudo}=createLayout({source,wholePage,stage,queueBackground});
   const {snapshotSVG}=createSVG(state,attachData);
-  function recordMedia(node, tag, parent) {
+  function recordMedia(node, tag, parent, pageLink) {
     let kind = tag.toLowerCase();
     let url = node.currentSrc || node.getAttribute('src') || node.querySelector('source[src]')?.getAttribute('src');
     if (tag === 'IFRAME') {
@@ -40,16 +40,15 @@ async function capture(mode) {
     marker.hidden = true;
     marker.setAttribute('data-ioant-media', kind);
     marker.title = (node.getAttribute('aria-label') || node.title || '').slice(0, 500);
-    if (url) {
+    if (url || pageLink) {
       try {
-        const source = new URL(url, document.baseURI);
+        const source = new URL(url || pageLink, document.baseURI);
         const web = ['https:', 'http:'].includes(source.protocol) && source.href.length <= 8192;
         const local = source.href.startsWith('data:' + kind + '/') && source.href.length <= 512 * 1024 &&
           state.imageBytes + source.href.length <= 12 * 1024 * 1024;
-        if (web || local) {
-          if (local) state.imageBytes += source.href.length;
-          marker.setAttribute('data-ioant-media-src', source.href);
-        }
+        if (local) state.imageBytes += source.href.length;
+        const savedSource = local ? source.href : pageLink || (web ? source.href : '');
+        if (savedSource) marker.setAttribute('data-ioant-media-src', savedSource);
       } catch { /* Use the captured page as the source. */ }
     }
     if (tag === 'VIDEO' && node.poster) queuePoster(node.poster, marker);
@@ -77,6 +76,10 @@ async function capture(mode) {
       return;
     }
     if (pageLayout && node !== pageLayout.region && cs.position === 'fixed') return;
+    if (tag === 'VIDEO' && wholePage) {
+      appendVideoPreview(node,parent,cs);
+      return;
+    }
     if (['VIDEO', 'AUDIO', 'IFRAME'].includes(tag)) {
       recordMedia(node, tag, parent);
       return;
@@ -136,6 +139,33 @@ async function capture(mode) {
     for (const child of node.childNodes) { if (state.nodes >= 18000) { state.truncated = true; break; } visit(child,dst,pageLayout); }
     if (wholePage && !['IMG','BR','HR','WBR','COL'].includes(tag)) appendPseudo(node,dst,'::after');
   }
+  function appendVideoPreview(node, parent, style) {
+    const frame = document.createElement('div');
+    applyStyles(node,frame,style);
+    if (style.display === 'inline') frame.style.display = 'inline-block';
+    frame.style.height = style.height;
+    frame.style.overflow = 'hidden';
+    frame.setAttribute('data-ioant-video-preview','');
+
+    const card = node.closest('a[href], [data-e2e="explore-item"], [data-e2e="recommend-list-item-container"]');
+    const link = card?.matches('a[href]') ? card : card?.querySelector('a[href*="/video/"]');
+    const pageLink = link && /^https:\/\/(?:www\.|m\.)?tiktok\.com\/@[^/]+\/video\/\d+(?:[/?#]|$)/i.test(link.href)
+      ? link.href.split(/[?#]/)[0] : null;
+    recordMedia(node,'VIDEO',frame,pageLink);
+
+    const image = document.createElement('img');
+    image.alt = '';
+    image.style.cssText = 'display:block;width:100%;height:100%;';
+    image.style.objectFit = style.objectFit === 'fill' ? 'cover' : style.objectFit;
+    image.style.objectPosition = style.objectPosition;
+    frame.append(image);
+    parent.append(frame);
+
+    if (captureVideoFrame(node,image)) return;
+    const cover = node.poster || card?.querySelector('img')?.currentSrc || card?.querySelector('img')?.src;
+    if (cover) queuePoster(cover,image,'src');
+  }
+
   function appendWatchPlayer(node, parent, style, watch) {
     const player = document.createElement('div');
     applyStyles(node,player,style);
@@ -156,6 +186,12 @@ async function capture(mode) {
     parent.append(player);
 
     const video = node.querySelector('video');
+    if (captureVideoFrame(video,image)) return;
+    const poster = 'https://i.ytimg.com/vi/' + watch.videoID + '/hqdefault.jpg';
+    queuePoster(poster,image,'src');
+  }
+
+  function captureVideoFrame(video, image) {
     if (video?.readyState >= 2 && video.videoWidth && video.videoHeight) {
       try {
         const canvas = document.createElement('canvas');
@@ -163,11 +199,10 @@ async function capture(mode) {
         canvas.width = Math.max(1,Math.round(video.videoWidth * scale));
         canvas.height = Math.max(1,Math.round(video.videoHeight * scale));
         canvas.getContext('2d').drawImage(video,0,0,canvas.width,canvas.height);
-        if (attachData(image,canvas.toDataURL('image/jpeg',0.85))) return;
+        return attachData(image,canvas.toDataURL('image/jpeg',0.85));
       } catch { /* The browser can restrict access to the active frame. */ }
     }
-    const poster = 'https://i.ytimg.com/vi/' + watch.videoID + '/hqdefault.jpg';
-    queuePoster(poster,image,'src');
+    return false;
   }
 
   function visibleRegion(selector, scope = document) {

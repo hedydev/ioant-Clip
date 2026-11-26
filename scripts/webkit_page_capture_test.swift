@@ -28,7 +28,7 @@ import WebKit
         .marker::before{content:"◆ ";color:#acf}.marker::after{content:"";display:inline-block;width:8px;height:8px;background:#acf}
         .clip{position:absolute;width:1px;height:1px;clip-path:inset(50%);overflow:hidden}
         </style><div class="head"><a class="sr">Skip to main content</a><a class="sr">Accessibility help</a><span class="brand">Search brand</span><input class="search" type="search" placeholder="Search" value="private field value"><button>Search</button></div>
-        <main><nav class="sticky">Filters</nav><article><a class="result-link"><h2>A long result title wrapping correctly over multiple words in the original search results</h2></a><p class="marker">First description with ordinary line wrapping.</p></article><article><h2>Second result title</h2><p>Second description</p></article><a class="clip">Hidden clipped help</a><video controls title="Fixture video" src="data:video/mp4;base64,AA=="></video><audio title="Fixture audio" src="data:audio/mpeg;base64,AA=="></audio></main>
+        <main><nav class="sticky">Filters</nav><article><a class="result-link"><h2>A long result title wrapping correctly over multiple words in the original search results</h2></a><p class="marker">First description with ordinary line wrapping.</p></article><article><h2>Second result title</h2><p>Second description</p></article><a class="clip">Hidden clipped help</a><video controls title="Fixture video" src="data:video/mp4;base64,AA=="></video><a href="https://www.tiktok.com/@fixture/video/123?tracking=example"><video style="width:240px;height:135px" preload="none" title="Fixture short video" src="blob:https://www.tiktok.com/fixture" poster="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jH1sAAAAASUVORK5CYII="></video></a><audio title="Fixture audio" src="data:audio/mpeg;base64,AA=="></audio></main>
         """,baseURL:nil)
         try await wait(observer)
         let result = try await view.callAsyncJavaScript(js + "\nreturn await capture('page');",arguments:[:],in:nil,contentWorld:.page)
@@ -40,6 +40,9 @@ import WebKit
         }
         guard html.contains("data-ioant-media=\"video\""),
               html.contains("data-ioant-media=\"audio\""),
+              html.contains("data-ioant-video-preview"),
+              html.contains("data-ioant-media-src=\"https://www.tiktok.com/@fixture/video/123\""),
+              html.contains("data-ioant-media-src=\"data:video/mp4;base64,AA==\""),
               !html.contains("<video"), !html.contains("<audio") else {
             throw NSError(domain:"MediaMetadata",code:1)
         }
@@ -55,6 +58,15 @@ import WebKit
         try await wait(previewObserver)
         // The production viewer disables page scripts. Test-only evaluation is
         // isolated and observes geometry, never enables captured code.
+        let videoPreview = try await preview.evaluateJavaScript("""
+        (() => {
+            const frame = document.querySelectorAll('[data-ioant-video-preview]')[1];
+            const bounds = frame.getBoundingClientRect();
+            return bounds.width === 240 && bounds.height === 135 &&
+                frame.querySelector('img').getAttribute('src')?.startsWith('data:image/png;base64,');
+        })()
+        """) as? Bool
+        guard videoPreview == true else { throw NSError(domain:"VideoPosterGeometry",code:1) }
         let actual = try await preview.evaluateJavaScript("""
         (()=>{const root=document.querySelector('[data-ioant-layout=page]');const stage=root.firstElementChild;const base=stage.getBoundingClientRect();const r=e=>({x:e.getBoundingClientRect().x-base.x,y:e.getBoundingClientRect().y-base.y,w:e.getBoundingClientRect().width,h:e.getBoundingClientRect().height});return {head:r(stage.firstElementChild.firstElementChild),input:r(root.querySelector('[data-ioant-control]')),titles:[...root.querySelectorAll('h2')].map(r),paragraphs:[...root.querySelectorAll('p')].map(r)}})()
         """) as? [String:Any]
