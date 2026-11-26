@@ -97,12 +97,12 @@
       });
     }
     }
-    function queuePoster(url, marker) {
+    function queuePoster(url, target, attribute = 'data-ioant-media-poster') {
       pendingImages.push(async () => {
         const data = await assetData(url);
         if (!data || state.imageBytes + data.length > maxImage) return;
         state.imageBytes += data.length;
-        marker.setAttribute('data-ioant-media-poster', data);
+        target.setAttribute(attribute, data);
       });
     }
     async function finish() {

@@ -266,12 +266,12 @@ async function capture(mode) {
       });
     }
     }
-    function queuePoster(url, marker) {
+    function queuePoster(url, target, attribute = 'data-ioant-media-poster') {
       pendingImages.push(async () => {
         const data = await assetData(url);
         if (!data || state.imageBytes + data.length > maxImage) return;
         state.imageBytes += data.length;
-        marker.setAttribute('data-ioant-media-poster', data);
+        target.setAttribute(attribute, data);
       });
     }
     async function finish() {
@@ -453,7 +453,60 @@ async function capture(mode) {
     for (const child of node.childNodes) { if (state.nodes >= 18000) { state.truncated = true; break; } visit(child,dst); }
     if (wholePage && !['IMG','BR','HR','WBR','COL'].includes(tag)) appendPseudo(node,dst,'::after');
   }
-  visit(source,stage);
+  function captureWatchPage() {
+    const pageURL = new URL(location.href);
+    if (!wholePage || !['www.youtube.com','youtube.com','m.youtube.com'].includes(pageURL.hostname) ||
+        pageURL.pathname !== '/watch' || !pageURL.searchParams.get('v')) return false;
+
+    // Watch pages use custom player layers and transient overlays. Keep the
+    // watch content readable in a static document without cloning those layers.
+    const meta = key => document.querySelector('meta[property="' + key + '"]')?.content?.trim();
+    const visibleText = selector => {
+      const element = document.querySelector(selector);
+      return element?.getClientRects().length && element.innerText?.trim() || '';
+    };
+    const heading = visibleText('ytd-watch-metadata h1, #title h1') ||
+      meta('og:title') || document.title.replace(/\s*-\s*YouTube\s*$/i,'').trim();
+    if (!heading || heading === 'YouTube') throw new Error('error_empty');
+    root.style.width = '100%';
+    root.style.maxWidth = '960px';
+    root.style.color = root.style.colorScheme === 'dark' ? '#f1f1f1' : '#181818';
+    stage.style.width = '100%';
+    stage.style.minHeight = '0';
+
+    const content = document.createElement('article');
+    content.style.cssText = 'display:block;max-width:100%;overflow-wrap:anywhere;color:inherit;';
+    const title = document.createElement('h1');
+    title.style.cssText = 'display:block;margin:16px 0 8px;line-height:1.25;';
+    title.textContent = heading.slice(0,500);
+    const marker = document.createElement('span');
+    marker.hidden = true;
+    marker.title = title.textContent;
+    marker.setAttribute('data-ioant-media','video');
+    marker.setAttribute('data-ioant-media-src',pageURL.href);
+    const poster = meta('og:image');
+    if (poster) {
+      const image = document.createElement('img');
+      image.alt = '';
+      image.style.cssText = 'display:block;width:100%;height:auto;border-radius:12px;';
+      content.append(image);
+      queuePoster(poster,image,'src');
+    }
+    content.append(title,marker);
+    for (const text of [
+      visibleText('#owner ytd-channel-name, ytm-slim-owner-renderer'),
+      visibleText('ytd-watch-metadata #description-inline-expander, #description-inline-expander') || meta('og:description')
+    ]) {
+      if (!text) continue;
+      const paragraph = document.createElement('p');
+      paragraph.style.cssText = 'display:block;white-space:pre-wrap;margin:8px 0;';
+      paragraph.textContent = text.slice(0,8000);
+      content.append(paragraph);
+    }
+    stage.append(content);
+    return true;
+  }
+  if (!captureWatchPage()) visit(source,stage);
   await finish();
   const html = root.outerHTML;
   // innerText of the attached original is not used for selections: it could include text outside the selection.
