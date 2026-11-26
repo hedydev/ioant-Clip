@@ -1,5 +1,5 @@
 /* Source entry; build_capture_bundle.py embeds the isolated-world helpers. */
-async function capture(mode, options = {}) {
+async function captureDocument(mode, options) {
   /* @capture-modules */
   const selection = window.getSelection();
   const range = mode === 'selection' && selection && !selection.isCollapsed && selection.rangeCount ? selection.getRangeAt(0) : null;
@@ -83,7 +83,7 @@ async function capture(mode, options = {}) {
       }
       return;
     }
-    if (skip.has(tag)) return;
+    if (skip.has(tag) || chatConversation && node.matches('nav,aside,dialog,[role="toolbar"],[role="navigation"],[role="dialog"]')) return;
     const cs = getComputedStyle(node);
     // Audio without native controls has no layout box. It can still be
     // playable through the page's custom controls and belong in the index.
@@ -359,25 +359,59 @@ async function capture(mode, options = {}) {
     }
     return true;
   }
+
   function captureConversation() {
     const roles = '[data-message-author-role="user"], [data-message-author-role="assistant"]';
-    const turns = [...document.querySelectorAll(roles)].filter(node =>
-      !node.parentElement?.closest(roles) && !node.closest('[hidden],[inert],[aria-hidden="true"]') &&
-      !isVisuallyClipped(node,getComputedStyle(node)));
+    const wrappers = '[data-testid^="conversation-turn-"], article[data-turn]';
+    const excluded = '[hidden],[inert],[aria-hidden="true"],nav,aside,form,dialog,[role="toolbar"],[role="navigation"],[role="dialog"]';
+    const rendered = node => !node.closest(excluded) && !isVisuallyClipped(node,getComputedStyle(node));
+    const outermost = (scope,selector) => {
+      const matches = Array.from(scope.querySelectorAll(selector)).filter(rendered);
+      const candidates = new Set(matches);
+      return matches.filter(node => {
+        for (let parent=node.parentElement; parent; parent=parent.parentElement) {
+          if (candidates.has(parent)) return false;
+        }
+        return true;
+      });
+    };
     root.setAttribute('data-ioant-conversation','');
     root.style.width = '100%';
     root.style.maxWidth = '900px';
-    for (const turn of turns) {
+
+    const threads = outermost(document,'main,[role="main"]');
+    function appendMessage(nodes,role) {
       const message = document.createElement('article');
-      message.setAttribute('data-ioant-turn',turn.getAttribute('data-message-author-role'));
+      message.setAttribute('data-ioant-turn',role === 'user' || role === 'assistant' ? role : 'message');
       message.style.cssText = 'padding-block:12px;border-bottom:1px solid rgba(128,128,128,.25);';
-      visit(turn,message);
-      // Images receive their embedded source when the asset queue finishes.
-      if (message.textContent.trim() || message.querySelector('img, [data-ioant-media]')) {
-        stage.append(message);
+      for (const node of nodes) {
+        visit(node,message);
+        if (state.nodes >= 18000) { state.truncated = true; break; }
       }
-      if (state.nodes >= 18000) { state.truncated = true; break; }
+      // Images receive their embedded source when the asset queue finishes.
+      if (message.textContent.trim() || message.querySelector('img, [data-ioant-media]')) stage.append(message);
     }
+
+    const candidates = threads.flatMap(thread => outermost(thread,wrappers + ', ' + roles));
+    const turns = candidates.length ? candidates : outermost(document,roles);
+    for (const turn of turns) {
+      const authored = turn.matches(roles) ? [turn] : outermost(turn,roles);
+      if (authored.length) {
+        for (const item of authored) {
+          appendMessage([item],item.getAttribute('data-message-author-role'));
+          if (state.nodes >= 18000) break;
+        }
+      } else {
+        appendMessage([turn],turn.getAttribute('data-turn'));
+      }
+      if (state.nodes >= 18000) break;
+    }
+    if (stage.childElementCount) return;
+
+    // Some conversation layouts have no author labels or turn wrappers.
+    // Use document content inside the main region, without capturing the app shell.
+    const content = '.markdown,[data-message-id],article,h1,h2,h3,h4,p,table,pre,blockquote,ol,ul,figure,img,video,audio,svg';
+    for (const thread of threads) appendMessage(outermost(thread,content));
   }
 
   if (chatConversation) captureConversation();

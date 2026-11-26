@@ -25,6 +25,25 @@ checks=r"""
  if(!vectorImage?.getAttribute('src')?.startsWith('data:image/svg+xml') || !frame || frame.style.borderRadius!=='16px' || !frame.style.padding || frame.style.backgroundColor!=='rgb(250, 250, 250)') throw new Error('Vector image or source-colored frame missing');
  const fill=[...parsed.querySelectorAll('div')].find(e=>e.style.backgroundColor==='rgb(18, 163, 74)');
  if(!svg || !xml.includes('Host') || !xml.includes('marker-end') || !fill || Math.abs(parseFloat(fill.style.width)-75)>1 || fill.style.height!=='8px' || !parsed.querySelector('table td') || !parsed.querySelector('pre') || !data.text.includes('Fixture title') || data.truncated) throw new Error('svg=' + !!svg + ' marker=' + (xml&&xml.includes('marker-end')) + ' fill=' + (fill&&fill.style.cssText) + ' truncated='+data.truncated);
+ document.querySelector('#target').hidden = true;
+ const thread = document.createElement('main');
+ thread.innerHTML = '<article data-testid="conversation-turn-1" data-turn="assistant"><div class="markdown"><table><tr><td>Mounted turn content</td></tr></table></div><button>Copy toolbar control</button></article><nav><p>Sidebar content</p></nav>';
+ document.body.append(thread);
+ const script = capture.toString().replace('const conversationURL = new URL(location.href);',
+     "const conversationURL = new URL('https://chatgpt.com/g/project/c/fixture');");
+ // The injected function is serialized without its caller's lexical scope.
+ const injected = Function('return (' + script + ')')();
+ const wrapped = await injected('page',{returnOutcome:true});
+ if (!wrapped.capture?.text.includes('Mounted turn content') || wrapped.capture?.text.includes('Copy toolbar control') ||
+     wrapped.capture?.text.includes('Sidebar content') || !wrapped.capture?.html.includes('data-ioant-conversation')) {
+    throw new Error('Conversation with wrappers but no author labels failed');
+ }
+ thread.innerHTML = '<section><h2>Article heading</h2><table><tr><td>Main document fallback</td></tr></table></section>';
+ const fallback = await injected('page',{returnOutcome:true});
+ if (!fallback.capture?.text.includes('Main document fallback')) throw new Error('Main document fallback failed');
+ thread.replaceChildren();
+ const empty = await injected('page',{returnOutcome:true});
+ if (empty.error !== 'error_empty') throw new Error('Empty error lost through capture boundary');
  document.getElementById('result').textContent='IOANT_CAPTURE_PASS';
 } catch(e) {document.getElementById('result').textContent='IOANT_CAPTURE_FAIL '+e.message;}})();
 """

@@ -32,6 +32,7 @@ if command -v node >/dev/null; then
   for source in BrowserExtension/CaptureEngine/*.js; do node --check "$source" || status=1; done
   node --check BrowserExtension/CaptureEngine/viewport.js || status=1
   node scripts/test_viewport.js || status=1
+  node scripts/test_popup_capture.js || status=1
   /usr/bin/python3 scripts/test_page_layout.py || status=1
   /usr/bin/python3 scripts/test_capture_browser.py || status=1
 else

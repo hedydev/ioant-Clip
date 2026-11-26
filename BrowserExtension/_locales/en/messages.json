@@ -62,6 +62,12 @@
   "error_capture": {
     "message": "Unable to capture this page."
   },
+  "error_capture_tab": {
+    "message": "The browser could not read this tab. Reopen Clip on the page you want to capture."
+  },
+  "error_capture_result": {
+    "message": "The capture script did not return a result. Reload the Clip extension and try again."
+  },
   "error_native": {
     "message": "Unexpected native response."
   },

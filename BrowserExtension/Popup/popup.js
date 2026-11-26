@@ -47,9 +47,18 @@ if (typeof document !== 'undefined') {
         if (after?.id !== tab.id || after.url !== tab.url) throw new Error('error_tab_changed');
         data = viewportCapture(meta?.result,image);
       } else {
-        const [response] = await chrome.scripting.executeScript({target:{tabId:tab.id},func:capture,args:[mode]});
-        if (!response?.result) throw new Error(response?.error || 'error_capture');
-        data = response.result;
+        let response;
+        try {
+          [response] = await chrome.scripting.executeScript({
+            target:{tabId:tab.id},func:capture,args:[mode,{returnOutcome:true}]
+          });
+        } catch {
+          throw new Error('error_capture_tab');
+        }
+        const result = response?.result;
+        if (result?.error) throw new Error(result.error);
+        if (!result?.capture) throw new Error('error_capture_result');
+        data = result.capture;
       }
       latestCapture = data;
       let resultMessage;

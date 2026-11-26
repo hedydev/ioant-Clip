@@ -62,6 +62,12 @@
   "error_capture": {
     "message": "无法采集此网页。"
   },
+  "error_capture_tab": {
+    "message": "浏览器未能读取当前标签页。请在要采集的页面重新打开 Clip 扩展。"
+  },
+  "error_capture_result": {
+    "message": "采集脚本没有返回结果。请重新加载 Clip 扩展后再试。"
+  },
   "error_native": {
     "message": "本地通信返回异常。"
   },

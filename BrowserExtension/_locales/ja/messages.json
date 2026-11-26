@@ -62,6 +62,12 @@
   "error_capture": {
     "message": "このページをキャプチャできません。"
   },
+  "error_capture_tab": {
+    "message": "ブラウザーが現在のタブを読み取れませんでした。保存したいページで Clip を開き直してください。"
+  },
+  "error_capture_result": {
+    "message": "取得スクリプトから結果が返りませんでした。Clip 拡張機能を再読み込みしてから、もう一度お試しください。"
+  },
   "error_native": {
     "message": "ネイティブアプリの応答が不正です。"
   },

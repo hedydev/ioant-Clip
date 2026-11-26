@@ -62,6 +62,12 @@
   "error_capture": {
     "message": "無法擷取此網頁。"
   },
+  "error_capture_tab": {
+    "message": "瀏覽器無法讀取目前的分頁。請在要擷取的頁面重新開啟 Clip 擴充功能。"
+  },
+  "error_capture_result": {
+    "message": "擷取指令碼未回傳結果。請重新載入 Clip 擴充功能後再試。"
+  },
   "error_native": {
     "message": "本機通訊回應異常。"
   },
