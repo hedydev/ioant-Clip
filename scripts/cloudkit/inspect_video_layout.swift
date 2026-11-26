@@ -56,8 +56,13 @@ import WebKit
         return {naturalSize:[image.naturalWidth,image.naturalHeight],viewport:[innerWidth,innerHeight],ancestors,layers};
         """,arguments:[:],in:nil,contentWorld:.page)
         guard let result = result as? [String: Any] else { throw NSError(domain: "VideoProbeResult", code: 1) }
-        let bytes = try JSONSerialization.data(withJSONObject:result,options:[.sortedKeys])
-        print(String(decoding:bytes,as:UTF8.self))
+        print("Viewport",result["viewport"] ?? [],"decoded image size",result["naturalSize"] ?? [])
+        for key in ["ancestors","layers"] {
+            for (index, row) in (result[key] as? [[String: Any]] ?? []).enumerated() {
+                let bytes = try JSONSerialization.data(withJSONObject:row,options:[.sortedKeys])
+                print(key,index,String(decoding:bytes,as:UTF8.self))
+            }
+        }
     }
 }
 
