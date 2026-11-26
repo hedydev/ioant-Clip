@@ -1,4 +1,5 @@
 import AppKit
+import AVFoundation
 import Foundation
 import WebKit
 
@@ -219,7 +220,70 @@ import WebKit
         """) as? Bool
         guard homeLayout == true else { throw NSError(domain:"HomeGeometry",code:1) }
         print("PASS: YouTube home preserved the navigation, side rail, and loaded feed grid")
+        // Make a real local movie so validation covers fetching a whole asset,
+        // opening it for metadata inspection, and serializing it for playback.
+        window.contentView = view
+        let movie = try await fixtureMovie()
+        let savedMovie = try await view.callAsyncJavaScript(js + """
+        ;const bytes = Uint8Array.from(atob(movie), character => character.charCodeAt(0));
+        const url = URL.createObjectURL(new Blob([bytes],{type:'video/mp4'}));
+        const video = document.createElement('video');
+        video.style.cssText = 'display:block;width:240px;height:135px';
+        video.preload = 'none';
+        video.src = url;
+        document.body.append(video);
+        try {
+            const result = await capture('page');
+            return result.html.includes('data-ioant-media-file="data:video/mp4;base64,');
+        } finally {
+            video.remove();
+            URL.revokeObjectURL(url);
+        }
+        """,arguments:["movie":movie.base64EncodedString()],in:nil,contentWorld:.page) as? Bool
+        guard savedMovie == true else { throw NSError(domain:"PlayableVideoCapture",code:1) }
+        print("PASS: whole-page capture embedded a complete MP4 after WebKit read its video metadata")
         print("PASS: WebKit source-to-production-reader layout, hidden labels, inert input, pseudo-elements and result text geometry")
+    }
+
+    private static func fixtureMovie() async throws -> Data {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".mp4")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let writer = try AVAssetWriter(outputURL: url, fileType: .mp4)
+        let input = AVAssetWriterInput(mediaType: .video, outputSettings: [
+            AVVideoCodecKey: AVVideoCodecType.h264, AVVideoWidthKey: 64, AVVideoHeightKey: 64
+        ])
+        let adapter = AVAssetWriterInputPixelBufferAdaptor(assetWriterInput: input, sourcePixelBufferAttributes: [
+            kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA,
+            kCVPixelBufferWidthKey as String: 64,
+            kCVPixelBufferHeightKey as String: 64,
+        ])
+        writer.add(input)
+        guard writer.startWriting() else { throw writer.error ?? NSError(domain:"FixtureMovie",code:1) }
+        writer.startSession(atSourceTime: .zero)
+        var pixelBuffer: CVPixelBuffer?
+        guard let pool = adapter.pixelBufferPool,
+              CVPixelBufferPoolCreatePixelBuffer(kCFAllocatorDefault,pool,&pixelBuffer) == kCVReturnSuccess,
+              let pixelBuffer else { throw NSError(domain:"FixtureMovie",code:2) }
+        CVPixelBufferLockBaseAddress(pixelBuffer, [])
+        if let bytes = CVPixelBufferGetBaseAddress(pixelBuffer) {
+            memset(bytes,128,CVPixelBufferGetDataSize(pixelBuffer))
+        }
+        CVPixelBufferUnlockBaseAddress(pixelBuffer, [])
+        for index in 0..<3 {
+            for _ in 0..<100 where !input.isReadyForMoreMediaData {
+                try await Task.sleep(for: .milliseconds(10))
+            }
+            guard input.isReadyForMoreMediaData,
+                  adapter.append(pixelBuffer,withPresentationTime: CMTime(value: Int64(index),timescale: 8)) else {
+                throw writer.error ?? NSError(domain:"FixtureMovie",code:3)
+            }
+        }
+        input.markAsFinished()
+        await withCheckedContinuation { continuation in
+            writer.finishWriting { continuation.resume() }
+        }
+        guard writer.status == .completed else { throw writer.error ?? NSError(domain:"FixtureMovie",code:4) }
+        return try Data(contentsOf: url)
     }
     @MainActor private static func wait(_ observer:Observer) async throws {
         let deadline=Date().addingTimeInterval(12)
