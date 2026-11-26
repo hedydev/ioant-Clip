@@ -19,7 +19,7 @@ public struct NoteMedia: Equatable {
         case .image, .svg: markup = "<img src=\"\(value)\" alt=\"\(NotePart.escape(title))\">"
         case .video, .audio:
             let tag = kind.rawValue
-            markup = "<\(tag) controls src=\"\(value)\"></\(tag)>"
+            markup = "<\(tag) controls playsinline src=\"\(value)\"></\(tag)>"
         }
         return Self.document(markup)
     }
@@ -82,11 +82,14 @@ public struct NoteMedia: Equatable {
                 let prefixes = kind == .svg ? ["data:image/svg+xml"] :
                     kind == .image ? ["data:image/png", "data:image/jpeg", "data:image/gif", "data:image/webp", "data:image/avif"] :
                     ["data:\(kind.rawValue)/"]
-                let embedded = prefixes.contains { lower.hasPrefix($0) } ? src : nil
-                let source = embedded == nil ? webURL(src, relativeTo: part.sourceURL) ??
-                    (kind == .audio || kind == .video ? webURL(part.sourceURL ?? "", relativeTo: nil) : nil) : nil
-                guard embedded != nil || source != nil,
-                      seen.insert(kind.rawValue + (embedded ?? source?.absoluteString ?? "")).inserted else { return }
+                let file = values["data-ioant-media-file"] ?? src
+                let embedded = prefixes.contains { file.prefix(100).lowercased().hasPrefix($0) } ? file : nil
+                let explicitSource = webURL(src, relativeTo: part.sourceURL)
+                let source = explicitSource ?? (embedded == nil && (kind == .audio || kind == .video)
+                    ? webURL(part.sourceURL ?? "", relativeTo: nil) : nil)
+                guard embedded != nil || source != nil else { return }
+                if let key = explicitSource?.absoluteString ?? embedded,
+                   !seen.insert(kind.rawValue + key).inserted { return }
                 let title = values["alt"] ?? values["title"] ?? ""
                 let poster = (values["data-ioant-media-poster"] ?? values["poster"]).flatMap {
                     $0.lowercased().hasPrefix("data:image/") ? $0 : nil

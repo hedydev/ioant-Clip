@@ -174,6 +174,7 @@ async function capture(mode) {
     const pendingImages=[];
     const deadline=Date.now()+15000;
     const assetCache=new Map();
+    const videos = new Map();
   async function assetData(raw) {
     let url;
     try { url = new URL(raw,location.href); } catch { return null; }
@@ -274,13 +275,102 @@ async function capture(mode) {
         target.setAttribute(attribute, data);
       });
     }
+    // Keep media small enough for the existing note envelope. A playlist or
+    // a partial HTTP response is not a self-contained video file.
+    function queueVideo(url, video, marker) {
+      const existing = videos.get(url);
+      if (existing) {
+        existing.markers.push(marker);
+      } else if (videos.size < 3) {
+        videos.set(url,{video,markers:[marker]});
+      }
+    }
+
+    async function videoFile(url, video, limit, signal) {
+      const response = await fetch(url,{signal,credentials:'omit',referrerPolicy:'no-referrer'});
+      const mime = (response.headers.get('content-type') || '').split(';')[0].toLowerCase().trim();
+      if (response.status !== 200 || !response.body ||
+          !['video/mp4','video/webm','video/quicktime','video/ogg'].includes(mime) || !video.canPlayType(mime) ||
+          Number(response.headers.get('content-length')) > limit) {
+        await response.body?.cancel();
+        return null;
+      }
+      const reader = response.body.getReader();
+      const chunks = [];
+      let size = 0;
+      try {
+        for (;;) {
+          const {done,value} = await reader.read();
+          if (done) break;
+          size += value.byteLength;
+          if (size > limit) {
+            await reader.cancel();
+            return null;
+          }
+          chunks.push(value);
+        }
+      } finally {
+        reader.releaseLock();
+      }
+      return size ? new Blob(chunks,{type:mime}) : null;
+    }
+
+    function hasPlayableMetadata(file, signal) {
+      return new Promise(resolve => {
+        const sample = document.createElement('video');
+        const url = URL.createObjectURL(file);
+        function done(result) {
+          signal.removeEventListener('abort',failed);
+          sample.onloadedmetadata = null;
+          sample.onerror = null;
+          sample.removeAttribute('src');
+          sample.load();
+          URL.revokeObjectURL(url);
+          resolve(result);
+        }
+        function failed() { done(false); }
+        sample.onloadedmetadata = () => done(Number.isFinite(sample.duration) && sample.duration > 0 && sample.videoWidth > 0);
+        sample.onerror = failed;
+        sample.preload = 'metadata';
+        if (signal.aborted) { failed(); return; }
+        signal.addEventListener('abort',failed,{once:true});
+        sample.src = url;
+        sample.load();
+      });
+    }
+
+    async function finishVideoFiles() {
+      let remaining = 8 * 1024 * 1024;
+      for (const [url,{video,markers}] of videos) {
+        const limit = Math.min(4 * 1024 * 1024,Math.floor((remaining / markers.length - 64) * 0.75));
+        if (limit <= 0) break;
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(),3000);
+        try {
+          const file = await videoFile(url,video,limit,controller.signal);
+          if (!file || !await hasPlayableMetadata(file,controller.signal)) continue;
+          const data = await new Promise((resolve,reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+          });
+          if (typeof data !== 'string' || data.length * markers.length > remaining) continue;
+          for (const marker of markers) marker.setAttribute('data-ioant-media-file',data);
+          remaining -= data.length * markers.length;
+        } catch { /* Keep the source link when a full playable file is unavailable. */ }
+        finally { clearTimeout(timer); }
+      }
+    }
+
     async function finish() {
       let cursor=0;
       await Promise.all(Array.from({length:Math.min(4,pendingImages.length)},async()=>{
         while(cursor<pendingImages.length) { const i=cursor++; await pendingImages[i](); }
       }));
+      await finishVideoFiles();
     }
-    return {attachData,snapshotImage,queueBackground,queuePoster,finish};
+    return {attachData,snapshotImage,queueBackground,queuePoster,queueVideo,finish};
   }
 /* Offline vector snapshot with restricted SVG elements and local references. */
   function createSVG(state,attachData) {
@@ -353,7 +443,7 @@ async function capture(mode) {
   const allowed = new Set('A ABBR ARTICLE ASIDE B BLOCKQUOTE BR CAPTION CODE DD DEL DETAILS DIV DL DT EM FIGCAPTION FIGURE FOOTER H1 H2 H3 H4 H5 H6 HEADER HR I IMG KBD LI MAIN MARK NAV OL P PRE Q S SAMP SECTION SMALL SPAN STRONG SUB SUMMARY SUP TABLE TBODY TD TH THEAD TFOOT TR U UL VAR WBR MATH COL COLGROUP'.split(' '));
   const state={nodes:0,svgNodes:0,imageBytes:0,truncated:false,missing:0};
   const {root,stage}=createSurface(source,wholePage);
-  const {attachData,snapshotImage,queueBackground,queuePoster,finish}=createAssets(state);
+  const {attachData,snapshotImage,queueBackground,queuePoster,queueVideo,finish}=createAssets(state);
   const {applyStyles,isVisuallyClipped,appendPseudo}=createLayout({source,wholePage,stage,queueBackground});
   const {snapshotSVG}=createSVG(state,attachData);
   function recordMedia(node, tag, parent, pageLink) {
@@ -362,10 +452,10 @@ async function capture(mode) {
     if (tag === 'IFRAME') {
       let host;
       try { host = new URL(url, document.baseURI).hostname; } catch { return; }
-      if (/(^|\.)(youtube(?:-nocookie)?\.com|vimeo\.com|bilibili\.com|dailymotion\.com)$/i.test(host)) kind = 'video';
+      if (/(^|\.)(youtube(?:-nocookie)?\.com|vimeo\.com|bilibili\.com|dailymotion\.com|player\.twitch\.tv|clips\.twitch\.tv|streamable\.com|loom\.com|wistia\.net|tiktok\.com)$/i.test(host)) kind = 'video';
       else if (/(^|\.)(soundcloud\.com|spotify\.com|mixcloud\.com)$/i.test(host)) kind = 'audio';
       else return;
-      url = location.href;
+      url = kind === 'video' ? new URL(url,document.baseURI).href : location.href;
     }
     const marker = document.createElement('span');
     marker.hidden = true;
@@ -380,6 +470,9 @@ async function capture(mode) {
         if (local) state.imageBytes += source.href.length;
         const savedSource = local ? source.href : pageLink || (web ? source.href : '');
         if (savedSource) marker.setAttribute('data-ioant-media-src', savedSource);
+        if (tag === 'VIDEO' && !node.mediaKeys && (web || source.protocol === 'blob:')) {
+          queueVideo(source.href,node,marker);
+        }
       } catch { /* Use the captured page as the source. */ }
     }
     if (tag === 'VIDEO' && node.poster) queuePoster(node.poster, marker);

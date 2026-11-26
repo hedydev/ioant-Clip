@@ -21,6 +21,22 @@ final class NoteMediaTests: XCTestCase {
         XCTAssertTrue(items.last?.previewDocument?.contains("<audio controls") == true)
     }
 
+    func testSavedVideoFileUsesLocalPlaybackAndKeepsItsSource() throws {
+        let html = """
+        <span data-ioant-media="video" title="Sample" data-ioant-media-src="https://example.com/watch"
+        data-ioant-media-file="data:video/mp4;base64,AA=="></span>
+        <span data-ioant-media="video" title="First stream"></span>
+        <span data-ioant-media="video" title="Second stream"></span>
+        """
+        let items = NoteMedia.extract(from: [NotePart(html: html, sourceURL: "https://example.com/page")])
+        XCTAssertEqual(items.map(\.title), ["Sample", "First stream", "Second stream"])
+        let video = try XCTUnwrap(items.first)
+        XCTAssertEqual(video.source?.absoluteString, "https://example.com/watch")
+        XCTAssertEqual(video.embedded, "data:video/mp4;base64,AA==")
+        XCTAssertTrue(video.previewDocument?.contains("<video controls") == true)
+        XCTAssertNil(items.last?.previewDocument)
+    }
+
     func testExtractsPastedImageAndUsesPageForUnavailableMedia() {
         let items = NoteMedia.extract(from: [
             NotePart(image: Data([0]), imageMIME: "image/png"),

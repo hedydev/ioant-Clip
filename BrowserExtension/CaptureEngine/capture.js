@@ -22,7 +22,7 @@ async function capture(mode) {
   const allowed = new Set('A ABBR ARTICLE ASIDE B BLOCKQUOTE BR CAPTION CODE DD DEL DETAILS DIV DL DT EM FIGCAPTION FIGURE FOOTER H1 H2 H3 H4 H5 H6 HEADER HR I IMG KBD LI MAIN MARK NAV OL P PRE Q S SAMP SECTION SMALL SPAN STRONG SUB SUMMARY SUP TABLE TBODY TD TH THEAD TFOOT TR U UL VAR WBR MATH COL COLGROUP'.split(' '));
   const state={nodes:0,svgNodes:0,imageBytes:0,truncated:false,missing:0};
   const {root,stage}=createSurface(source,wholePage);
-  const {attachData,snapshotImage,queueBackground,queuePoster,finish}=createAssets(state);
+  const {attachData,snapshotImage,queueBackground,queuePoster,queueVideo,finish}=createAssets(state);
   const {applyStyles,isVisuallyClipped,appendPseudo}=createLayout({source,wholePage,stage,queueBackground});
   const {snapshotSVG}=createSVG(state,attachData);
   function recordMedia(node, tag, parent, pageLink) {
@@ -31,10 +31,10 @@ async function capture(mode) {
     if (tag === 'IFRAME') {
       let host;
       try { host = new URL(url, document.baseURI).hostname; } catch { return; }
-      if (/(^|\.)(youtube(?:-nocookie)?\.com|vimeo\.com|bilibili\.com|dailymotion\.com)$/i.test(host)) kind = 'video';
+      if (/(^|\.)(youtube(?:-nocookie)?\.com|vimeo\.com|bilibili\.com|dailymotion\.com|player\.twitch\.tv|clips\.twitch\.tv|streamable\.com|loom\.com|wistia\.net|tiktok\.com)$/i.test(host)) kind = 'video';
       else if (/(^|\.)(soundcloud\.com|spotify\.com|mixcloud\.com)$/i.test(host)) kind = 'audio';
       else return;
-      url = location.href;
+      url = kind === 'video' ? new URL(url,document.baseURI).href : location.href;
     }
     const marker = document.createElement('span');
     marker.hidden = true;
@@ -49,6 +49,9 @@ async function capture(mode) {
         if (local) state.imageBytes += source.href.length;
         const savedSource = local ? source.href : pageLink || (web ? source.href : '');
         if (savedSource) marker.setAttribute('data-ioant-media-src', savedSource);
+        if (tag === 'VIDEO' && !node.mediaKeys && (web || source.protocol === 'blob:')) {
+          queueVideo(source.href,node,marker);
+        }
       } catch { /* Use the captured page as the source. */ }
     }
     if (tag === 'VIDEO' && node.poster) queuePoster(node.poster, marker);
