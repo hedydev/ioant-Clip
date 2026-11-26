@@ -55,7 +55,7 @@ async function capture(mode) {
     if (tag === 'VIDEO' && node.poster) queuePoster(node.poster, marker);
     parent.append(marker);
   }
-  function visit(node, parent) {
+  function visit(node, parent, watch = null) {
     if (++state.nodes > 18000) { state.truncated = true; return; }
     if (range && !range.intersectsNode(node)) return;
     if (node.nodeType === Node.TEXT_NODE) {
@@ -72,6 +72,11 @@ async function capture(mode) {
     const hasAudioSource = tag === 'AUDIO' &&
       (node.currentSrc || node.getAttribute('src') || node.querySelector('source[src]'));
     if (!hasAudioSource && isVisuallyClipped(node,cs)) return;
+    if (node === watch?.player) {
+      appendWatchPlayer(node, parent, cs, watch);
+      return;
+    }
+    if (watch && node !== watch.region && cs.position === 'fixed') return;
     if (['VIDEO', 'AUDIO', 'IFRAME'].includes(tag)) {
       recordMedia(node, tag, parent);
       return;
@@ -106,6 +111,15 @@ async function capture(mode) {
     }
     const dst = document.createElement(allowed.has(tag) ? tag.toLowerCase() : 'div');
     applyStyles(node,dst,cs);
+    if (node === watch?.region) {
+      dst.style.position = 'relative';
+      dst.style.inset = 'auto';
+      dst.style.margin = '0';
+      dst.style.transform = 'none';
+      dst.style.boxSizing = 'border-box';
+      dst.style.width = '100%';
+      dst.style.maxWidth = 'none';
+    }
     if (tag === 'IMG') {
       snapshotImage(node,dst);
       const original = node.currentSrc || node.src;
@@ -119,14 +133,80 @@ async function capture(mode) {
     if (tag === 'DETAILS') dst.open = wholePage ? node.open : true;
     parent.append(dst);
     if (wholePage && !['IMG','BR','HR','WBR','COL'].includes(tag)) appendPseudo(node,dst,'::before');
-    for (const child of node.childNodes) { if (state.nodes >= 18000) { state.truncated = true; break; } visit(child,dst); }
+    for (const child of node.childNodes) { if (state.nodes >= 18000) { state.truncated = true; break; } visit(child,dst,watch); }
     if (wholePage && !['IMG','BR','HR','WBR','COL'].includes(tag)) appendPseudo(node,dst,'::after');
   }
+  function appendWatchPlayer(node, parent, style, watch) {
+    const player = document.createElement('div');
+    applyStyles(node,player,style);
+    player.setAttribute('data-ioant-watch-player','');
+    player.style.height = style.height;
+    player.style.background = '#000';
+    player.style.overflow = 'hidden';
+
+    const marker = document.createElement('span');
+    marker.hidden = true;
+    marker.title = watch.title.slice(0,500);
+    marker.setAttribute('data-ioant-media','video');
+    marker.setAttribute('data-ioant-media-src',watch.url);
+    const image = document.createElement('img');
+    image.alt = '';
+    image.style.cssText = 'display:block;width:100%;height:100%;object-fit:contain;';
+    player.append(image,marker);
+    parent.append(player);
+
+    const video = node.querySelector('video');
+    if (video?.readyState >= 2 && video.videoWidth && video.videoHeight) {
+      try {
+        const canvas = document.createElement('canvas');
+        const scale = Math.min(1,1280 / video.videoWidth,720 / video.videoHeight);
+        canvas.width = Math.max(1,Math.round(video.videoWidth * scale));
+        canvas.height = Math.max(1,Math.round(video.videoHeight * scale));
+        canvas.getContext('2d').drawImage(video,0,0,canvas.width,canvas.height);
+        if (attachData(image,canvas.toDataURL('image/jpeg',0.85))) return;
+      } catch { /* The browser can restrict access to the active frame. */ }
+    }
+    const poster = 'https://i.ytimg.com/vi/' + watch.videoID + '/hqdefault.jpg';
+    queuePoster(poster,image,'src');
+  }
+
+  function captureWatchLayout(pageURL, videoID) {
+    const visible = selector => Array.from(document.querySelectorAll(selector)).find(node => {
+      const bounds = node.getBoundingClientRect();
+      return bounds.width > 0 && bounds.height > 0 && !isVisuallyClipped(node,getComputedStyle(node));
+    });
+    const content = visible('ytd-watch-flexy, ytm-watch');
+    const player = visible('#movie_player, .html5-video-player');
+    if (!content || !player || !content.contains(player)) return false;
+
+    function appendRegion(region, name, topGap) {
+      const bounds = region.getBoundingClientRect();
+      const wrapper = document.createElement(name);
+      wrapper.style.display = 'block';
+      wrapper.style.boxSizing = 'border-box';
+      wrapper.style.width = bounds.width + 'px';
+      wrapper.style.marginLeft = Math.max(0,bounds.left + window.scrollX) + 'px';
+      wrapper.style.marginTop = topGap + 'px';
+      visit(region,wrapper,{region,player,title:document.title,url:pageURL.href,videoID});
+      stage.append(wrapper);
+    }
+
+    const header = visible('#masthead-container, ytd-masthead, ytm-mobile-topbar-renderer');
+    const separateHeader = header && !content.contains(header) ? header : null;
+    if (separateHeader) appendRegion(separateHeader,'header',0);
+    const headerHeight = separateHeader?.getBoundingClientRect().height || 0;
+    const contentTop = content.getBoundingClientRect().top + window.scrollY;
+    appendRegion(content,'main',Math.max(0,contentTop - headerHeight));
+    return true;
+  }
+
   function captureWatchPage() {
     const pageURL = new URL(location.href);
     const videoID = pageURL.searchParams.get('v');
     if (!wholePage || !['www.youtube.com','youtube.com','m.youtube.com'].includes(pageURL.hostname) ||
         pageURL.pathname !== '/watch' || !/^[\w-]{11}$/.test(videoID || '')) return false;
+
+    if (captureWatchLayout(pageURL,videoID)) return true;
 
     // Watch pages use custom player layers and transient overlays. Keep the
     // watch content readable in a static document without cloning those layers.

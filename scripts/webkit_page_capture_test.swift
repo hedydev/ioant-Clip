@@ -92,13 +92,31 @@ import WebKit
         window.contentView = view
         view.loadHTMLString("""
         <!doctype html><title>Fixture song - YouTube</title>
-        <meta property="og:description" content="Fixture video description">
         <meta property="og:image" content="https://example.invalid/youtube-logo.png">
-        <ytd-watch-metadata><h1>Fixture song</h1></ytd-watch-metadata>
-        <div style="position:fixed;inset:0;background:white">Transient player overlay</div>
-        <ytd-playlist-panel-renderer><ytd-playlist-panel-video-renderer selected>
-        <span id="video-title">Fixture current playlist row</span>
-        </ytd-playlist-panel-video-renderer></ytd-playlist-panel-renderer>
+        <style>
+        body { margin:0 }
+        #masthead-container { position:fixed; inset:0 0 auto; height:52px; background:#ddd }
+        ytd-watch-flexy { display:flex; gap:16px; margin:68px 16px 0; align-items:flex-start }
+        #primary { width:680px }
+        #movie_player { width:680px; height:382px; border-radius:12px }
+        #secondary { width:320px }
+        ytd-playlist-panel-video-renderer { display:block; background:rgb(232,232,216) }
+        .overlay { position:fixed; inset:0; background:white }
+        </style>
+        <div id="masthead-container"><nav>Fixture navigation</nav></div>
+        <ytd-watch-flexy>
+          <section id="primary">
+            <div id="movie_player"><div class="overlay">Transient player overlay</div></div>
+            <ytd-watch-metadata><h1>Fixture song</h1><p>Fixture video description</p></ytd-watch-metadata>
+            <div class="overlay">Unrelated transient overlay</div>
+          </section>
+          <aside id="secondary">
+            <ytd-playlist-panel-video-renderer selected>
+              <span id="video-title">Fixture current playlist row</span>
+            </ytd-playlist-panel-video-renderer>
+            <p>Fixture related video</p>
+          </aside>
+        </ytd-watch-flexy>
         """,baseURL:nil)
         try await wait(watchObserver)
         let watchScript = js.replacingOccurrences(
@@ -108,14 +126,32 @@ import WebKit
         let watch = try await view.callAsyncJavaScript(watchScript + "\nreturn await capture('page');",arguments:[:],in:nil,contentWorld:.page) as? [String:Any]
         guard let watchHTML = watch?["html"] as? String, let watchText = watch?["text"] as? String,
               watchText.contains("Fixture song"), watchText.contains("Fixture video description"),
-              !watchHTML.contains("Transient player overlay"), watchHTML.contains("data-ioant-media-src"),
-              watchHTML.contains("youtube.com/watch?v=AgFeZr5ptV8"),
-              watchHTML.contains("i.ytimg.com/vi/AgFeZr5ptV8/hqdefault.jpg"),
-              !watchHTML.contains("youtube-logo.png"),
-              watchText.contains("Fixture current playlist row") else {
+              !watchHTML.contains("Transient player overlay"), !watchHTML.contains("Unrelated transient overlay"),
+              watchHTML.contains("data-ioant-media-src"), watchHTML.contains("youtube.com/watch?v=AgFeZr5ptV8"),
+              !watchHTML.contains("youtube-logo.png"), watchText.contains("Fixture navigation"),
+              watchText.contains("Fixture current playlist row"), watchText.contains("Fixture related video") else {
             throw NSError(domain:"WatchCapture",code:1)
         }
-        print("PASS: site watch capture retained title, description and video source")
+        let watchPreviewObserver = Observer()
+        preview.navigationDelegate = watchPreviewObserver
+        window.contentView = preview
+        preview.loadHTMLString(Note.document(for: NotePart(html:watchHTML,text:watchText)),baseURL:nil)
+        try await wait(watchPreviewObserver)
+        let watchLayout = try await preview.evaluateJavaScript("""
+        (() => {
+            const bounds = selector => document.querySelector(selector).getBoundingClientRect();
+            const player = bounds('[data-ioant-watch-player]');
+            const title = bounds('h1');
+            const sidebar = bounds('aside');
+            const header = bounds('header');
+            return Math.abs(player.width - 680) <= 2 && Math.abs(player.height - 382) <= 2 &&
+                title.top >= player.bottom && sidebar.left >= player.right + 12 &&
+                Math.abs(sidebar.top - player.top) <= 2 &&
+                Math.abs(player.top - header.bottom - 16) <= 2;
+        })()
+        """) as? Bool
+        guard watchLayout == true else { throw NSError(domain:"WatchGeometry",code:1) }
+        print("PASS: watch capture retained the original header, player size, title, playlist and related column")
         print("PASS: WebKit source-to-production-reader layout, hidden labels, inert input, pseudo-elements and result text geometry")
     }
     @MainActor private static func wait(_ observer:Observer) async throws {
