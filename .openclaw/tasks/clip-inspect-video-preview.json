@@ -4,8 +4,8 @@
   "steps": [
     {
       "name": "inspect_recent_video_previews",
-      "runtime": "python3",
-      "script": "scripts/cloudkit/inspect_video_preview.py",
+      "runtime": "bash",
+      "script": "scripts/cloudkit/inspect_video_preview.sh",
       "timeoutSeconds": 60
     }
   ],
