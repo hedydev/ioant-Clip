@@ -13,8 +13,7 @@ struct LibrarySidebar: View {
     @Binding var query: String
     @Binding var appSettings: Bool
     @Binding var storageSettings: Bool
-    @Binding var deleting: Set<UUID>
-    @Binding var confirmDelete: Bool
+    let requestConfirmation: (LibraryView.Confirmation) -> Void
     @Binding var tagFilter: TagFilter
     let visibleTags: [String]
     let editVisibleTags: () -> Void
@@ -105,9 +104,10 @@ struct LibrarySidebar: View {
             }
             Spacer(minLength: 0)
             if selecting {
-                LibrarySelectionBar(count: checked.count, merge: merge, delete: {
-                    deleting = checked
-                    confirmDelete = true
+                LibrarySelectionBar(count: checked.count, merge: {
+                    requestConfirmation(.merge(checked))
+                }, delete: {
+                    requestConfirmation(.delete(checked))
                 }, done: toggleSelection)
             } else {
                 Button(action: toggleSelection) {
@@ -142,13 +142,5 @@ struct LibrarySidebar: View {
         tagFilter = filter
         checked.removeAll()
         if let note = store.note(selected), !filter.includes(note) { selected = nil }
-    }
-    private func merge() {
-        if let id = store.change({ $0.merge(checked) }) ?? nil {
-            selected = id
-            compactColumn = .detail
-            selecting = false
-            checked.removeAll()
-        }
     }
 }

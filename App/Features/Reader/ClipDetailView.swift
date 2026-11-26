@@ -9,8 +9,7 @@ struct ClipDetailView: View {
     @Binding var plainPreview: Bool
     @Binding var copiedID: UUID?
     @Binding var editing: Note?
-    @Binding var deleting: Set<UUID>
-    @Binding var confirmDelete: Bool
+    let requestDelete: (UUID) -> Void
     @Binding var importing: Bool
     let paste: () -> Void
     @State private var showingMedia = false
@@ -56,7 +55,7 @@ struct ClipDetailView: View {
                 }.toolbar {
                     ToolbarItemGroup {
                         Button { editing = note } label: { Label("reader.edit", systemImage: "tag") }
-                        Button(role: .destructive) { deleting = [note.id]; confirmDelete = true } label: { Label("common.delete", systemImage: "trash") }
+                        Button(role: .destructive) { requestDelete(note.id) } label: { Label("common.delete", systemImage: "trash") }
                     }
                 }
             } else if loadingNote {

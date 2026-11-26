@@ -20,8 +20,7 @@ struct LibraryView: View {
     @AppStorage("ioant.clip.library.visibleTags.v1") private var savedVisibleTags = ""
     @State private var sheetParentSize = PresentationMetrics.mainDefault
     @State private var editing: Note?
-    @State private var deleting = Set<UUID>()
-    @State private var confirmDelete = false
+    @State private var confirmation: Confirmation?
     @AppStorage("ioant.clip.library.filter.v1") private var savedFilter = "all"
     private var tagFilter: TagFilter {
         get { TagFilter(preference: savedFilter) }
@@ -30,6 +29,22 @@ struct LibraryView: View {
     private var filterBinding: Binding<TagFilter> {
         Binding(get: { tagFilter }, set: { tagFilter = $0 })
     }
+    enum Confirmation {
+        case delete(Set<UUID>)
+        case merge(Set<UUID>)
+
+        var title: Text {
+            switch self {
+            case .delete(let ids): Text("library.delete.confirm \(ids.count)")
+            case .merge(let ids): Text("library.merge.confirm \(ids.count)")
+            }
+        }
+    }
+
+    private var presentingConfirmation: Binding<Bool> {
+        Binding(get: { confirmation != nil }, set: { if !$0 { confirmation = nil } })
+    }
+
     private struct DetailRequest: Equatable {
         let id: UUID?
         let revision: Int
@@ -44,12 +59,12 @@ struct LibraryView: View {
     private var visibleTags: [String] { VisibleLibraryTags.resolve(savedVisibleTags, available: tags) }
     var body: some View {
         NavigationSplitView(preferredCompactColumn: $compactColumn) {
-            LibrarySidebar(selected: $selected, compactColumn: $compactColumn, checked: $checked, selecting: $selecting, query: $query, appSettings: $appSettings, storageSettings: $storageSettings, deleting: $deleting, confirmDelete: $confirmDelete, tagFilter: filterBinding, visibleTags: visibleTags, editVisibleTags: {
+            LibrarySidebar(selected: $selected, compactColumn: $compactColumn, checked: $checked, selecting: $selecting, query: $query, appSettings: $appSettings, storageSettings: $storageSettings, requestConfirmation: { confirmation = $0 }, tagFilter: filterBinding, visibleTags: visibleTags, editVisibleTags: {
                 draftVisibleTags = Set(visibleTags.map(TagColor.key))
                 editingVisibleTags = true
             })
         } detail: {
-            ClipDetailView(current: current, loadingNote: selected != nil && loaded?.id != selected, sheetParentSize: sheetParentSize, tags: tags, plainPreview: $plainPreview, copiedID: $copiedID, editing: $editing, deleting: $deleting, confirmDelete: $confirmDelete, importing: $importing, paste: paste)
+            ClipDetailView(current: current, loadingNote: selected != nil && loaded?.id != selected, sheetParentSize: sheetParentSize, tags: tags, plainPreview: $plainPreview, copiedID: $copiedID, editing: $editing, requestDelete: { confirmation = .delete([$0]) }, importing: $importing, paste: paste)
         }
         .safeAreaInset(edge: .top, spacing: 0) {
             if let issue = store.captureInboxIssue {
@@ -127,9 +142,37 @@ struct LibraryView: View {
             if editingVisibleTags { draftVisibleTags.formIntersection(available.map(TagColor.key)) }
             if case .tag(let tag) = tagFilter, !available.contains(where: { TagColor.key($0) == TagColor.key(tag) }) { tagFilter = .all }
         }
-        .confirmationDialog("library.delete.confirm \(deleting.count)", isPresented: $confirmDelete, titleVisibility: .visible) { Button("common.delete", role: .destructive) { if store.change({ $0.delete(deleting) }) != nil { if let selected, deleting.contains(selected) { self.selected = nil; compactColumn = .sidebar }; checked.subtract(deleting) }; deleting.removeAll() } }
+        .confirmationDialog(confirmation?.title ?? Text(""), isPresented: presentingConfirmation,
+                            titleVisibility: .visible, presenting: confirmation) { action in
+            switch action {
+            case .delete(let ids):
+                Button("common.delete", role: .destructive) { delete(ids) }
+            case .merge(let ids):
+                Button("library.merge") { merge(ids) }
+            }
+            Button("common.cancel", role: .cancel) { confirmation = nil }
+        } message: { action in
+            if case .merge = action { Text("library.merge.createsNew") }
+        }
         .alert("ioant-Clip", isPresented: Binding(get: { store.error != nil }, set: { if !$0 { store.error = nil } })) { Button("common.ok") { store.error = nil } } message: { if let issue = store.error { Text(LocalizedStringKey(issue.key)); if let detail = issue.detail { Text(verbatim: detail) } } }
     }
+    private func delete(_ ids: Set<UUID>) {
+        guard store.change({ $0.delete(ids) }) != nil else { return }
+        if let selected, ids.contains(selected) {
+            self.selected = nil
+            compactColumn = .sidebar
+        }
+        checked.subtract(ids)
+    }
+
+    private func merge(_ ids: Set<UUID>) {
+        guard let id = store.change({ $0.merge(ids) }) ?? nil else { return }
+        selected = id
+        compactColumn = .detail
+        selecting = false
+        checked.removeAll()
+    }
+
     func paste() {
         guard let part = Clipboard.read(), !part.isEmpty else { store.error = LibraryIssue("error.clipboard.empty"); return }
         if let id = store.change({ $0.add(part) }) ?? nil { selected = id; compactColumn = .detail; tagFilter = .all; query = "" }

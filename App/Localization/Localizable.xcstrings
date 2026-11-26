@@ -946,6 +946,76 @@
         }
       }
     },
+    "library.merge.confirm %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Merge %lld clips?"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "合并 %lld 条收藏？"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "合併 %lld 筆收藏？"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 件のクリップを結合しますか？"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "클립 %lld개를 병합할까요?"
+          }
+        }
+      }
+    },
+    "library.merge.createsNew": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The merged result will be saved as a new clip."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "合并结果会另存为一条新收藏。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "合併結果會另存成一筆新收藏。"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "結合した内容は新しいクリップとして保存されます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "병합 결과는 새 클립으로 저장됩니다."
+          }
+        }
+      }
+    },
     "library.merge": {
       "extractionState": "manual",
       "localizations": {
