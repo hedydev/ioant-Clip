@@ -21,12 +21,14 @@ import WebKit
         .brand{font-size:28px;font-weight:bold;white-space:nowrap}
         .search{width:600px;height:44px;border:1px solid #777;border-radius:22px;background:#333;color:white;padding:12px}
         main{margin:20px 0 0 140px;width:650px}
+        .sticky{position:sticky;top:120px;z-index:2;height:20px}
+        .result-link{display:flex}
         article{margin:0 0 22px} h2{font-size:22px;line-height:30px;margin:0 0 8px;font-weight:400;overflow-wrap:normal}
         p{line-height:24px;margin:0;overflow-wrap:normal}
         .marker::before{content:"◆ ";color:#acf}.marker::after{content:"";display:inline-block;width:8px;height:8px;background:#acf}
         .clip{position:absolute;width:1px;height:1px;clip-path:inset(50%);overflow:hidden}
         </style><div class="head"><a class="sr">Skip to main content</a><a class="sr">Accessibility help</a><span class="brand">Search brand</span><input class="search" type="search" placeholder="Search" value="private field value"><button>Search</button></div>
-        <main><article><h2>A long result title wrapping correctly over multiple words in the original search results</h2><p class="marker">First description with ordinary line wrapping.</p></article><article><h2>Second result title</h2><p>Second description</p></article><a class="clip">Hidden clipped help</a><video controls title="Fixture video" src="data:video/mp4;base64,AA=="></video><audio title="Fixture audio" src="data:audio/mpeg;base64,AA=="></audio></main>
+        <main><nav class="sticky">Filters</nav><article><a class="result-link"><h2>A long result title wrapping correctly over multiple words in the original search results</h2></a><p class="marker">First description with ordinary line wrapping.</p></article><article><h2>Second result title</h2><p>Second description</p></article><a class="clip">Hidden clipped help</a><video controls title="Fixture video" src="data:video/mp4;base64,AA=="></video><audio title="Fixture audio" src="data:audio/mpeg;base64,AA=="></audio></main>
         """,baseURL:nil)
         try await wait(observer)
         let result = try await view.callAsyncJavaScript(js + "\nreturn await capture('page');",arguments:[:],in:nil,contentWorld:.page)
@@ -75,7 +77,9 @@ import WebKit
         let separated = try await preview.evaluateJavaScript("""
         (() => {
             const heading = document.querySelector('h2');
-            const summary = heading.nextElementSibling;
+            const summary = heading.closest('article').querySelector('p');
+            const sticky = document.querySelector('nav');
+            if (sticky.getBoundingClientRect().bottom > heading.getBoundingClientRect().top) return false;
             const range = document.createRange();
             range.selectNodeContents(heading);
             return range.getClientRects().length > 2 &&

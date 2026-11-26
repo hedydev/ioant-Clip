@@ -15,9 +15,15 @@ struct ClipMediaView: View {
                         let group = items.filter { $0.kind == kind }
                         if !group.isEmpty {
                             Text(label(kind)).font(.headline)
-                            LazyVGrid(columns: [GridItem(.adaptive(minimum: 180), alignment: .top)], alignment: .leading) {
-                                ForEach(group.indices, id: \.self) { index in
-                                    card(group[index])
+                            if group.count == 1, let item = group.first {
+                                card(item)
+                                    .frame(maxWidth: 280)
+                                    .frame(maxWidth: .infinity)
+                            } else {
+                                LazyVGrid(columns: [GridItem(.adaptive(minimum: 180), alignment: .top)], alignment: .leading) {
+                                    ForEach(group.indices, id: \.self) { index in
+                                        card(group[index])
+                                    }
                                 }
                             }
                         }
@@ -26,9 +32,28 @@ struct ClipMediaView: View {
                 .padding(LayoutMetrics.large)
             }
             .sheet(isPresented: Binding(get: { preview != nil }, set: { if !$0 { preview = nil } })) {
-                if let preview, let html = preview.previewDocument {
+                if let preview {
                     ClipSheet(title: "reader.media", size: .large, parentSize: parentSize) {
-                        HTMLPreview(html: html)
+                        if let html = preview.previewDocument {
+                            HTMLPreview(html: html)
+                                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        } else {
+                            ModalScrollPage {
+                                VStack(spacing: LayoutMetrics.medium) {
+                                    if let html = preview.thumbnailDocument {
+                                        HTMLPreview(html: html)
+                                            .frame(height: 180)
+                                    }
+                                    title(preview).multilineTextAlignment(.center)
+                                    if let url = preview.source {
+                                        Link(destination: url) {
+                                            Label("reader.media.source", systemImage: "arrow.up.right")
+                                        }
+                                    }
+                                }
+                                .frame(maxWidth: .infinity)
+                            }
+                        }
                     }
                 }
             }
@@ -36,26 +61,28 @@ struct ClipMediaView: View {
     }
 
     private func card(_ item: NoteMedia) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            if let html = item.thumbnailDocument {
-                HTMLPreview(html: html)
-                    .allowsHitTesting(false)
-                    .accessibilityHidden(true)
-                    .frame(height: 100)
-            }
-            title(item).font(.subheadline).lineLimit(2)
-            if item.embedded != nil {
-                Button { preview = item } label: {
-                    Label("reader.media.offline", systemImage: "arrow.up.left.and.arrow.down.right")
+        Button {
+            preview = item
+        } label: {
+            VStack(alignment: .leading, spacing: 8) {
+                if let html = item.thumbnailDocument {
+                    HTMLPreview(html: html)
+                        .allowsHitTesting(false)
+                        .accessibilityHidden(true)
+                        .frame(height: 100)
+                } else {
+                    Image(systemName: item.kind == .audio ? "waveform" : item.kind == .video ? "film" : "photo")
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 100)
+                        .accessibilityHidden(true)
                 }
-            } else if let url = item.source {
-                Link(destination: url) {
-                    Label("reader.media.source", systemImage: "arrow.up.right")
-                }
+                title(item).font(.subheadline).lineLimit(2)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(8)
+            .contentShape(Rectangle())
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(8)
+        .buttonStyle(.plain)
     }
 
     private func title(_ item: NoteMedia) -> Text {

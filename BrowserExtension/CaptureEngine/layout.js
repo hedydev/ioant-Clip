@@ -44,7 +44,11 @@
   function createLayout({source,wholePage,stage,queueBackground}) {
   const css = 'display box-sizing visibility clip contain content-visibility overflow-anchor font-stretch font-feature-settings font-kerning font-variant-ligatures text-transform text-rendering text-size-adjust -webkit-text-size-adjust writing-mode unicode-bidi text-decoration-line text-decoration-style text-decoration-color text-decoration-thickness text-underline-offset text-shadow tab-size list-style-position column-count column-gap column-width column-span break-before break-after break-inside isolation mix-blend-mode filter backdrop-filter -webkit-line-clamp -webkit-box-orient -webkit-box-align -webkit-box-pack -webkit-box-flex cursor pointer-events border-top-left-radius border-top-right-radius border-bottom-left-radius border-bottom-right-radius display box-sizing color background-color background-image font-family font-size font-weight font-style font-variant-numeric line-height letter-spacing text-align text-decoration white-space overflow-wrap word-break list-style-type padding-top padding-right padding-bottom padding-left margin-top margin-right margin-bottom margin-left border-top border-right border-bottom border-left border-radius box-shadow opacity flex flex-direction flex-wrap flex-grow flex-shrink flex-basis justify-content align-items align-self gap row-gap column-gap grid-template-columns grid-template-rows grid-column grid-row vertical-align min-width max-width min-height max-height border-collapse border-spacing table-layout overflow-x overflow-y position top right bottom left transform transform-origin text-indent width height z-index object-fit object-position background-size background-position background-repeat background-origin background-clip box-decoration-break align-content justify-items justify-self grid-auto-flow grid-auto-columns grid-auto-rows order text-overflow direction aspect-ratio float clear overflow-wrap clip-path'.split(' ');
   function nodeCanGrow(src, cs) {
-    return src.childNodes.length > 0 && /^(block|inline-block|flow-root|list-item)$/.test(cs.display) &&
+    const flowingBlock = /^(block|inline-block|flow-root|list-item)$/.test(cs.display);
+    const headingWrapper = /^(flex|inline-flex|-webkit-box)$/.test(cs.display) &&
+      (src.matches('h1,h2,h3,h4,h5,h6') || src.querySelector('h1,h2,h3,h4,h5,h6')) &&
+      !/^[1-9]/.test(cs.getPropertyValue('-webkit-line-clamp'));
+    return src.childNodes.length > 0 && (flowingBlock || headingWrapper) &&
       /^(static|relative)$/.test(cs.position) && cs.overflowX === 'visible' &&
       cs.overflowY === 'visible' && cs.maxHeight === 'none' &&
       !/\b(size|strict|inline-size)\b/.test(cs.contain);
@@ -87,7 +91,12 @@
         // not repositioned relative to an arbitrary cloned containing block.
         dst.style.position = 'absolute';
       }
-      if (cs.position === 'sticky') dst.style.position = 'relative';
+      if (cs.position === 'sticky') {
+        // Keep this bar in document flow without the original scroll inset.
+        dst.style.position = 'relative';
+        dst.style.inset = 'auto';
+        dst.style.zIndex = 'auto';
+      }
       if (cs.display === 'contents') { dst.style.width = 'auto'; dst.style.height = 'auto'; }
     } else {
       // Grid child percentages refer to the grid TRACK, not the grid itself.

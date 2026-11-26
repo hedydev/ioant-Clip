@@ -33,7 +33,7 @@ public struct NoteMedia: Equatable {
         """
         <!doctype html><meta name="viewport" content="width=device-width,initial-scale=1">
         <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data:; media-src data:; style-src 'unsafe-inline'; base-uri 'none'">
-        <style>html{color-scheme:light dark}body{margin:12px}img,video{display:block;max-width:100%;max-height:90vh;margin:auto}audio{width:100%}</style>
+        <style>html,body{width:100%;height:100%;margin:0;overflow:hidden}html{color-scheme:light dark}body{display:flex;align-items:center;justify-content:center;box-sizing:border-box;padding:8px}img,video{display:block;max-width:100%;max-height:100%;object-fit:contain}audio{width:100%;max-width:560px}</style>
         \(markup)
         """
     }
