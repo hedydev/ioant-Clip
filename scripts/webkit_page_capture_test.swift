@@ -93,19 +93,26 @@ import WebKit
         view.loadHTMLString("""
         <!doctype html><title>Fixture song - YouTube</title>
         <meta property="og:description" content="Fixture video description">
+        <meta property="og:image" content="https://example.invalid/youtube-logo.png">
         <ytd-watch-metadata><h1>Fixture song</h1></ytd-watch-metadata>
         <div style="position:fixed;inset:0;background:white">Transient player overlay</div>
+        <ytd-playlist-panel-renderer><ytd-playlist-panel-video-renderer selected>
+        <span id="video-title">Fixture current playlist row</span>
+        </ytd-playlist-panel-video-renderer></ytd-playlist-panel-renderer>
         """,baseURL:nil)
         try await wait(watchObserver)
         let watchScript = js.replacingOccurrences(
             of: "const pageURL = new URL(location.href);",
-            with: "const pageURL = new URL('https://www.youtube.com/watch?v=fixture&list=RDfixture');"
-        )
+            with: "const pageURL = new URL('https://www.youtube.com/watch?v=AgFeZr5ptV8&list=RDfixture');"
+        ).replacingOccurrences(of: "queuePoster(poster,image,'src');", with: "")
         let watch = try await view.callAsyncJavaScript(watchScript + "\nreturn await capture('page');",arguments:[:],in:nil,contentWorld:.page) as? [String:Any]
         guard let watchHTML = watch?["html"] as? String, let watchText = watch?["text"] as? String,
               watchText.contains("Fixture song"), watchText.contains("Fixture video description"),
               !watchHTML.contains("Transient player overlay"), watchHTML.contains("data-ioant-media-src"),
-              watchHTML.contains("youtube.com/watch?v=fixture") else {
+              watchHTML.contains("youtube.com/watch?v=AgFeZr5ptV8"),
+              watchHTML.contains("i.ytimg.com/vi/AgFeZr5ptV8/hqdefault.jpg"),
+              !watchHTML.contains("youtube-logo.png"),
+              watchText.contains("Fixture current playlist row") else {
             throw NSError(domain:"WatchCapture",code:1)
         }
         print("PASS: site watch capture retained title, description and video source")

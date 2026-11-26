@@ -455,8 +455,9 @@ async function capture(mode) {
   }
   function captureWatchPage() {
     const pageURL = new URL(location.href);
+    const videoID = pageURL.searchParams.get('v');
     if (!wholePage || !['www.youtube.com','youtube.com','m.youtube.com'].includes(pageURL.hostname) ||
-        pageURL.pathname !== '/watch' || !pageURL.searchParams.get('v')) return false;
+        pageURL.pathname !== '/watch' || !/^[\w-]{11}$/.test(videoID || '')) return false;
 
     // Watch pages use custom player layers and transient overlays. Keep the
     // watch content readable in a static document without cloning those layers.
@@ -469,7 +470,7 @@ async function capture(mode) {
       meta('og:title') || document.title.replace(/\s*-\s*YouTube\s*$/i,'').trim();
     if (!heading || heading === 'YouTube') throw new Error('error_empty');
     root.style.width = '100%';
-    root.style.maxWidth = '960px';
+    root.style.maxWidth = '1200px';
     root.style.color = root.style.colorScheme === 'dark' ? '#f1f1f1' : '#181818';
     stage.style.width = '100%';
     stage.style.minHeight = '0';
@@ -484,15 +485,15 @@ async function capture(mode) {
     marker.title = title.textContent;
     marker.setAttribute('data-ioant-media','video');
     marker.setAttribute('data-ioant-media-src',pageURL.href);
-    const poster = meta('og:image');
-    if (poster) {
-      const image = document.createElement('img');
-      image.alt = '';
-      image.style.cssText = 'display:block;width:100%;height:auto;border-radius:12px;';
-      content.append(image);
-      queuePoster(poster,image,'src');
-    }
-    content.append(title,marker);
+    // The document's og:image can be the YouTube logo, especially after
+    // client-side playlist navigation. Resolve the cover from the active URL.
+    const poster = 'https://i.ytimg.com/vi/' + videoID + '/hqdefault.jpg';
+    const image = document.createElement('img');
+    image.alt = '';
+    image.style.cssText = 'display:block;width:100%;max-width:760px;max-height:55vh;object-fit:contain;border-radius:12px;';
+    image.setAttribute('data-ioant-image-origin',poster);
+    content.append(title,image,marker);
+    queuePoster(poster,image,'src');
     for (const text of [
       visibleText('#owner ytd-channel-name, ytm-slim-owner-renderer'),
       visibleText('ytd-watch-metadata #description-inline-expander, #description-inline-expander') || meta('og:description')
@@ -503,7 +504,38 @@ async function capture(mode) {
       paragraph.textContent = text.slice(0,8000);
       content.append(paragraph);
     }
-    stage.append(content);
+    const playlist = document.querySelector('ytd-playlist-panel-renderer, ytm-playlist-panel-renderer');
+    const rows = Array.from(playlist?.querySelectorAll('ytd-playlist-panel-video-renderer, ytm-playlist-panel-video-renderer') || [])
+      .slice(0,80)
+      .map(row => ({
+        title: row.querySelector('#video-title, .ytm-playlist-panel-video-renderer-title')?.textContent?.trim(),
+        current: row.hasAttribute('selected') || row.getAttribute('aria-current') === 'true'
+      }))
+      .filter(row => row.title);
+    if (rows.length) {
+      const columns = document.createElement('div');
+      columns.style.cssText = 'display:flex;flex-wrap:wrap;align-items:flex-start;gap:24px;';
+      content.style.cssText += 'flex:2 1 520px;min-width:0;';
+      const aside = document.createElement('aside');
+      aside.style.cssText = 'display:block;flex:1 1 280px;min-width:0;overflow-wrap:anywhere;';
+      const name = document.createElement('h2');
+      name.textContent = playlist.querySelector('#header-description h3, #playlist-title, .title')?.textContent?.trim() || '';
+      if (name.textContent) aside.append(name);
+      const list = document.createElement('ol');
+      list.style.cssText = 'display:block;margin:16px 0;padding-inline-start:2em;';
+      for (const row of rows) {
+        const item = document.createElement('li');
+        item.style.cssText = 'display:list-item;margin-block:8px;';
+        item.textContent = row.title.slice(0,500);
+        if (row.current) item.style.fontWeight = 'bold';
+        list.append(item);
+      }
+      aside.append(list);
+      columns.append(content,aside);
+      stage.append(columns);
+    } else {
+      stage.append(content);
+    }
     return true;
   }
   if (!captureWatchPage()) visit(source,stage);
