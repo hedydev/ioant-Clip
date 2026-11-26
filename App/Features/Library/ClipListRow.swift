@@ -1,12 +1,12 @@
 import SwiftUI
 
 struct ClipListRow: View {
-    let note: Note
+    let note: SQLiteNoteRepository.Row
     let selecting: Bool
     let checked: Bool
     let color: (String) -> TagColor
     private var source: String? {
-        guard let raw = note.parts.first?.sourceURL else { return nil }
+        guard let raw = note.sourceURL else { return nil }
         return URL(string: raw)?.host ?? raw
     }
     var body: some View {
@@ -18,7 +18,7 @@ struct ClipListRow: View {
             }
             VStack(alignment: .leading, spacing: LayoutMetrics.chipSpacing) {
                 Text(verbatim: note.title).font(.headline).lineLimit(2)
-                let summary = note.parts.first?.text.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                let summary = note.summary
                 if !summary.isEmpty { Text(verbatim: summary).font(.caption).foregroundStyle(.secondary).lineLimit(2) }
                 ViewThatFits(in: .horizontal) {
                     HStack(spacing: LayoutMetrics.small) { metadata }

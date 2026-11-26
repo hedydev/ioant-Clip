@@ -26,9 +26,8 @@ struct LibraryView: View {
     private var filterBinding: Binding<TagFilter> {
         Binding(get: { tagFilter }, set: { tagFilter = $0 })
     }
-    var current: Note? { store.library.notes.first { $0.id == selected } }
-    var tags: [String] { store.library.allTags }
-    var filtered: [Note] { store.library.filtered(query: query, filter: tagFilter) }
+    var current: Note? { store.note(selected) }
+    var tags: [String] { store.allTags }
     var body: some View {
         NavigationSplitView(preferredCompactColumn: $compactColumn) {
             LibrarySidebar(selected: $selected, compactColumn: $compactColumn, checked: $checked, selecting: $selecting, query: $query, appSettings: $appSettings, storageSettings: $storageSettings, deleting: $deleting, confirmDelete: $confirmDelete, tagFilter: filterBinding)
@@ -75,7 +74,7 @@ struct LibraryView: View {
             }
         }
         .sheet(item: $editing) { note in
-            EditClipView(note: note, library: store.library, parentSize: sheetParentSize) { title, tags, colors in
+            EditClipView(note: note, store: store, parentSize: sheetParentSize) { title, tags, colors in
                 let saved: Bool? = store.change { library in
                     library.update(note.id, title: title, tags: tags)
                     for (tag, color) in colors { library.setColor(color, for: tag) }

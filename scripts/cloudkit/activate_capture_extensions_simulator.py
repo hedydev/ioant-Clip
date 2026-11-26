@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """Upgrade only the known development simulator without reinstall/uninstall or rebinding."""
 import json, os, pathlib, plistlib, subprocess, hashlib, time, uuid
+from read_library import library_bytes
 root = pathlib.Path(__file__).resolve().parents[2]
 cache = pathlib.Path("/Volumes/LunaDrive/DeveloperCache")
 base = cache / "projects/ioant-clip/DerivedData" if cache.is_dir() and os.access(cache, os.W_OK) else root / "DerivedData"
-app = base / "CloudKitCaptureExtensions/SimulatorSyncedPreferences/Build/Products/Debug-iphonesimulator/ioant-Clip-iOS.app"
-prior_lanes = ("SimulatorSharePage", "SimulatorPageLayout")
+app = base / "CloudKitCaptureExtensions/SimulatorSQLite/Build/Products/Debug-iphonesimulator/ioant-Clip-iOS.app"
+prior_lanes = ("SimulatorSyncedPreferences", "SimulatorSharePage", "SimulatorPageLayout")
 bundle = "com.ioant.clip.ios"
 udid = "614FDA13-6198-452B-A6B2-94AA5591B30A"
 support = pathlib.Path("Library/Application Support")
@@ -18,7 +19,7 @@ def digest(path): return hashlib.sha256((path/info(path)["CFBundleExecutable"]).
 def container(kind): return pathlib.Path(sim("get_app_container",udid,bundle,kind).stdout.strip())
 def active(): return any(bundle in line and line.split()[0].isdigit() for line in sim("spawn",udid,"launchctl","list").stdout.splitlines())
 def snapshot(data):
-    paths = [daily/"notes.json",daily/"cloudkit-remote-checkpoint-v1.json",review/"notes.json",review/"cloudkit-remote-checkpoint-v1.json"]
+    paths = [daily/"notes.json",daily/"notes.sqlite3",daily/"cloudkit-remote-checkpoint-v1.json",review/"notes.json",review/"cloudkit-remote-checkpoint-v1.json"]
     paths += [pathlib.Path("Documents")/name for name in ("cloudkit-smoke-result.txt","cloudkit-conflict-result.txt","cloudkit-resolution-result.txt")]
     return {p:(data/p).read_bytes() for p in paths if (data/p).is_file()}
 def ids(library): return {note["id"] for note in library["notes"]}
@@ -39,14 +40,14 @@ if active():
     assert not active(), "prior process did not stop"
 data=container("data")
 saved=snapshot(data)
-assert daily/"notes.json" in saved
-before=json.loads(saved[daily/"notes.json"])
+before_bytes = library_bytes(data/daily/"notes.json")
+before=json.loads(before_bytes)
 assert isinstance(before["notes"],list)
 backup=data/daily/"DevelopmentBackups"/(str(uuid.uuid4())+".json")
 backup.parent.mkdir(mode=0o700,parents=True,exist_ok=True)
 fd=os.open(backup,os.O_CREAT|os.O_EXCL|os.O_WRONLY,0o600)
-with os.fdopen(fd,"wb") as stream: stream.write(saved[daily/"notes.json"])
-assert backup.read_bytes()==saved[daily/"notes.json"]
+with os.fdopen(fd,"wb") as stream: stream.write(before_bytes)
+assert backup.read_bytes()==before_bytes
 print("Verified simulator backup; notes:",len(ids(before)),"enrolled:",before.get("syncEnrollment") is not None,flush=True)
 sim("install",udid,str(app),timeout=60)
 installed=container("app")
@@ -58,9 +59,9 @@ print("PASS: in-place upgrade preserved prior daily data, checkpoint and review 
 result=sim("launch",udid,bundle,timeout=45)
 print(result.stdout.strip(),flush=True)
 assert active()
-current=json.loads((container("data")/daily/"notes.json").read_bytes())
+current=json.loads(library_bytes(container("data")/daily/"notes.json"))
 assert current.get("syncEnrollment")==before.get("syncEnrollment"), "existing binding changed"
 assert ids(before).issubset(ids(current)), "prior note identities missing"
-mac=json.loads((pathlib.Path.home()/support/daily.name/"notes.json").read_bytes())
+mac=json.loads(library_bytes(pathlib.Path.home()/support/daily.name/"notes.json"))
 print("Mac notes:",len(ids(mac)),"iOS notes:",len(ids(current)),"matching IDs:",len(ids(mac)&ids(current)),flush=True)
 print("PASS: extension-enabled daily iOS process running; enrollment retained; no test capture inserted",flush=True)

@@ -6,11 +6,15 @@ import UIKit
 /// Compact widths use a native menu; regular widths keep the full sidebar.
 struct LibraryFilters: View {
     @Environment(\.clipTheme) private var theme
-    let library: NoteLibrary
+    let store: LibraryStore
     let selection: TagFilter
     let compact: Bool
     let select: (TagFilter) -> Void
-    private var filters: [TagFilter] { [.all, .untagged] + library.allTags.map(TagFilter.tag) }
+    private var filters: [TagFilter] { [.all, .untagged] + store.allTags.map(TagFilter.tag) }
+    private func count(_ filter: TagFilter) -> Int {
+        if case .tag(let name) = filter { return store.tagCounts[name] ?? 0 }
+        return store.count(filter: filter)
+    }
     private func title(_ filter: TagFilter) -> Text {
         switch filter {
         case .all: Text("library.all")
@@ -26,7 +30,7 @@ struct LibraryFilters: View {
         }
     }
     private func color(_ filter: TagFilter) -> Color {
-        if case .tag(let name) = filter { return library.color(for: name).swiftUIColor }
+        if case .tag(let name) = filter { return store.color(for: name).swiftUIColor }
         return theme.secondaryText
     }
     private func menuIcon(_ filter: TagFilter) -> Image {
@@ -45,7 +49,7 @@ struct LibraryFilters: View {
             Image(systemName: icon(filter)).foregroundStyle(color(filter))
             title(filter).lineLimit(1)
             Spacer(minLength: LayoutMetrics.xSmall)
-            Text(library.notes.filter { filter.includes($0) }.count, format: .number)
+            Text(count(filter), format: .number)
                 .font(.caption).foregroundStyle(.secondary).monospacedDigit()
             if selection == filter { Image(systemName: "checkmark").font(.caption.weight(.semibold)).foregroundStyle(theme.action) }
         }

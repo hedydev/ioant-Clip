@@ -15,7 +15,15 @@ let fm = FileManager.default
 let support = URL.applicationSupportDirectory
 let notes = support.appending(path: "ioant-Note/notes.json")
 func readLibrary() throws -> ([String: Any], Data) {
-    let data = try Data(contentsOf: notes)
+    let reader = Process()
+    let output = Pipe()
+    reader.executableURL = URL(fileURLWithPath: "/usr/bin/python3")
+    reader.arguments = ["scripts/cloudkit/read_library.py", notes.path]
+    reader.standardOutput = output
+    try reader.run()
+    let data = output.fileHandleForReading.readDataToEndOfFile()
+    reader.waitUntilExit()
+    guard reader.terminationStatus == 0 else { fatalError("Unable to read daily Clip library") }
     guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
           let _ = json["notes"] as? [[String: Any]] else { fatalError("Invalid daily library") }
     return (json, data)

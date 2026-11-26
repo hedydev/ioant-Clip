@@ -21,7 +21,7 @@ struct ClipDetailView: View {
                             get: { plainPreview },
                             set: { plainPreview = $0; showingMedia = false }
                         ), copiedID: $copiedID)
-                        if !note.tags.isEmpty { TagChipRow(tags: note.tags, color: store.library.color(for:)) }
+                        if !note.tags.isEmpty { TagChipRow(tags: note.tags, color: store.color(for:)) }
                         let suggestions = TagSuggestions.forNote(note, existingTags: tags)
                         if !suggestions.isEmpty {
                             ScrollView(.horizontal, showsIndicators: false) {

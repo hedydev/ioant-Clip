@@ -6,6 +6,13 @@ public struct NoteLibrary: Codable, Equatable, Sendable {
     public private(set) var syncJournal: SyncJournal?
     public private(set) var syncEnrollment: SyncEnrollment?
     public init(notes: [Note] = []) { self.notes = notes }
+    init(storedNotes: [Note], colors: [String: TagColor], journal: SyncJournal, enrollment: SyncEnrollment?) {
+        notes = storedNotes
+        tagPalette = colors.isEmpty ? nil : colors
+        syncJournal = journal
+        syncEnrollment = enrollment
+    }
+
     public var allTags: [String] {
         Note.normalizedTags(notes.flatMap(\.tags)).sorted { $0.localizedStandardCompare($1) == .orderedAscending }
     }

@@ -8,18 +8,18 @@ struct EditClipView: View {
     @State private var changes: [String: TagColor] = [:]
     let note: Note
     let parentSize: CGSize
-    let library: NoteLibrary
+    let store: LibraryStore
     let save: (String, [String], [String: TagColor]) -> Bool
-    init(note: Note, library: NoteLibrary, parentSize: CGSize, save: @escaping (String, [String], [String: TagColor]) -> Bool) {
-        self.note = note; self.library = library; self.parentSize = parentSize; self.save = save
+    init(note: Note, store: LibraryStore, parentSize: CGSize, save: @escaping (String, [String], [String: TagColor]) -> Bool) {
+        self.note = note; self.store = store; self.parentSize = parentSize; self.save = save
         _title = State(initialValue: note.title); _tags = State(initialValue: note.tags)
     }
     private var name: String { newTag.trimmingCharacters(in: .whitespacesAndNewlines) }
-    private var available: [String] { library.allTags.filter { candidate in !tags.contains { TagColor.key($0) == TagColor.key(candidate) } } }
-    private var suggestions: [String] { TagSuggestions.forNote(Note(title: title, tags: tags, parts: note.parts), existingTags: library.allTags) }
-    private func color(_ tag: String) -> TagColor { changes[TagColor.key(tag)] ?? library.color(for: tag) }
+    private var available: [String] { store.allTags.filter { candidate in !tags.contains { TagColor.key($0) == TagColor.key(candidate) } } }
+    private var suggestions: [String] { TagSuggestions.forNote(Note(title: title, tags: tags, parts: note.parts), existingTags: store.allTags) }
+    private func color(_ tag: String) -> TagColor { changes[TagColor.key(tag)] ?? store.color(for: tag) }
     private func add(_ tag: String, chosen: TagColor? = nil) {
-        let canonical = library.allTags.first { TagColor.key($0) == TagColor.key(tag) } ?? tag
+        let canonical = store.allTags.first { TagColor.key($0) == TagColor.key(tag) } ?? tag
         guard !TagColor.key(canonical).isEmpty, !tags.contains(where: { TagColor.key($0) == TagColor.key(canonical) }) else { return }
         tags.append(canonical)
         if let chosen { changes[TagColor.key(canonical)] = chosen }
@@ -73,8 +73,8 @@ struct EditClipView: View {
                     .textInputAutocapitalization(.never)
                     #endif
                     .autocorrectionDisabled()
-                    .onSubmit { add(name, chosen: library.allTags.contains { TagColor.key($0) == TagColor.key(name) } ? nil : newColor) }
-                Button("common.add") { add(name, chosen: library.allTags.contains { TagColor.key($0) == TagColor.key(name) } ? nil : newColor) }.disabled(name.isEmpty)
+                    .onSubmit { add(name, chosen: store.allTags.contains { TagColor.key($0) == TagColor.key(name) } ? nil : newColor) }
+                Button("common.add") { add(name, chosen: store.allTags.contains { TagColor.key($0) == TagColor.key(name) } ? nil : newColor) }.disabled(name.isEmpty)
             }
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 44, maximum: 48), spacing: 7)], alignment: .leading, spacing: 8) {
                 ForEach(TagColor.allCases, id: \.self) { item in
@@ -99,7 +99,7 @@ struct EditClipView: View {
     }
     private func commit() -> Bool {
         if !name.isEmpty {
-            add(name, chosen: library.allTags.contains { TagColor.key($0) == TagColor.key(name) } ? nil : newColor)
+            add(name, chosen: store.allTags.contains { TagColor.key($0) == TagColor.key(name) } ? nil : newColor)
         }
         return save(title, tags, changes.filter { key, _ in tags.contains { TagColor.key($0) == key } })
     }

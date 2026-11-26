@@ -77,7 +77,7 @@ import Foundation
         try Task.checkCancellation()
         guard try await identity.identity() == account else { throw SyncSessionError.accountMismatch }
         try Task.checkCancellation()
-        try store.library.requireSyncAccount(account)
+        try store.requireSyncAccount(account)
     }
 
     private static func selections(for values: SyncedPreferences) throws -> (AppLanguage, AppAppearance, AppAccent) {

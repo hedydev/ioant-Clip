@@ -9,7 +9,7 @@ struct SyncSettingsView: View {
         ModalScrollPage {
                 ModalSection(title: "sync.storage") {
                     CloudStorageStatusRow()
-                    ModalDescription(key: store.library.syncEnrollment == nil ? "sync.local.description" : "sync.bound.description")
+                    ModalDescription(key: store.enrollment == nil ? "sync.local.description" : "sync.bound.description")
                 }
                 ModalSection(title: "sync.providers") {
                     CloudKitSettingsSection()
@@ -19,7 +19,7 @@ struct SyncSettingsView: View {
                 ModalSection(title: "sync.history") {
                     LabeledContent { Text(journal?.revisions.count ?? 0, format: .number) } label: { Text(verbatim: language.localized("sync.revisions")) }
                     LabeledContent { Text(journal?.conflictKeys.count ?? 0, format: .number) } label: { Text(verbatim: language.localized("sync.conflicts")) }
-                    ModalDescription(key: store.library.syncEnrollment == nil ? "sync.history.description" : "sync.history.cloudDescription")
+                    ModalDescription(key: store.enrollment == nil ? "sync.history.description" : "sync.history.cloudDescription")
                 }
                 if let journal {
                     ForEach(Array(journal.conflictKeys).sorted(by: { String(describing: $0) < String(describing: $1) }), id: \.self) { key in

@@ -55,7 +55,7 @@ private extension StoragePresentation.State {
     }
 }
 private extension CloudSyncController {
-    func presentation(for library: NoteLibrary) -> StoragePresentation {
+    func presentation(for store: LibraryStore) -> StoragePresentation {
         let activity: StoragePresentation.Activity
         switch phase {
         case .idle: activity = .idle
@@ -63,8 +63,8 @@ private extension CloudSyncController {
         case .syncing: activity = .syncing
         case .failed: activity = .failed
         }
-        return StoragePresentation(enrollment: library.syncEnrollment, activity: activity, available: available,
-            hasConflicts: !(library.syncJournal?.conflictKeys.isEmpty ?? true), hadSuccess: lastSuccess != nil)
+        return StoragePresentation(enrollment: store.enrollment, activity: activity, available: available,
+            hasConflicts: store.hasConflicts, hadSuccess: lastSuccess != nil)
     }
 }
 private struct CloudStorageSymbol: View {
@@ -95,7 +95,7 @@ struct CloudStorageToolbarButton: View {
     @EnvironmentObject private var controller: CloudSyncController
     let action: () -> Void
     var body: some View {
-        let status = controller.presentation(for: store.library)
+        let status = controller.presentation(for: store)
         Button(action: action) {
             CloudStorageSymbol(status: status)
                 .foregroundStyle(theme.action)
@@ -114,7 +114,7 @@ struct CloudStorageStatusRow: View {
     @EnvironmentObject private var language: LanguagePreferences
     @EnvironmentObject private var controller: CloudSyncController
     var body: some View {
-        let status = controller.presentation(for: store.library)
+        let status = controller.presentation(for: store)
         HStack(spacing: LayoutMetrics.medium) {
             CloudStorageSymbol(status: status)
             VStack(alignment: .leading, spacing: 4) {

@@ -4,7 +4,14 @@ import Foundation
 /// hold an inout library reference; a fresh local snapshot is read after fetch.
 @MainActor public protocol SyncLibraryAccess: AnyObject {
     var syncSnapshot: NoteLibrary { get }
+    var syncConflictCount: Int { get }
+    func requireSyncAccount(_ account: SyncAccount) throws
     func commitRemoteRevisions(_ revisions: [SyncRevision], account: SyncAccount) throws
+}
+
+public extension SyncLibraryAccess {
+    var syncConflictCount: Int { syncSnapshot.syncJournal?.conflictKeys.count ?? 0 }
+    func requireSyncAccount(_ account: SyncAccount) throws { try syncSnapshot.requireSyncAccount(account) }
 }
 
 @MainActor public final class SyncCycle {
@@ -21,10 +28,10 @@ import Foundation
         guard !running else { throw SyncSessionError.busy }
         running = true
         defer { running = false }
-        try library.syncSnapshot.requireSyncAccount(expected)
+        try library.requireSyncAccount(expected)
         guard try await transport.identity() == expected else { throw SyncSessionError.accountMismatch }
         try Task.checkCancellation()
-        try library.syncSnapshot.requireSyncAccount(expected)
+        try library.requireSyncAccount(expected)
         let remote = try await transport.fetchRevisions(expected: expected)
         try Task.checkCancellation()
         guard try await transport.identity() == expected else { throw SyncSessionError.accountMismatch }
@@ -44,12 +51,11 @@ import Foundation
         let downloaded = Set(remote.map(\.id)).subtracting(local.revisions.keys).count
         // Synchronous main actor transaction. If disk write fails, no upload.
         try library.commitRemoteRevisions(remote, account: expected)
-        try library.syncSnapshot.requireSyncAccount(expected)
+        try library.requireSyncAccount(expected)
         try Task.checkCancellation()
         try await SyncExchange.send(plan, transport: transport, expected: expected)
         try Task.checkCancellation()
-        let final = library.syncSnapshot
-        try final.requireSyncAccount(expected)
-        return Result(downloaded: downloaded, uploaded: plan.outgoing.count, conflicts: final.syncJournal?.conflictKeys.count ?? 0, confirmedRevisionCount: combined.revisions.count)
+        try library.requireSyncAccount(expected)
+        return Result(downloaded: downloaded, uploaded: plan.outgoing.count, conflicts: library.syncConflictCount, confirmedRevisionCount: combined.revisions.count)
     }
 }

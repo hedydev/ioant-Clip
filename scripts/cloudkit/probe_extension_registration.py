@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """Read only the registered ioant-Clip plugins and daily synchronization metadata."""
 import os, pathlib, subprocess, json, plistlib, hashlib
+from read_library import library_bytes
 root=pathlib.Path(__file__).resolve().parents[2]
 cache=pathlib.Path("/Volumes/LunaDrive/DeveloperCache")
 base=cache/"projects/ioant-clip/DerivedData" if cache.is_dir() and os.access(cache,os.W_OK) else root/"DerivedData"
 mac=base/"CloudKitCaptureExtensions/macOS/Build/Products/Debug/ioant-Clip-macOS.app"
-ios=base/"CloudKitCaptureExtensions/SimulatorSyncedPreferences/Build/Products/Debug-iphonesimulator/ioant-Clip-iOS.app"
+ios=base/"CloudKitCaptureExtensions/SimulatorSQLite/Build/Products/Debug-iphonesimulator/ioant-Clip-iOS.app"
 udid="614FDA13-6198-452B-A6B2-94AA5591B30A"
 def run(*args):
     return subprocess.run(args,text=True,capture_output=True,timeout=30,check=True).stdout.strip()
@@ -50,8 +51,10 @@ try:
 except subprocess.CalledProcessError:
     print("iOS App Group container not resolved by simctl",flush=True)
 daily="Library/Application Support/ioant-Note/notes.json"
-a=json.loads((pathlib.Path.home()/daily).read_bytes())
-b=json.loads((data/daily).read_bytes())
+a=json.loads(library_bytes(pathlib.Path.home()/daily))
+b=json.loads(library_bytes(data/daily))
+print("Active SQLite stores, Mac/iOS:", (pathlib.Path.home()/daily).with_suffix(".sqlite3").is_file(),
+      (data/daily).with_suffix(".sqlite3").is_file(), flush=True)
 notes=lambda x:{n["id"]:n for n in x["notes"]}
 print("Daily Mac/iOS note counts:",len(notes(a)),len(notes(b)),flush=True)
 print("Daily note identities equal:",set(notes(a))==set(notes(b)),flush=True)

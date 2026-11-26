@@ -23,28 +23,51 @@ struct LibrarySidebar: View {
         false
         #endif
     }
-    private var filtered: [Note] { store.library.filtered(query: query, filter: tagFilter) }
+    @State private var rows: [SQLiteNoteRepository.Row] = []
+    @State private var total = 0
+    @State private var loadedRequest: PageRequest?
+    private struct PageRequest: Equatable {
+        let revision: Int
+        let query: String
+        let tagFilter: TagFilter
+    }
+    private var request: PageRequest {
+        PageRequest(revision: store.listRevision, query: query, tagFilter: tagFilter)
+    }
+    private func reload() {
+        let key = request
+        total = store.count(query: key.query, filter: key.tagFilter)
+        rows = store.page(query: key.query, filter: key.tagFilter, after: nil)
+        loadedRequest = key
+    }
+    private func loadMore(after id: UUID) {
+        let key = request
+        guard loadedRequest == key, rows.count < total, let cursor = rows.last, cursor.id == id else { return }
+        rows += store.page(query: key.query, filter: key.tagFilter, after: cursor)
+    }
     var body: some View {
         List {
             if !compact {
-                LibraryFilters(library: store.library, selection: tagFilter, compact: false, select: applyFilter)
+                LibraryFilters(store: store, selection: tagFilter, compact: false, select: applyFilter)
             }
-            Section("library.count \(filtered.count)") {
-                if filtered.isEmpty {
+            Section("library.count \(total)") {
+                if rows.isEmpty {
                     Label(query.isEmpty ? LocalizedStringKey("library.noClips") : LocalizedStringKey("library.noResults"), systemImage: query.isEmpty ? "tray" : "magnifyingglass")
                         .font(.subheadline).foregroundStyle(.secondary)
                         .padding(.vertical, LayoutMetrics.small)
                 }
-                ForEach(filtered) { note in
+                ForEach(rows) { note in
                     Button { open(note) } label: {
-                        ClipListRow(note: note, selecting: selecting, checked: checked.contains(note.id), color: store.library.color(for:))
+                        ClipListRow(note: note, selecting: selecting, checked: checked.contains(note.id), color: store.color(for:))
                     }
                     .buttonStyle(.plain)
                     .listRowBackground((selecting ? checked.contains(note.id) : selected == note.id) ? theme.selectedRow : Color.clear)
                     .accessibilityAddTraits((selecting ? checked.contains(note.id) : selected == note.id) ? [.isSelected] : [])
+                    .onAppear { loadMore(after: note.id) }
                 }
             }
         }
+        .onChange(of: request, initial: true) { _, _ in reload() }
         .navigationTitle(ClipPreferencesScope.windowTitle)
         .searchable(text: $query, prompt: Text("library.search"))
         .autocorrectionDisabled()
@@ -71,7 +94,7 @@ struct LibrarySidebar: View {
         #endif
         .safeAreaInset(edge: .top, spacing: 0) {
             if compact {
-                LibraryFilters(library: store.library, selection: tagFilter, compact: true, select: applyFilter)
+                LibraryFilters(store: store, selection: tagFilter, compact: true, select: applyFilter)
                     .padding(LayoutMetrics.medium)
                     .background(.regularMaterial)
             }
@@ -85,7 +108,7 @@ struct LibrarySidebar: View {
             }
         }
     }
-    private func open(_ note: Note) {
+    private func open(_ note: SQLiteNoteRepository.Row) {
         if selecting {
             if checked.contains(note.id) { checked.remove(note.id) } else { checked.insert(note.id) }
         } else {
@@ -96,7 +119,7 @@ struct LibrarySidebar: View {
     private func applyFilter(_ filter: TagFilter) {
         tagFilter = filter
         checked.removeAll()
-        if let note = store.library.notes.first(where: { $0.id == selected }), !filter.includes(note) { selected = nil }
+        if let note = store.note(selected), !filter.includes(note) { selected = nil }
     }
     private func merge() {
         if let id = store.change({ $0.merge(checked) }) ?? nil {

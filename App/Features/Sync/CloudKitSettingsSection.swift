@@ -4,7 +4,7 @@ struct CloudKitSettingsSection: View {
     @EnvironmentObject private var store: LibraryStore
     @EnvironmentObject private var language: LanguagePreferences
     @EnvironmentObject private var controller: CloudSyncController
-    private var enrollment: SyncEnrollment? { store.library.syncEnrollment }
+    private var enrollment: SyncEnrollment? { store.enrollment }
     var body: some View {
         VStack(alignment: .leading, spacing: LayoutMetrics.medium) {
             Label("iCloud", systemImage: "icloud").font(.headline)

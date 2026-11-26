@@ -3,10 +3,38 @@ import SwiftUI
 import OSLog
 
 @MainActor final class LibraryStore: ObservableObject, SyncLibraryAccess {
-    @Published private(set) var library = NoteLibrary()
+    @Published private(set) var listRevision = 0
+    @Published private(set) var enrollment: SyncEnrollment?
+    @Published private(set) var tagCounts: [String: Int] = [:]
+    @Published private(set) var syncConflictCount = 0
+    var hasConflicts: Bool { syncConflictCount > 0 }
     @Published var error: LibraryIssue?
+    private var colors: [String: TagColor] = [:]
+    private var repository: SQLiteNoteRepository?
     private let url: URL
-    private var ready = false
+    var library: NoteLibrary { (try? repository?.snapshot()) ?? NoteLibrary() }
+    var allTags: [String] { tagCounts.keys.sorted { $0.localizedStandardCompare($1) == .orderedAscending } }
+    var revisionCount: Int { (try? repository?.revisionCount()) ?? 0 }
+    func color(for tag: String) -> TagColor { colors[TagColor.key(tag)] ?? .gray }
+    func note(_ id: UUID?) -> Note? {
+        guard let id else { return nil }
+        return try? repository?.note(id)
+    }
+
+    func page(query: String, filter: TagFilter, after: SQLiteNoteRepository.Row?) -> [SQLiteNoteRepository.Row] {
+        do { return try repository?.page(query: query, filter: filter, after: after, limit: 40) ?? [] }
+        catch { self.error = LibraryIssue(error); return [] }
+    }
+
+    func count(query: String = "", filter: TagFilter = .all) -> Int {
+        (try? repository?.count(query: query, filter: filter)) ?? 0
+    }
+
+    func requireSyncAccount(_ account: SyncAccount) throws {
+        guard let enrollment else { throw SyncSessionError.notEnrolled }
+        guard enrollment.account == account else { throw SyncSessionError.accountMismatch }
+        guard !enrollment.isPaused else { throw SyncSessionError.paused }
+    }
     @Published private(set) var lastIncoming: UUID?
     private var inboxHealth = InboxHealth()
     @Published private(set) var captureInboxIssue: String?
@@ -14,65 +42,65 @@ import OSLog
     init(url: URL = LibraryLocation.notesURL) {
         self.url = url
         do {
-            var loaded = try NoteLibrary.load(from: url)
-            if loaded.syncJournal == nil {
-                try loaded.initializeSyncJournal()
-                try loaded.save(to: url)
-            }
-            library = loaded
-            ready = true
-        }
-        catch { self.error = LibraryIssue("error.library.open", detail: error.localizedDescription) }
+            let database = try SQLiteNoteRepository(legacyURL: url)
+            try refresh(database)
+            repository = database
+        } catch { self.error = LibraryIssue("error.library.open", detail: error.localizedDescription) }
     }
+
+    private func refresh(_ database: SQLiteNoteRepository) throws {
+        enrollment = try database.enrollment
+        tagCounts = try database.tagCounts()
+        colors = try database.colors()
+        syncConflictCount = try database.conflictCount
+        listRevision += 1
+    }
+
+    private func update<T>(_ mutation: (inout NoteLibrary) throws -> T) throws -> T {
+        guard let repository else { throw SyncSessionError.persistenceFailed }
+        let previous = try repository.snapshot()
+        var next = previous
+        let result = try mutation(&next)
+        if next != previous {
+            try repository.save(next, previous: previous)
+            try refresh(repository)
+        }
+        return result
+    }
+
     @discardableResult func change<T>(_ mutation: (inout NoteLibrary) -> T) -> T? {
-        guard ready else { error = LibraryIssue("error.library.unavailable"); return nil }
-        var next = library; let result = mutation(&next)
         do {
-            try next.recordLocalChanges(from: library)
-            try next.save(to: url)
-            library = next
-            return result
-        }
-        catch { self.error = LibraryIssue(error); return nil }
+            return try update { next in
+                let previous = next
+                let result = mutation(&next)
+                try next.recordLocalChanges(from: previous)
+                return result
+            }
+        } catch { self.error = LibraryIssue(error); return nil }
     }
+
     var syncSnapshot: NoteLibrary { library }
-    /// These entry points are not called by unsigned builds. Keep enrollment,
-    /// remote projection and notes in the same atomic persistence boundary.
+
     func enrollSync(account: SyncAccount, replaceLocalHistory: Bool) throws {
-        guard ready else { throw SyncSessionError.persistenceFailed }
-        var next = library
-        try next.enrollSync(account: account, replaceLocalHistory: replaceLocalHistory)
-        try next.save(to: url)
-        library = next
+        try update { try $0.enrollSync(account: account, replaceLocalHistory: replaceLocalHistory) }
     }
+
     func setSyncPaused(_ paused: Bool, account: SyncAccount) throws {
-        guard ready else { throw SyncSessionError.persistenceFailed }
-        var next = library
-        try next.setSyncPaused(paused, account: account)
-        try next.save(to: url)
-        library = next
+        try update { try $0.setSyncPaused(paused, account: account) }
     }
+
     func commitRemoteRevisions(_ revisions: [SyncRevision], account: SyncAccount) throws {
-        guard ready else { throw SyncSessionError.persistenceFailed }
-        try library.requireSyncAccount(account)
-        var next = library
-        try next.ingestSyncRevisions(revisions)
-        if next != library {
-            try next.save(to: url)
-            library = next
-        }
+        try requireSyncAccount(account)
+        try update { try $0.ingestSyncRevisions(revisions) }
     }
+
     func resolveConflict(_ key: SyncKey, revision: UUID) {
-        guard ready else { return }
-        var next = library
-        do {
-            try next.resolveSyncConflict(key, choosing: revision)
-            try next.save(to: url)
-            library = next
-        } catch { self.error = LibraryIssue(error) }
+        do { try update { try $0.resolveSyncConflict(key, choosing: revision) } }
+        catch { self.error = LibraryIssue(error) }
     }
+
     func receivePendingCaptures() {
-        guard ready else { return }
+        guard repository != nil else { return }
         #if os(macOS)
         drainCaptureInbox(url.deletingLastPathComponent().appending(path: "CaptureInbox"), source: .local)
         #endif
@@ -87,11 +115,20 @@ import OSLog
         #endif
     }
     private func drainCaptureInbox(_ inbox: URL, source: InboxHealth.Source) {
-        guard inboxHealth.isDue(source) else { return }
+        guard inboxHealth.isDue(source), let repository else { return }
         do {
-            var next = library
-            let result = try CaptureInbox.drain(directory: inbox, libraryURL: url, library: &next)
-            if !result.imported.isEmpty { library = next }
+            let result = try CaptureInbox.drain(directory: inbox) { id, read in
+                if try repository.contains(id) { return false }
+                let capture = try read()
+                return try update { next in
+                    let previous = next
+                    guard next.add(capture.part, title: capture.title, id: id) != nil else {
+                        throw WebCapture.ImportError.empty
+                    }
+                    try next.recordLocalChanges(from: previous)
+                    return true
+                }
+            }
             if let id = result.imported.last { lastIncoming = id }
             updateInboxHealth(source, state: result.failures.isEmpty ? .healthy : .partial(result.failures.count))
         } catch {

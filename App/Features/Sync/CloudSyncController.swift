@@ -35,7 +35,7 @@ import SwiftUI
     var busy: Bool { phase == .checking || phase == .syncing }
 
     func prepareEnrollment(store: LibraryStore) async {
-        guard !busy, let config, store.library.syncEnrollment == nil else { return }
+        guard !busy, let config, store.enrollment == nil else { return }
         pendingAccount = nil
         phase = .checking
         do {
@@ -48,7 +48,7 @@ import SwiftUI
     }
     func cancelEnrollment() { pendingAccount = nil }
     @discardableResult func approveEnrollment(store: LibraryStore) -> Task<Void, Never>? {
-        guard !busy, let account = pendingAccount, config != nil, store.library.syncEnrollment == nil else { return nil }
+        guard !busy, let account = pendingAccount, config != nil, store.enrollment == nil else { return nil }
         pendingAccount = nil
         phase = .checking
         return Task { await confirmEnrollment(account: account, store: store) }
@@ -64,7 +64,7 @@ import SwiftUI
         } catch { fail(error) }
     }
     func setPaused(_ paused: Bool, store: LibraryStore) {
-        guard !busy, let enrollment = store.library.syncEnrollment else { return }
+        guard !busy, let enrollment = store.enrollment else { return }
         // Resuming only permits future cycles with the already bound identity.
         do {
             try store.setSyncPaused(paused, account: enrollment.account)
@@ -73,7 +73,7 @@ import SwiftUI
         } catch { fail(error) }
     }
     func syncNow(store: LibraryStore) async {
-        guard !busy, let config, let enrollment = store.library.syncEnrollment,
+        guard !busy, let config, let enrollment = store.enrollment,
               !enrollment.isPaused else { return }
         guard enrollment.account.provider == "icloud", enrollment.account.namespace == config.namespace else {
             fail(SyncSessionError.accountMismatch); return
@@ -94,9 +94,9 @@ import SwiftUI
         }
     }
     func syncIfDue(store: LibraryStore) async {
-        guard !busy, pendingAccount == nil, available, let enrollment = store.library.syncEnrollment,
+        guard !busy, pendingAccount == nil, available, let enrollment = store.enrollment,
               !enrollment.isPaused else { return }
-        guard schedule.isDue(at: Date(), revisionCount: store.library.syncJournal?.revisions.count ?? 0) else { return }
+        guard schedule.isDue(at: Date(), revisionCount: store.revisionCount) else { return }
         await syncNow(store: store)
     }
     private func fail(_ error: Error) {
