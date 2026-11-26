@@ -32,6 +32,23 @@ public enum TagFilter: Hashable, Sendable {
     }
 }
 
+/// The sidebar can hold a predictable number of filters even in a short window.
+public enum VisibleLibraryTags {
+    public static let limit = 5
+
+    public static func resolve(_ preference: String, available: [String]) -> [String] {
+        guard let saved = try? JSONDecoder().decode([String].self, from: Data(preference.utf8))
+        else { return Array(available.prefix(limit)) }
+        let keys = Set(saved.map(TagColor.key))
+        return Array(available.lazy.filter { keys.contains(TagColor.key($0)) }.prefix(limit))
+    }
+
+    public static func preference(for keys: Set<String>) -> String {
+        guard let encoded = try? JSONEncoder().encode(keys.sorted()) else { return "[]" }
+        return String(decoding: encoded, as: UTF8.self)
+    }
+}
+
 /// Small deterministic offline rules. Suggestions are never applied automatically.
 public enum TagSuggestions {
     public static func forNote(_ note: Note, existingTags: [String] = []) -> [String] {

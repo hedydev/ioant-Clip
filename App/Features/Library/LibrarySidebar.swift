@@ -16,6 +16,8 @@ struct LibrarySidebar: View {
     @Binding var deleting: Set<UUID>
     @Binding var confirmDelete: Bool
     @Binding var tagFilter: TagFilter
+    let visibleTags: [String]
+    let editVisibleTags: () -> Void
     private var compact: Bool {
         #if os(iOS)
         horizontalSizeClass == .compact
@@ -46,11 +48,12 @@ struct LibrarySidebar: View {
         rows += store.page(query: key.query, filter: key.tagFilter, after: cursor)
     }
     var body: some View {
-        List {
-            if !compact {
-                LibraryFilters(store: store, selection: tagFilter, compact: false, select: applyFilter)
-            }
-            Section("library.count \(total)") {
+        VStack(spacing: 0) {
+            LibraryFilters(store: store, selection: tagFilter, visibleTags: visibleTags, compact: compact,
+                           select: applyFilter, edit: editVisibleTags)
+            Divider()
+            collectionHeader
+            List {
                 if rows.isEmpty {
                     Label(query.isEmpty ? LocalizedStringKey("library.noClips") : LocalizedStringKey("library.noResults"), systemImage: query.isEmpty ? "tray" : "magnifyingglass")
                         .font(.subheadline).foregroundStyle(.secondary)
@@ -66,6 +69,9 @@ struct LibrarySidebar: View {
                     .onAppear { loadMore(after: note.id) }
                 }
             }
+            .listStyle(.plain)
+            .contentMargins(.top, 0, for: .scrollContent)
+            .accessibilityIdentifier("clip-list")
         }
         .onChange(of: request, initial: true) { _, _ in reload() }
         .navigationTitle(ClipPreferencesScope.windowTitle)
@@ -73,6 +79,7 @@ struct LibrarySidebar: View {
         .autocorrectionDisabled()
         #if os(iOS)
         .textInputAutocapitalization(.never)
+        .navigationBarTitleDisplayMode(.inline)
         #endif
         .toolbar {
             ToolbarItemGroup {
@@ -82,32 +89,47 @@ struct LibrarySidebar: View {
                         .foregroundStyle(theme.action)
                 }
                     .accessibilityIdentifier("clip-settings")
-                Button { selecting.toggle(); checked.removeAll() } label: {
-                    Label(LocalizedStringKey(selecting ? "common.done" : "common.select"), systemImage: selecting ? "checkmark" : "checkmark.circle")
-                        .foregroundStyle(theme.action)
-                }
-                .accessibilityIdentifier("clip-select")
             }
         }
         #if os(macOS)
         .navigationSplitViewColumnWidth(min: 240, ideal: 300, max: 420)
         #endif
-        .safeAreaInset(edge: .top, spacing: 0) {
-            if compact {
-                LibraryFilters(store: store, selection: tagFilter, compact: true, select: applyFilter)
-                    .padding(LayoutMetrics.medium)
-                    .background(.regularMaterial)
+    }
+
+    private var collectionHeader: some View {
+        HStack(spacing: LayoutMetrics.small) {
+            if selecting {
+                Text("library.selected \(checked.count)")
+            } else {
+                Text("library.count \(total)")
             }
-        }
-        .safeAreaInset(edge: .bottom) {
+            Spacer(minLength: 0)
             if selecting {
                 LibrarySelectionBar(count: checked.count, merge: merge, delete: {
                     deleting = checked
                     confirmDelete = true
-                })
+                }, done: toggleSelection)
+            } else {
+                Button(action: toggleSelection) {
+                    Label("common.edit", systemImage: "square.and.pencil")
+                        .labelStyle(.iconOnly)
+                }
+                .buttonStyle(.borderless)
+                .help(Text("common.edit"))
+                .accessibilityIdentifier("clip-select")
             }
         }
+        .font(.subheadline.weight(.semibold))
+        .foregroundStyle(.secondary)
+        .padding(.horizontal, LayoutMetrics.medium)
+        .padding(.vertical, LayoutMetrics.small)
     }
+
+    private func toggleSelection() {
+        selecting.toggle()
+        checked.removeAll()
+    }
+
     private func open(_ note: SQLiteNoteRepository.Row) {
         if selecting {
             if checked.contains(note.id) { checked.remove(note.id) } else { checked.insert(note.id) }

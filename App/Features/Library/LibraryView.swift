@@ -15,6 +15,9 @@ struct LibraryView: View {
     @State private var importing = false
     @State private var appSettings = false
     @State private var storageSettings = false
+    @State private var editingVisibleTags = false
+    @State private var draftVisibleTags = Set<String>()
+    @AppStorage("ioant.clip.library.visibleTags.v1") private var savedVisibleTags = ""
     @State private var sheetParentSize = PresentationMetrics.mainDefault
     @State private var editing: Note?
     @State private var deleting = Set<UUID>()
@@ -38,9 +41,13 @@ struct LibraryView: View {
 
     var current: Note? { loaded?.id == selected ? loaded?.note : nil }
     var tags: [String] { store.allTags }
+    private var visibleTags: [String] { VisibleLibraryTags.resolve(savedVisibleTags, available: tags) }
     var body: some View {
         NavigationSplitView(preferredCompactColumn: $compactColumn) {
-            LibrarySidebar(selected: $selected, compactColumn: $compactColumn, checked: $checked, selecting: $selecting, query: $query, appSettings: $appSettings, storageSettings: $storageSettings, deleting: $deleting, confirmDelete: $confirmDelete, tagFilter: filterBinding)
+            LibrarySidebar(selected: $selected, compactColumn: $compactColumn, checked: $checked, selecting: $selecting, query: $query, appSettings: $appSettings, storageSettings: $storageSettings, deleting: $deleting, confirmDelete: $confirmDelete, tagFilter: filterBinding, visibleTags: visibleTags, editVisibleTags: {
+                draftVisibleTags = Set(visibleTags.map(TagColor.key))
+                editingVisibleTags = true
+            })
         } detail: {
             ClipDetailView(current: current, loadingNote: selected != nil && loaded?.id != selected, sheetParentSize: sheetParentSize, tags: tags, plainPreview: $plainPreview, copiedID: $copiedID, editing: $editing, deleting: $deleting, confirmDelete: $confirmDelete, importing: $importing, paste: paste)
         }
@@ -98,6 +105,14 @@ struct LibraryView: View {
                 SyncSettingsView()
             }
         }
+        .sheet(isPresented: $editingVisibleTags) {
+            ClipSheet(title: "tags.display", parentSize: sheetParentSize, showsCancel: true, onConfirm: {
+                savedVisibleTags = VisibleLibraryTags.preference(for: draftVisibleTags.intersection(tags.map(TagColor.key)))
+                return true
+            }) {
+                LibraryVisibleTagsEditor(selected: $draftVisibleTags)
+            }
+        }
         .sheet(item: $editing) { note in
             EditClipView(note: note, store: store, parentSize: sheetParentSize) { title, tags, colors in
                 let saved: Bool? = store.change { library in
@@ -109,6 +124,7 @@ struct LibraryView: View {
             }
         }
         .onChange(of: tags, initial: true) { _, available in
+            if editingVisibleTags { draftVisibleTags.formIntersection(available.map(TagColor.key)) }
             if case .tag(let tag) = tagFilter, !available.contains(where: { TagColor.key($0) == TagColor.key(tag) }) { tagFilter = .all }
         }
         .confirmationDialog("library.delete.confirm \(deleting.count)", isPresented: $confirmDelete, titleVisibility: .visible) { Button("common.delete", role: .destructive) { if store.change({ $0.delete(deleting) }) != nil { if let selected, deleting.contains(selected) { self.selected = nil; compactColumn = .sidebar }; checked.subtract(deleting) }; deleting.removeAll() } }

@@ -5,8 +5,8 @@ from read_library import library_bytes
 root = pathlib.Path(__file__).resolve().parents[2]
 cache = pathlib.Path("/Volumes/LunaDrive/DeveloperCache")
 base = cache / "projects/ioant-clip/DerivedData" if cache.is_dir() and os.access(cache, os.W_OK) else root / "DerivedData"
-app = base / "CloudKitCaptureExtensions/SimulatorMediaThumbnails/Build/Products/Debug-iphonesimulator/ioant-Clip-iOS.app"
-prior_lanes = ("SimulatorConversationFallback", "SimulatorConversationAttachments", "SimulatorConversationCapture", "SimulatorReaderPreview", "SimulatorSQLite", "SimulatorSyncedPreferences", "SimulatorSharePage", "SimulatorPageLayout")
+app = base / "CloudKitCaptureExtensions/SimulatorFixedTagFilters/Build/Products/Debug-iphonesimulator/ioant-Clip-iOS.app"
+prior_lanes = ("SimulatorMediaThumbnails", "SimulatorConversationFallback", "SimulatorConversationAttachments", "SimulatorConversationCapture", "SimulatorReaderPreview", "SimulatorSQLite", "SimulatorSyncedPreferences", "SimulatorSharePage", "SimulatorPageLayout")
 bundle = "com.ioant.clip.ios"
 udid = "614FDA13-6198-452B-A6B2-94AA5591B30A"
 support = pathlib.Path("Library/Application Support")
