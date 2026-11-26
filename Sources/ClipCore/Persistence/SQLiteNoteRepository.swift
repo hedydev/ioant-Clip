@@ -1,7 +1,7 @@
 import Foundation
 import SQLite3
 
-/// The main app owns this connection. Note bodies are loaded only on request.
+/// Each connection is confined to its caller. Note bodies are loaded on request.
 public final class SQLiteNoteRepository {
     public struct Row: Identifiable, Equatable {
         public let id: UUID
@@ -21,16 +21,9 @@ public final class SQLiteNoteRepository {
     private let decoder = JSONDecoder()
 
     public init(legacyURL: URL) throws {
-        let url = legacyURL.deletingPathExtension().appendingPathExtension("sqlite3")
+        let url = Self.databaseURL(for: legacyURL)
         try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
-        var handle: OpaquePointer?
-        guard sqlite3_open_v2(url.path, &handle, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_FULLMUTEX, nil) == SQLITE_OK,
-              let handle else {
-            sqlite3_close(handle)
-            throw Error(errorDescription: "Unable to open the SQLite library.")
-        }
-        db = handle
-        sqlite3_busy_timeout(db, 3000)
+        db = try Self.open(url, flags: SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_FULLMUTEX)
         try execute("PRAGMA foreign_keys = ON")
         try transaction {
             try execute("""
@@ -60,6 +53,29 @@ public final class SQLiteNoteRepository {
                 try saveState("initialized", Data([1]))
             }
         }
+    }
+
+    private init(readOnlyAt url: URL) throws {
+        db = try Self.open(url, flags: SQLITE_OPEN_READONLY | SQLITE_OPEN_FULLMUTEX)
+    }
+
+    public static func readNote(_ id: UUID, legacyURL: URL) throws -> Note? {
+        let reader = try Self(readOnlyAt: databaseURL(for: legacyURL))
+        return try reader.note(id)
+    }
+
+    private static func databaseURL(for legacyURL: URL) -> URL {
+        legacyURL.deletingPathExtension().appendingPathExtension("sqlite3")
+    }
+
+    private static func open(_ url: URL, flags: Int32) throws -> OpaquePointer {
+        var handle: OpaquePointer?
+        guard sqlite3_open_v2(url.path, &handle, flags, nil) == SQLITE_OK, let handle else {
+            sqlite3_close(handle)
+            throw Error(errorDescription: "Unable to open the SQLite library.")
+        }
+        sqlite3_busy_timeout(handle, 3000)
+        return handle
     }
 
     deinit { sqlite3_close(db) }

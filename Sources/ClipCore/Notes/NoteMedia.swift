@@ -1,7 +1,7 @@
 import Foundation
 
-public struct NoteMedia: Equatable {
-    public enum Kind: String, CaseIterable {
+public struct NoteMedia: Equatable, Sendable {
+    public enum Kind: String, CaseIterable, Sendable {
         case image, svg, video, audio
     }
 
@@ -21,19 +21,24 @@ public struct NoteMedia: Equatable {
             let tag = kind.rawValue
             markup = "<\(tag) controls playsinline src=\"\(value)\"></\(tag)>"
         }
-        return Self.document(markup)
+        return Self.document(markup, vectorBackground: kind == .svg)
     }
 
     public var thumbnailDocument: String? {
-        if let poster { return Self.document("<img src=\"\(NotePart.escape(poster))\" alt=\"\">") }
+        if let poster {
+            return Self.document("<img src=\"\(NotePart.escape(poster))\" alt=\"\">",
+                                 vectorBackground: poster.prefix(100).lowercased().hasPrefix("data:image/svg+xml"))
+        }
         return kind == .image || kind == .svg ? previewDocument : nil
     }
 
-    private static func document(_ markup: String) -> String {
-        """
+    private static func document(_ markup: String, vectorBackground: Bool) -> String {
+        // This gray provides contrast for both black and white transparent artwork.
+        let background = vectorBackground ? "background-color:#757575" : ""
+        return """
         <!doctype html><meta name="viewport" content="width=device-width,initial-scale=1">
         <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data:; media-src data:; style-src 'unsafe-inline'; base-uri 'none'">
-        <style>html,body{width:100%;height:100%;margin:0;overflow:hidden}html{color-scheme:light dark}body{display:flex;align-items:center;justify-content:center;box-sizing:border-box;padding:8px}img,video{display:block;max-width:100%;max-height:100%;object-fit:contain}audio{width:100%;max-width:560px}</style>
+        <style>html,body{width:100%;height:100%;margin:0;overflow:hidden}html{color-scheme:light dark}body{display:flex;align-items:center;justify-content:center;box-sizing:border-box;padding:8px;\(background)}img,video{display:block;max-width:100%;max-height:100%;object-fit:contain}audio{width:100%;max-width:560px}</style>
         \(markup)
         """
     }

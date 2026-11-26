@@ -21,6 +21,13 @@ import OSLog
         return try? repository?.note(id)
     }
 
+    func loadNote(_ id: UUID) async throws -> Note? {
+        guard repository != nil else { return nil }
+        return try await Task.detached(priority: .userInitiated) { [url] in
+            try SQLiteNoteRepository.readNote(id, legacyURL: url)
+        }.value
+    }
+
     func page(query: String, filter: TagFilter, after: SQLiteNoteRepository.Row?) -> [SQLiteNoteRepository.Row] {
         do { return try repository?.page(query: query, filter: filter, after: after, limit: 40) ?? [] }
         catch { self.error = LibraryIssue(error); return [] }

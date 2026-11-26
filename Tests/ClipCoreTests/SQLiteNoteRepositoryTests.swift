@@ -25,6 +25,7 @@ final class SQLiteNoteRepositoryTests: XCTestCase {
         XCTAssertEqual(try database.count(filter: .untagged), 500)
         XCTAssertEqual(try database.count(query: "details 999"), 1)
         XCTAssertEqual(try database.note(notes[999].id), notes[999])
+        XCTAssertEqual(try SQLiteNoteRepository.readNote(notes[999].id, legacyURL: url), notes[999])
         XCTAssertEqual(try database.snapshot().syncJournal, legacy.syncJournal)
 
         var cursor: SQLiteNoteRepository.Row?
@@ -43,6 +44,7 @@ final class SQLiteNoteRepositoryTests: XCTestCase {
         edited.delete([notes[999].id])
         try edited.recordLocalChanges(from: previous)
         try database.save(edited, previous: previous)
+        XCTAssertNil(try SQLiteNoteRepository.readNote(notes[999].id, legacyURL: url))
         XCTAssertEqual(try SQLiteNoteRepository(legacyURL: url).count(), 999)
         XCTAssertEqual(try Data(contentsOf: url), original)
     }

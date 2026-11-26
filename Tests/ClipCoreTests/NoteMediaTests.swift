@@ -21,6 +21,19 @@ final class NoteMediaTests: XCTestCase {
         XCTAssertTrue(items.last?.previewDocument?.contains("<audio controls") == true)
     }
 
+    func testVectorThumbnailsAndPreviewsUseAThemeIndependentBackground() throws {
+        let part = NotePart(html: """
+            <img src="data:image/svg+xml;base64,AA==">
+            <img src="data:image/png;base64,AA==">
+            """)
+        let items = NoteMedia.extract(from: [part])
+        XCTAssertEqual(items.map(\.kind), [.svg, .image])
+        let vector = try XCTUnwrap(items.first)
+        XCTAssertTrue(vector.thumbnailDocument?.contains("background-color:#757575") == true)
+        XCTAssertTrue(vector.previewDocument?.contains("background-color:#757575") == true)
+        XCTAssertFalse(items.last?.thumbnailDocument?.contains("background-color:#757575") == true)
+    }
+
     func testSavedVideoFileUsesLocalPlaybackAndKeepsItsSource() throws {
         let html = """
         <span data-ioant-media="video" title="Sample" data-ioant-media-src="https://example.com/watch"

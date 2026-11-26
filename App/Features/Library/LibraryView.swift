@@ -5,6 +5,7 @@ struct LibraryView: View {
     @EnvironmentObject var store: LibraryStore
     @EnvironmentObject private var language: LanguagePreferences
     @State private var selected: UUID?
+    @State private var loaded: (id: UUID, note: Note?)?
     @State private var copiedID: UUID?
     @AppStorage("ioant.clip.library.plainPreview.v1") private var plainPreview = false
     @State private var compactColumn: NavigationSplitViewColumn = .sidebar
@@ -26,13 +27,22 @@ struct LibraryView: View {
     private var filterBinding: Binding<TagFilter> {
         Binding(get: { tagFilter }, set: { tagFilter = $0 })
     }
-    var current: Note? { store.note(selected) }
+    private struct DetailRequest: Equatable {
+        let id: UUID?
+        let revision: Int
+    }
+
+    private var detailRequest: DetailRequest {
+        DetailRequest(id: selected, revision: store.listRevision)
+    }
+
+    var current: Note? { loaded?.id == selected ? loaded?.note : nil }
     var tags: [String] { store.allTags }
     var body: some View {
         NavigationSplitView(preferredCompactColumn: $compactColumn) {
             LibrarySidebar(selected: $selected, compactColumn: $compactColumn, checked: $checked, selecting: $selecting, query: $query, appSettings: $appSettings, storageSettings: $storageSettings, deleting: $deleting, confirmDelete: $confirmDelete, tagFilter: filterBinding)
         } detail: {
-            ClipDetailView(current: current, sheetParentSize: sheetParentSize, tags: tags, plainPreview: $plainPreview, copiedID: $copiedID, editing: $editing, deleting: $deleting, confirmDelete: $confirmDelete, importing: $importing, paste: paste)
+            ClipDetailView(current: current, loadingNote: selected != nil && loaded?.id != selected, sheetParentSize: sheetParentSize, tags: tags, plainPreview: $plainPreview, copiedID: $copiedID, editing: $editing, deleting: $deleting, confirmDelete: $confirmDelete, importing: $importing, paste: paste)
         }
         .safeAreaInset(edge: .top, spacing: 0) {
             if let issue = store.captureInboxIssue {
@@ -55,6 +65,21 @@ struct LibraryView: View {
         } }
         .onPreferenceChange(SheetParentSizeKey.self) { size in
             if size.width > 0 && size.height > 0 { sheetParentSize = size }
+        }
+        .task(id: detailRequest) { [request = detailRequest] in
+            guard let id = request.id else {
+                if !Task.isCancelled { loaded = nil }
+                return
+            }
+            do {
+                let note = try await store.loadNote(id)
+                guard !Task.isCancelled, request == detailRequest else { return }
+                loaded = (id, note)
+            } catch {
+                guard !Task.isCancelled, request == detailRequest else { return }
+                loaded = (id, nil)
+                store.error = LibraryIssue(error)
+            }
         }
         .onChange(of: selected) { _, _ in copiedID = nil }
         .onChange(of: store.lastIncoming) { _, id in

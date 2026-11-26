@@ -35,13 +35,13 @@ struct ClipMediaView: View {
                 if let preview {
                     ClipSheet(title: "reader.media", size: .large, parentSize: parentSize) {
                         if let html = preview.previewDocument {
-                            HTMLPreview(html: html)
+                            ReaderHTMLPreview(html: html)
                                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                         } else {
                             ModalScrollPage {
                                 VStack(spacing: LayoutMetrics.medium) {
                                     if let html = preview.thumbnailDocument {
-                                        HTMLPreview(html: html)
+                                        ReaderHTMLPreview(html: html)
                                             .frame(height: 180)
                                     }
                                     title(preview).multilineTextAlignment(.center)
@@ -66,7 +66,7 @@ struct ClipMediaView: View {
         } label: {
             VStack(alignment: .leading, spacing: 8) {
                 if let html = item.thumbnailDocument {
-                    HTMLPreview(html: html)
+                    ReaderHTMLPreview(html: html, compact: true)
                         .allowsHitTesting(false)
                         .accessibilityHidden(true)
                         .frame(height: 100)
