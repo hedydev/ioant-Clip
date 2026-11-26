@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "title": "Compare saved conversation captures in the Mac and iOS libraries",
+  "steps": [
+    {
+      "name": "compare",
+      "runtime": "python3",
+      "script": "scripts/cloudkit/compare_conversation_captures.py",
+      "timeoutSeconds": 45
+    }
+  ],
+  "artifacts": []
+}
