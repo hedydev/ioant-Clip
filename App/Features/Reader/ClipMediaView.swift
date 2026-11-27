@@ -20,7 +20,7 @@ struct ClipMediaSection: Identifiable, Sendable {
 struct ClipMediaView: View {
     let sections: [ClipMediaSection]
     let parentSize: CGSize
-    @State private var preview: NoteMedia?
+    @State private var preview: ClipMediaSection.Item?
     @StateObject private var thumbnails = MediaThumbnailStore()
 
     var body: some View {
@@ -44,30 +44,10 @@ struct ClipMediaView: View {
                 }
                 .padding(LayoutMetrics.large)
             }
-            .sheet(isPresented: Binding(get: { preview != nil }, set: { if !$0 { preview = nil } })) {
-                if let preview {
-                    ClipSheet(title: "reader.media", size: .large, parentSize: parentSize) {
-                        if let html = preview.previewDocument {
-                            ReaderHTMLPreview(html: html)
-                                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        } else {
-                            ModalScrollPage {
-                                VStack(spacing: LayoutMetrics.medium) {
-                                    if let html = preview.thumbnailDocument {
-                                        ReaderHTMLPreview(html: html)
-                                            .frame(height: 180)
-                                    }
-                                    title(preview).multilineTextAlignment(.center)
-                                    if let url = preview.source {
-                                        Link(destination: url) {
-                                            Label("reader.media.source", systemImage: "arrow.up.right")
-                                        }
-                                    }
-                                }
-                                .frame(maxWidth: .infinity)
-                            }
-                        }
-                    }
+            .pauseVectorThumbnailsDuringScroll(thumbnails)
+            .sheet(item: $preview) { item in
+                ClipSheet(title: "reader.media", size: .large, parentSize: parentSize) {
+                    ClipMediaDetail(media: item.media)
                 }
             }
         }
@@ -75,11 +55,19 @@ struct ClipMediaView: View {
 
     private func card(_ item: ClipMediaSection.Item) -> some View {
         Button {
-            preview = item.media
+            preview = item
         } label: {
             VStack(alignment: .leading, spacing: 8) {
-                MediaThumbnailView(item: item, thumbnails: thumbnails)
+                MediaThumbnailView(media: item.media, id: item.id, thumbnails: thumbnails)
                     .frame(height: 100)
+                    .overlay(alignment: .bottomTrailing) {
+                        if item.media.embedded != nil && (item.media.kind == .video || item.media.kind == .audio) {
+                            Image(systemName: "play.circle.fill")
+                                .font(.title2)
+                                .padding(4)
+                                .background(.regularMaterial, in: Circle())
+                        }
+                    }
                     .accessibilityHidden(true)
                 title(item.media).font(.subheadline).lineLimit(2)
             }
@@ -104,8 +92,9 @@ struct ClipMediaView: View {
     }
 }
 
-private struct MediaThumbnailView: View {
-    let item: ClipMediaSection.Item
+struct MediaThumbnailView: View {
+    let media: NoteMedia
+    let id: UUID
     let thumbnails: MediaThumbnailStore
     @State private var image: CGImage?
 
@@ -121,15 +110,15 @@ private struct MediaThumbnailView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .task(id: item.id) {
-            let loaded = await thumbnails.image(for: item.id, media: item.media)
+        .task(id: id) {
+            let loaded = await thumbnails.image(for: id, media: media)
             if !Task.isCancelled { image = loaded }
         }
         .onDisappear { image = nil }
     }
 
     private var placeholder: String {
-        switch item.media.kind {
+        switch media.kind {
         case .image, .svg: "photo"
         case .video: "film"
         case .audio: "waveform"

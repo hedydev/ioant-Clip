@@ -16,6 +16,7 @@ import AppKit
     private let decoder = MediaThumbnailDecoder()
     private let vectorRenderer = MediaVectorThumbnailRenderer()
     private var pendingVector: Task<CGImage?, Never>?
+    var isScrolling = false
 
     init() {
         cache.countLimit = 96
@@ -27,9 +28,15 @@ import AppKit
         guard let source = media.thumbnailSource, !Task.isCancelled else { return nil }
         let image: CGImage?
         if source.prefix(100).lowercased().hasPrefix("data:image/svg+xml") {
+            try? await Task.sleep(for: .milliseconds(220))
+            guard !Task.isCancelled else { return nil }
+            if let entry = cache.object(forKey: id as NSUUID) { return entry.image }
             let previous = pendingVector
             let work = Task {
                 _ = await previous?.value
+                while isScrolling, !Task.isCancelled {
+                    try? await Task.sleep(for: .milliseconds(120))
+                }
                 guard !Task.isCancelled, let html = media.thumbnailDocument else { return nil as CGImage? }
                 return await vectorRenderer.image(for: html)
             }
@@ -51,11 +58,8 @@ import AppKit
 
 actor MediaThumbnailDecoder {
     func image(for source: String) -> CGImage? {
-        guard !Task.isCancelled, let delimiter = source.firstIndex(of: ",") else { return nil }
-        let header = source[..<delimiter].lowercased()
-        guard header.hasPrefix("data:image/"), let bytes = Self.bytes(source[source.index(after: delimiter)...],
-                                                                        base64: header.hasSuffix(";base64")),
-              let image = CGImageSourceCreateWithData(bytes as CFData, [kCGImageSourceShouldCache: false] as CFDictionary)
+        guard !Task.isCancelled, let data = MediaData(url: source), data.mimeType.hasPrefix("image/"),
+              let image = CGImageSourceCreateWithData(data.bytes as CFData, [kCGImageSourceShouldCache: false] as CFDictionary)
         else { return nil }
         let options: [CFString: Any] = [
             kCGImageSourceCreateThumbnailFromImageAlways: true,
@@ -64,31 +68,6 @@ actor MediaThumbnailDecoder {
             kCGImageSourceShouldCacheImmediately: true
         ]
         return CGImageSourceCreateThumbnailAtIndex(image, 0, options as CFDictionary)
-    }
-
-    private static func bytes(_ payload: Substring, base64: Bool) -> Data? {
-        if base64, !payload.contains("%") { return Data(base64Encoded: String(payload)) }
-        var result = Data()
-        var input = payload.utf8.makeIterator()
-        while let byte = input.next() {
-            if byte == 37 {
-                guard let first = input.next(), let second = input.next(),
-                      let high = hex(first), let low = hex(second) else { return nil }
-                result.append(high * 16 + low)
-            } else {
-                result.append(byte)
-            }
-        }
-        return base64 ? Data(base64Encoded: result) : result
-    }
-
-    private static func hex(_ byte: UInt8) -> UInt8? {
-        switch byte {
-        case 48...57: byte - 48
-        case 65...70: byte - 55
-        case 97...102: byte - 87
-        default: nil
-        }
     }
 }
 
@@ -151,5 +130,19 @@ actor MediaThumbnailDecoder {
         timeout = nil
         if image == nil { view.stopLoading() }
         active.result.resume(returning: image)
+    }
+}
+
+extension View {
+    @MainActor @ViewBuilder
+    func pauseVectorThumbnailsDuringScroll(_ thumbnails: MediaThumbnailStore) -> some View {
+        if #available(macOS 15, iOS 18, *) {
+            onScrollPhaseChange { _, phase in
+                thumbnails.isScrolling = phase.isScrolling
+            }
+            .onDisappear { thumbnails.isScrolling = false }
+        } else {
+            self
+        }
     }
 }

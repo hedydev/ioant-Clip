@@ -21,7 +21,7 @@ public struct NoteMedia: Equatable, Sendable {
             let tag = kind.rawValue
             markup = "<\(tag) controls playsinline src=\"\(value)\"></\(tag)>"
         }
-        return Self.document(markup, vectorBackground: kind == .svg)
+        return Self.document(markup, vectorBackground: kind == .svg, enlargeVector: kind == .svg)
     }
 
     public var thumbnailSource: String? {
@@ -34,13 +34,14 @@ public struct NoteMedia: Equatable, Sendable {
                              vectorBackground: source.prefix(100).lowercased().hasPrefix("data:image/svg+xml"))
     }
 
-    private static func document(_ markup: String, vectorBackground: Bool) -> String {
+    private static func document(_ markup: String, vectorBackground: Bool, enlargeVector: Bool = false) -> String {
         // This gray provides contrast for both black and white transparent artwork.
         let background = vectorBackground ? "background-color:#757575" : ""
+        let vectorSize = enlargeVector ? "img{width:min(76vw,480px);height:min(72vh,380px)}" : ""
         return """
         <!doctype html><meta name="viewport" content="width=device-width,initial-scale=1">
         <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data:; media-src data:; style-src 'unsafe-inline'; base-uri 'none'">
-        <style>html,body{width:100%;height:100%;margin:0;overflow:hidden}html{color-scheme:light dark}body{display:flex;align-items:center;justify-content:center;box-sizing:border-box;padding:8px;\(background)}img,video{display:block;max-width:100%;max-height:100%;object-fit:contain}audio{width:100%;max-width:560px}</style>
+        <style>html,body{width:100%;height:100%;margin:0;overflow:hidden}html{color-scheme:light dark}body{display:flex;align-items:center;justify-content:center;box-sizing:border-box;padding:8px;\(background)}img,video{display:block;max-width:100%;max-height:100%;object-fit:contain}audio{width:100%;max-width:560px}\(vectorSize)</style>
         \(markup)
         """
     }
@@ -64,13 +65,7 @@ public struct NoteMedia: Equatable, Sendable {
                 guard let match, match.range(at: 2).location != NSNotFound else { return }
                 let tag = document.substring(with: match.range(at: 2)).lowercased()
                 let raw = document.substring(with: match.range(at: 3))
-                let fields = raw as NSString
-                var values: [String: String] = [:]
-                for field in attributes.matches(in: raw, range: NSRange(location: 0, length: fields.length)) {
-                    guard let value = (2...4).map({ field.range(at: $0) }).first(where: { $0.location != NSNotFound }) else { continue }
-                    let name = fields.substring(with: field.range(at: 1)).lowercased()
-                    values[name] = values[name] ?? decode(fields.substring(with: value))
-                }
+                let values = parseAttributes(raw)
                 let src = values["data-ioant-media-src"] ?? values["src"] ?? values["data-ioant-image-origin"] ?? ""
                 let lower = src.prefix(100).lowercased()
                 let kind: Kind?
@@ -107,7 +102,18 @@ public struct NoteMedia: Equatable, Sendable {
         return items
     }
 
-    private static func webURL(_ value: String, relativeTo base: String?) -> URL? {
+    static func parseAttributes(_ raw: String) -> [String: String] {
+        let fields = raw as NSString
+        var values: [String: String] = [:]
+        for field in attributes.matches(in: raw, range: NSRange(location: 0, length: fields.length)) {
+            guard let value = (2...4).map({ field.range(at: $0) }).first(where: { $0.location != NSNotFound }) else { continue }
+            let name = fields.substring(with: field.range(at: 1)).lowercased()
+            values[name] = values[name] ?? decode(fields.substring(with: value))
+        }
+        return values
+    }
+
+    static func webURL(_ value: String, relativeTo base: String?) -> URL? {
         guard !value.isEmpty, value.prefix(5).lowercased() != "data:",
               let url = URL(string: value, relativeTo: base.flatMap { URL(string: $0) })?.absoluteURL,
               let scheme = url.scheme?.lowercased(), ["https", "http"].contains(scheme),
@@ -115,7 +121,7 @@ public struct NoteMedia: Equatable, Sendable {
         return url
     }
 
-    private static func decode(_ value: String) -> String {
+    static func decode(_ value: String) -> String {
         value.replacingOccurrences(of: "&quot;", with: "\"")
             .replacingOccurrences(of: "&#39;", with: "'")
             .replacingOccurrences(of: "&lt;", with: "<")

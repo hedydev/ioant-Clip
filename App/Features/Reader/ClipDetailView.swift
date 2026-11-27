@@ -12,14 +12,25 @@ struct ClipDetailView: View {
     let requestDelete: (UUID) -> Void
     @Binding var importing: Bool
     let paste: () -> Void
-    @State private var showingMedia = false
+    @State private var tab: ReaderTab = .original
+
+    private enum ReaderTab: Hashable { case original, media, links }
+
+    private var mode: ClipReaderContent.Mode {
+        switch tab {
+        case .original: plainPreview ? .plain : .original
+        case .media: .media
+        case .links: .links
+        }
+    }
+
     var body: some View {
             if let note = current {
                 VStack(alignment: .leading, spacing: 0) {
                     VStack(alignment: .leading, spacing: 6) {
                         ClipReaderHeader(note: note, plainPreview: Binding(
                             get: { plainPreview },
-                            set: { plainPreview = $0; showingMedia = false }
+                            set: { plainPreview = $0; tab = .original }
                         ), copiedID: $copiedID)
                         if !note.tags.isEmpty { TagChipRow(tags: note.tags, color: store.color(for:)) }
                         let suggestions = TagSuggestions.forNote(note, existingTags: tags)
@@ -39,16 +50,17 @@ struct ClipDetailView: View {
                         }
                         if let source = note.parts.first?.sourceURL { Text(verbatim: source).font(.caption).foregroundStyle(.secondary).lineLimit(1).textSelection(.enabled) }
                     }.padding(LayoutMetrics.large)
-                    Picker("reader.media", selection: $showingMedia) {
-                        Text("reader.original").tag(false)
-                        Text("reader.media").tag(true)
+                    Picker("reader.original", selection: $tab) {
+                        Text("reader.original").tag(ReaderTab.original)
+                        Text("reader.media").tag(ReaderTab.media)
+                        Text("reader.links").tag(ReaderTab.links)
                     }
                     .pickerStyle(.segmented)
                     .labelsHidden()
                     .padding(.horizontal, LayoutMetrics.large)
                     .padding(.bottom, 8)
                     Divider()
-                    ClipReaderContent(note: note, mode: showingMedia ? .media : (plainPreview ? .plain : .original),
+                    ClipReaderContent(note: note, mode: mode,
                                       sheetParentSize: sheetParentSize)
                         .id(note.id)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -84,12 +96,13 @@ struct ClipDetailView: View {
 }
 
 private struct ClipReaderContent: View {
-    enum Mode: Hashable, Sendable { case original, plain, media }
+    enum Mode: Hashable, Sendable { case original, plain, media, links }
 
     private enum Prepared: Sendable {
         case html(String)
         case plain(String)
         case media([ClipMediaSection])
+        case links([NoteLink])
     }
 
     private struct Request: Equatable {
@@ -120,6 +133,8 @@ private struct ClipReaderContent: View {
                     }
                 case .media(let sections):
                     ClipMediaView(sections: sections, parentSize: sheetParentSize)
+                case .links(let links):
+                    ClipLinksView(links: links)
                 }
             } else {
                 ReaderLoadingView()
@@ -136,6 +151,7 @@ private struct ClipReaderContent: View {
                 switch mode {
                 case .original: Prepared.html(note.htmlDocument)
                 case .media: Prepared.media(ClipMediaSection.group(note.media))
+                case .links: Prepared.links(note.links)
                 case .plain:
                     Self.preparePlainText(for: note)
                 }
