@@ -6,8 +6,10 @@ import plistlib
 import re
 import sqlite3
 import subprocess
+import time
 
 BUNDLE = "com.ioant.clip.ios"
+KNOWN_BUNDLES = (BUNDLE, "com.ioant.note.ios", "com.ioant.clip.ios.simsmoke")
 DAILY = "ioant-Note"
 REVIEW = "ioant-Clip-CloudKit-UI-Review"
 LEGACY_REVIEW = "ioant-Clip-CloudKit-Review"
@@ -38,10 +40,15 @@ def summary(path):
         enrollment = value.get("syncEnrollment")
     else:
         return None, None
+    checkpoint = path / "cloudkit-remote-checkpoint-v1.json"
+    try:
+        checkpoint_age = max(0, round(time.time() - checkpoint.stat().st_mtime))
+    except FileNotFoundError:
+        checkpoint_age = None
     return {
         "notes": count, "revisions": revisions, "bound": bool(enrollment),
         "paused": enrollment.get("isPaused", False) if enrollment else None,
-        "checkpoint": (path / "cloudkit-remote-checkpoint-v1.json").is_file()
+        "checkpoint_age_s": checkpoint_age
     }, enrollment
 
 
@@ -86,22 +93,30 @@ booted = [d for items in json.loads(sim("list", "-j", "devices", "booted"))["dev
 print("Booted Simulators:", len(booted), flush=True)
 for index, device in enumerate(booted, 1):
     udid = device["udid"]
-    try:
-        app = pathlib.Path(sim("get_app_container", udid, BUNDLE, "app"))
-        data = pathlib.Path(sim("get_app_container", udid, BUNDLE, "data"))
-        info = plistlib.loads((app / "Info.plist").read_bytes())
-    except (subprocess.SubprocessError, OSError):
-        print("Simulator", index, "Clip not resolved; expected device:", udid == EXPECTED, flush=True)
+    listing = sim("listapps", udid)
+    parsed = subprocess.run(["/usr/bin/plutil", "-convert", "xml1", "-o", "-", "--", "-"],
+                            input=listing.encode(), capture_output=True, check=True, timeout=10)
+    installed = plistlib.loads(parsed.stdout)
+    apps = [bundle for bundle in KNOWN_BUNDLES if bundle in installed]
+    print("Simulator", index, "expected device:", udid == EXPECTED, "Clip-family installs:", apps, flush=True)
+    if not apps:
         continue
-    active = any(BUNDLE in line and line.split()[0].isdigit()
-                 for line in sim("spawn", udid, "launchctl", "list").splitlines())
-    lane = DAILY if info.get("ClipCloudKitDevelopment") == "YES" else (
-        REVIEW if info.get("ClipCloudKitUIReview") == "YES" else LEGACY_REVIEW
-    )
-    status, binding = summary(data / library / lane)
-    same = bool(mac_binding and binding and mac_binding.get("account") == binding.get("account"))
-    print("Simulator", index, "expected device:", udid == EXPECTED, "Clip running:", active, "storage:", lane,
-          "cloud configuration:", info.get("ClipCloudKitEnvironment") == "Development",
-          "state:", status, "same binding as Mac:", same, flush=True)
-    if active:
-        cloud_errors(udid, info["CFBundleExecutable"])
+    processes = sim("spawn", udid, "launchctl", "list").splitlines()
+    for bundle in apps:
+        app = pathlib.Path(sim("get_app_container", udid, bundle, "app"))
+        data = pathlib.Path(sim("get_app_container", udid, bundle, "data"))
+        info = plistlib.loads((app / "Info.plist").read_bytes())
+        active = any(bundle + "." in line and line.split()[0].isdigit() for line in processes)
+        if bundle == "com.ioant.note.ios" or info.get("ClipCloudKitDevelopment") == "YES":
+            lane = DAILY
+        elif info.get("ClipCloudKitUIReview") == "YES":
+            lane = REVIEW
+        else:
+            lane = LEGACY_REVIEW
+        status, binding = summary(data / library / lane)
+        same = bool(mac_binding and binding and mac_binding.get("account") == binding.get("account"))
+        print("Bundle:", bundle, "running:", active, "storage:", lane,
+              "cloud configuration:", info.get("ClipCloudKitEnvironment") == "Development",
+              "state:", status, "same binding as Mac:", same, flush=True)
+        if active and bundle == BUNDLE:
+            cloud_errors(udid, info["CFBundleExecutable"])
