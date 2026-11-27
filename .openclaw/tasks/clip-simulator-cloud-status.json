@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "title": "Inspect running Clip simulator and redacted iCloud status",
+  "steps": [
+    {
+      "name": "cloud_status",
+      "runtime": "bash",
+      "script": "scripts/cloudkit/inspect_simulator_cloud_status.sh",
+      "timeoutSeconds": 100
+    }
+  ],
+  "artifacts": []
+}

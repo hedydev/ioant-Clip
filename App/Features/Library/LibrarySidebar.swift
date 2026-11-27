@@ -46,6 +46,14 @@ struct LibrarySidebar: View {
         guard loadedRequest == key, rows.count < total, let cursor = rows.last, cursor.id == id else { return }
         rows += store.page(query: key.query, filter: key.tagFilter, after: cursor)
     }
+    private var clipRowInsets: EdgeInsets? {
+        #if os(macOS)
+        EdgeInsets(top: 0, leading: LayoutMetrics.large, bottom: 0, trailing: LayoutMetrics.large)
+        #else
+        nil
+        #endif
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             LibraryFilters(store: store, selection: tagFilter, visibleTags: visibleTags, compact: compact,
@@ -57,12 +65,14 @@ struct LibrarySidebar: View {
                     Label(query.isEmpty ? LocalizedStringKey("library.noClips") : LocalizedStringKey("library.noResults"), systemImage: query.isEmpty ? "tray" : "magnifyingglass")
                         .font(.subheadline).foregroundStyle(.secondary)
                         .padding(.vertical, LayoutMetrics.small)
+                        .listRowInsets(clipRowInsets)
                 }
                 ForEach(rows) { note in
                     Button { open(note) } label: {
                         ClipListRow(note: note, selecting: selecting, checked: checked.contains(note.id), color: store.color(for:))
                     }
                     .buttonStyle(.plain)
+                    .listRowInsets(clipRowInsets)
                     .listRowBackground((selecting ? checked.contains(note.id) : selected == note.id) ? theme.selectedRow : Color.clear)
                     .accessibilityAddTraits((selecting ? checked.contains(note.id) : selected == note.id) ? [.isSelected] : [])
                     .onAppear { loadMore(after: note.id) }
