@@ -31,12 +31,6 @@
       "runtime": "bash",
       "script": "scripts/cloudkit/inspect_simulator_cloud_status.sh",
       "timeoutSeconds": 100
-    },
-    {
-      "name": "verify_ios_release_icon",
-      "runtime": "bash",
-      "script": "scripts/check_ios_release_icon.sh",
-      "timeoutSeconds": 300
     }
   ],
   "artifacts": []

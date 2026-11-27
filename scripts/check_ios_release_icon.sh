@@ -2,6 +2,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
+export USER="$(id -un)" LOGNAME="$(id -un)"
 xcodegen generate
 cache=/Volumes/LunaDrive/DeveloperCache
 if [ -d "$cache" ] && [ -w "$cache" ]; then

@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "title": "Verify iOS Release icon and run the existing native build checks",
+  "steps": [
+    {
+      "name": "verify_ios_release_icon",
+      "runtime": "bash",
+      "script": "scripts/check_ios_release_icon.sh",
+      "timeoutSeconds": 300
+    },
+    {
+      "name": "verify_core_and_apple_builds",
+      "runtime": "bash",
+      "script": "scripts/validate.sh",
+      "timeoutSeconds": 900
+    }
+  ],
+  "artifacts": []
+}
