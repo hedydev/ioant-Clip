@@ -53,7 +53,7 @@ struct ClipMediaDetail: View {
         }
         .onDisappear { player?.pause() }
         .fileExporter(isPresented: $exporting, document: file.map { MediaExportDocument(data: $0.data) },
-                      contentType: file?.type ?? .data, defaultFilename: file?.name) { result in
+                      contentType: file?.type ?? .data, defaultFilename: file?.url.lastPathComponent) { result in
             if case .failure = result { exportFailed = true }
         }
         .alert("reader.media.exportFailed", isPresented: $exportFailed) {
@@ -138,7 +138,6 @@ private struct AudioMediaPreview: View {
 private final class MediaPreviewFile: Sendable {
     let data: Data
     let type: UTType
-    let name: String
     let url: URL
     let source: URL?
     let isLink: Bool
@@ -149,7 +148,6 @@ private final class MediaPreviewFile: Sendable {
             .trimmingCharacters(in: .whitespacesAndNewlines.union(CharacterSet(charactersIn: ".")))
         var name = String(String.UnicodeScalarView(title.unicodeScalars.prefix(45)))
         if name.isEmpty { name = "Clip-" + media.kind.rawValue }
-        self.name = name
         source = media.source
 
         if let encoded = media.embedded, let content = MediaData(url: encoded) {
@@ -181,7 +179,14 @@ private final class MediaPreviewFile: Sendable {
 }
 
 private struct MediaExportDocument: FileDocument {
-    static let readableContentTypes: [UTType] = [.data]
+    static let readableContentTypes: [UTType] = [.data, .xml]
+        + [
+            "image/png", "image/jpeg", "image/gif", "image/webp", "image/avif", "image/svg+xml",
+            "video/mp4", "video/quicktime", "video/webm", "video/ogg", "video/mpeg", "video/x-m4v",
+            "audio/mpeg", "audio/mp4", "audio/aac", "audio/wav", "audio/x-wav", "audio/aiff",
+            "audio/flac", "audio/ogg", "audio/webm"
+        ].compactMap { UTType(mimeType: $0) }
+        + [UTType(filenameExtension: "webloc")].compactMap { $0 }
     let data: Data
 
     init(data: Data) { self.data = data }
