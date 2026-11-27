@@ -48,4 +48,38 @@ final class SQLiteNoteRepositoryTests: XCTestCase {
         XCTAssertEqual(try SQLiteNoteRepository(legacyURL: url).count(), 999)
         XCTAssertEqual(try Data(contentsOf: url), original)
     }
+
+    func testStorageUsageSeparatesEmbeddedMediaFromDocuments() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let url = directory.appendingPathComponent("notes.json")
+        let svg = "<svg><path /></svg>"
+        let html = """
+            <p>正文</p><img src="https://example.test/external.png">
+            <img src="data:image/png;base64,AQID">
+            <span style="background:url(data:image/png;base64,AQI=)"></span>
+            <video src="data:video/mp4;base64,AQIDBA=="></video>
+            <audio src="data:audio/mpeg;base64,AQ=="></audio>
+            \(svg)<img src="data:image/svg+xml,%3Csvg%2F%3E">
+            """
+        let document = """
+            <p>正文</p><img src="https://example.test/external.png">
+            <img src="">
+            <span style="background:url()"></span>
+            <video src=""></video>
+            <audio src=""></audio>
+            <img src="">
+            """
+        let note = Note(title: "Media", parts: [NotePart(html: html, text: "文字", image: Data([0, 1]))])
+        let library = NoteLibrary(notes: [note])
+        try library.save(to: url)
+        let database = try SQLiteNoteRepository(legacyURL: url)
+        let usage = try SQLiteNoteRepository.readStorageContentUsage(legacyURL: url)
+        XCTAssertEqual(usage.documentBytes, Int64(document.utf8.count + "文字".utf8.count))
+        XCTAssertEqual(usage.imageBytes, 7)
+        XCTAssertEqual(usage.svgBytes, Int64(svg.utf8.count + "<svg/>".utf8.count))
+        XCTAssertEqual(usage.videoBytes, 4)
+        XCTAssertEqual(usage.audioBytes, 1)
+        XCTAssertEqual(try database.note(note.id), note)
+    }
 }

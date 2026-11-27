@@ -64,6 +64,16 @@ public final class SQLiteNoteRepository {
         return try reader.note(id)
     }
 
+    public static func readStorageContentUsage(legacyURL: URL) throws -> StorageContentUsage {
+        let reader = try Self(readOnlyAt: databaseURL(for: legacyURL))
+        var usage = StorageContentUsage()
+        let _: [Void] = try reader.query("SELECT payload FROM parts") { row in
+            try Task.checkCancellation()
+            usage.add(try reader.decoder.decode(NotePart.self, from: reader.blob(row, 0)))
+        }
+        return usage
+    }
+
     private static func databaseURL(for legacyURL: URL) -> URL {
         legacyURL.deletingPathExtension().appendingPathExtension("sqlite3")
     }

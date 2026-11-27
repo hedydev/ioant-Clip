@@ -35,8 +35,12 @@ struct CloudKitReviewConfiguration {
         return nil
         #endif
     }
+    static func checkpointURL(libraryURL: URL) -> URL {
+        libraryURL.deletingLastPathComponent().appending(path: "cloudkit-remote-checkpoint-v1.json")
+    }
+
     func transport() -> any RevisionTransport {
         CloudKitRevisionTransport(containerIdentifier: container, environment: environment, zoneName: Self.zoneName,
-            checkpointURL: LibraryLocation.notesURL.deletingLastPathComponent().appending(path: "cloudkit-remote-checkpoint-v1.json"))
+            checkpointURL: Self.checkpointURL(libraryURL: LibraryLocation.notesURL))
     }
 }

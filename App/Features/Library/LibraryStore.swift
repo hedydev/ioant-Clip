@@ -11,7 +11,7 @@ import OSLog
     @Published var error: LibraryIssue?
     private var colors: [String: TagColor] = [:]
     private var repository: SQLiteNoteRepository?
-    private let url: URL
+    let url: URL
     var library: NoteLibrary { (try? repository?.snapshot()) ?? NoteLibrary() }
     var allTags: [String] { tagCounts.keys.sorted { $0.localizedStandardCompare($1) == .orderedAscending } }
     var revisionCount: Int { (try? repository?.revisionCount()) ?? 0 }

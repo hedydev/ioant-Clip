@@ -1,3 +1,4 @@
+import CloudKit
 import Foundation
 import SwiftUI
 
@@ -106,6 +107,9 @@ import SwiftUI
              RemoteRevisionCheckpoint.Failure.scopeMismatch,
              CloudKitRevisionTransport.ProviderError.accountChanged:
             phase = .failed("sync.error.accountChanged")
+        case let cloudError as CKError where cloudError.code == .quotaExceeded ||
+            cloudError.partialErrorsByItemID?.values.contains(where: { ($0 as? CKError)?.code == .quotaExceeded }) == true:
+            phase = .failed("sync.error.quota")
         case SyncSessionError.historyLimit:
             phase = .failed("sync.error.limit")
         case SyncSessionError.unresolvedHistory:

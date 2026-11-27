@@ -11,6 +11,7 @@ struct SyncSettingsView: View {
                     CloudStorageStatusRow()
                     ModalDescription(key: store.enrollment == nil ? "sync.local.description" : "sync.bound.description")
                 }
+                StorageUsageSection()
                 ModalSection(title: "sync.providers") {
                     CloudKitSettingsSection()
                     Divider()
