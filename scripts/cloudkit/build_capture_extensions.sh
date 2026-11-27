@@ -21,7 +21,7 @@ scheme="ioant-Clip-$platform"
 case "$platform" in
   macOS) dest="platform=macOS"; product="Debug/ioant-Clip-macOS.app";;
   iOS) dest="generic/platform=iOS"; product="Debug-iphoneos/ioant-Clip-iOS.app";;
-  simulator) lane=SimulatorSidebarSpacing; scheme=ioant-Clip-iOS; dest="generic/platform=iOS Simulator"; product="Debug-iphonesimulator/ioant-Clip-iOS.app";;
+  simulator) lane=SimulatorBrandIcon; scheme=ioant-Clip-iOS; dest="generic/platform=iOS Simulator"; product="Debug-iphonesimulator/ioant-Clip-iOS.app";;
   *) exit 2;;
 esac
 if [ "$platform" = simulator ]; then
@@ -42,3 +42,4 @@ else
   PYTHONDONTWRITEBYTECODE=1 python3 scripts/cloudkit/verify_signed_review.py "$platform" "$app" 64RS366WKG iCloud.com.ioant.clip
 fi
 PYTHONDONTWRITEBYTECODE=1 python3 scripts/cloudkit/verify_capture_extensions.py "$platform" "$app"
+python3 scripts/test_app_icons.py "$app"

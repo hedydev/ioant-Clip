@@ -5,8 +5,8 @@ from read_library import library_bytes
 root = pathlib.Path(__file__).resolve().parents[2]
 cache = pathlib.Path("/Volumes/LunaDrive/DeveloperCache")
 base = cache / "projects/ioant-clip/DerivedData" if cache.is_dir() and os.access(cache, os.W_OK) else root / "DerivedData"
-app = base / "CloudKitCaptureExtensions/SimulatorSidebarSpacing/Build/Products/Debug-iphonesimulator/ioant-Clip-iOS.app"
-prior_lanes = ("SimulatorLinkDetail", "SimulatorMediaFileExport", "SimulatorReaderMediaLinks", "SimulatorLibraryConfirmations", "SimulatorFixedTagFilters", "SimulatorMediaThumbnails", "SimulatorConversationFallback", "SimulatorConversationAttachments", "SimulatorConversationCapture", "SimulatorReaderPreview", "SimulatorSQLite", "SimulatorSyncedPreferences", "SimulatorSharePage", "SimulatorPageLayout")
+app = base / "CloudKitCaptureExtensions/SimulatorBrandIcon/Build/Products/Debug-iphonesimulator/ioant-Clip-iOS.app"
+prior_lanes = ("SimulatorSidebarSpacing", "SimulatorLinkDetail", "SimulatorMediaFileExport", "SimulatorReaderMediaLinks", "SimulatorLibraryConfirmations", "SimulatorFixedTagFilters", "SimulatorMediaThumbnails", "SimulatorConversationFallback", "SimulatorConversationAttachments", "SimulatorConversationCapture", "SimulatorReaderPreview", "SimulatorSQLite", "SimulatorSyncedPreferences", "SimulatorSharePage", "SimulatorPageLayout")
 bundle = "com.ioant.clip.ios"
 udid = "614FDA13-6198-452B-A6B2-94AA5591B30A"
 support = pathlib.Path("Library/Application Support")
@@ -53,6 +53,7 @@ sim("install",udid,str(app),timeout=60)
 installed=container("app")
 data=container("data")
 assert digest(installed)==digest(app)
+assert (installed / "Assets.car").read_bytes() == (app / "Assets.car").read_bytes()
 assert snapshot(data)==saved, "prior app data changed during upgrade"
 assert len(list((installed/"PlugIns").glob("*.appex")))==2
 print("PASS: in-place upgrade preserved prior daily data, checkpoint and review receipts",flush=True)

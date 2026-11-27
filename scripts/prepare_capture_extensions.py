@@ -51,7 +51,9 @@ for platform, suffix in (("macOS","macos"), ("iOS","ios")):
     settings = {"PRODUCT_BUNDLE_IDENTIFIER":"com.ioant.clip."+suffix,"INFOPLIST_FILE":"Config/CloudKitReview-Info.plist","CODE_SIGN_ENTITLEMENTS":"Config/CloudKitExtensions.entitlements","CLIP_CLOUDKIT_CONTAINER":"iCloud.com.ioant.clip","CLIP_CLOUDKIT_SMOKE":"NO","CLIP_CLOUDKIT_UI_REVIEW":"NO","CLIP_CLOUDKIT_DEVELOPMENT":"YES","SWIFT_ACTIVE_COMPILATION_CONDITIONS":"$(inherited) CLIP_CLOUDKIT_REVIEW CLIP_CLOUDKIT_DEVELOPMENT CLIP_CAPTURE_EXTENSIONS"}
     if platform=="macOS": settings["ENABLE_HARDENED_RUNTIME"]="YES"
     else: settings.update({"TARGETED_DEVICE_FAMILY":"1,2","INFOPLIST_KEY_UILaunchScreen_Generation":"YES","INFOPLIST_KEY_UIApplicationSceneManifest_Generation":"YES"})
-    targets[target]={"type":"application","platform":platform,"sources":["App","Sources/ClipCore"],"dependencies":deps,"settings":{"base":settings}}
+    settings["ASSETCATALOG_COMPILER_APPICON_NAME"] = "AppIcon"
+    sources = ["App", "Sources/ClipCore", f"Resources/AppIcons/{platform}.xcassets"]
+    targets[target]={"type":"application","platform":platform,"sources":sources,"dependencies":deps,"settings":{"base":settings}}
 spec={"name":"ioant-Clip","options":{"bundleIdPrefix":"com.ioant","deploymentTarget":{"macOS":"14.0","iOS":"17.0"}},"settings":{"base":{"SWIFT_VERSION":"5.0","GENERATE_INFOPLIST_FILE":"YES","MARKETING_VERSION":"0.1.0","CURRENT_PROJECT_VERSION":"1","INFOPLIST_KEY_CFBundleDisplayName":"ioant-Clip","CODE_SIGN_STYLE":"Automatic","REGISTER_APP_GROUPS":"YES","DEVELOPMENT_TEAM":"64RS366WKG"}},"targets":targets}
 # JSON is valid YAML; place spec at root so paths are relative to the project.
 (root/"GeneratedExtensions"/"project.yml").write_text(json.dumps(spec,indent=2)+"\n")

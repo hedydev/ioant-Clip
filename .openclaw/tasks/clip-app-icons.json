@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "title": "Build and activate the app icon on macOS and iOS",
+  "steps": [
+    {
+      "name": "build_mac",
+      "runtime": "bash",
+      "script": "scripts/cloudkit/build_capture_extensions_mac.sh",
+      "timeoutSeconds": 300
+    },
+    {
+      "name": "build_simulator",
+      "runtime": "bash",
+      "script": "scripts/cloudkit/build_capture_extensions_simulator.sh",
+      "timeoutSeconds": 300
+    },
+    {
+      "name": "activate_mac",
+      "runtime": "bash",
+      "script": "scripts/cloudkit/activate_capture_extensions_mac.sh",
+      "timeoutSeconds": 120
+    },
+    {
+      "name": "activate_simulator",
+      "runtime": "bash",
+      "script": "scripts/cloudkit/activate_capture_extensions_simulator.sh",
+      "timeoutSeconds": 120
+    },
+    {
+      "name": "cloud_status",
+      "runtime": "bash",
+      "script": "scripts/cloudkit/inspect_simulator_cloud_status.sh",
+      "timeoutSeconds": 100
+    },
+    {
+      "name": "verify_ios_release_icon",
+      "runtime": "bash",
+      "script": "scripts/check_ios_release_icon.sh",
+      "timeoutSeconds": 300
+    }
+  ],
+  "artifacts": []
+}

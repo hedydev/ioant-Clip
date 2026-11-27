@@ -65,6 +65,7 @@ for platform in macOS iOS; do
     case "$platform" in macOS) app="$derived/macOS/Build/Products/Debug/ioant-Clip-macOS.app";; iOS) app="$derived/iOS/Build/Products/Debug-iphonesimulator/ioant-Clip-iOS.app";; esac
     /usr/bin/python3 scripts/test_localization.py "$app" || status=1
     /usr/bin/python3 scripts/test_product_identity.py "$app" || status=1
+    /usr/bin/python3 scripts/test_app_icons.py "$app" || status=1
   fi
 done
 exit "$status"

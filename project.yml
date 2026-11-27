@@ -16,17 +16,19 @@ targets:
   ioant-Clip-macOS:
     type: application
     platform: macOS
-    sources: [App, Sources/ClipCore]
+    sources: [App, Sources/ClipCore, Resources/AppIcons/macOS.xcassets]
     settings:
       base:
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         PRODUCT_BUNDLE_IDENTIFIER: com.ioant.clip.macos
         ENABLE_HARDENED_RUNTIME: YES
   ioant-Clip-iOS:
     type: application
     platform: iOS
-    sources: [App, Sources/ClipCore]
+    sources: [App, Sources/ClipCore, Resources/AppIcons/iOS.xcassets]
     settings:
       base:
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         PRODUCT_BUNDLE_IDENTIFIER: com.ioant.clip.ios
         TARGETED_DEVICE_FAMILY: '1,2'
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
