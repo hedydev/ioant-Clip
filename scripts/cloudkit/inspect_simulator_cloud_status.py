@@ -106,7 +106,8 @@ for index, device in enumerate(booted, 1):
         app = pathlib.Path(sim("get_app_container", udid, bundle, "app"))
         data = pathlib.Path(sim("get_app_container", udid, bundle, "data"))
         info = plistlib.loads((app / "Info.plist").read_bytes())
-        active = any(bundle + "." in line and line.split()[0].isdigit() for line in processes)
+        service = re.compile(r"(?:^|[:.\s])" + re.escape(bundle) + r"(?=$|[\s\[]|\.\d)")
+        active = any(line.split() and line.split()[0].isdigit() and service.search(line) for line in processes)
         if bundle == "com.ioant.note.ios" or info.get("ClipCloudKitDevelopment") == "YES":
             lane = DAILY
         elif info.get("ClipCloudKitUIReview") == "YES":
