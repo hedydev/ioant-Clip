@@ -134,7 +134,7 @@ private struct ClipReaderContent: View {
                 case .media(let sections):
                     ClipMediaView(sections: sections, parentSize: sheetParentSize)
                 case .links(let links):
-                    ClipLinksView(links: links)
+                    ClipLinksView(links: links, parentSize: sheetParentSize)
                 }
             } else {
                 ReaderLoadingView()
