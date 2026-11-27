@@ -13,6 +13,7 @@ import SwiftUI
     private let preferences: CloudPreferencesSync?
     private let config: CloudKitReviewConfiguration?
     private let makeTransport: () -> any RevisionTransport
+    private lazy var transport = makeTransport()
     private let cycle = SyncCycle()
     private var schedule = SyncAttemptSchedule()
     init(preferences: CloudPreferencesSync? = nil) {
@@ -40,7 +41,7 @@ import SwiftUI
         pendingAccount = nil
         phase = .checking
         do {
-            let account = try await makeTransport().identity()
+            let account = try await transport.identity()
             try Task.checkCancellation()
             guard account.provider == "icloud", account.namespace == config.namespace else { throw SyncSessionError.accountMismatch }
             pendingAccount = account
@@ -56,7 +57,7 @@ import SwiftUI
     }
     private func confirmEnrollment(account: SyncAccount, store: LibraryStore) async {
         do {
-            let transport = makeTransport()
+            let transport = self.transport
             guard try await transport.identity() == account else { throw SyncSessionError.accountMismatch }
             try Task.checkCancellation()
             try store.enrollSync(account: account, replaceLocalHistory: true)
@@ -81,7 +82,7 @@ import SwiftUI
         }
         phase = .syncing
         do {
-            let transport = makeTransport()
+            let transport = self.transport
             let result = try await cycle.run(library: store, transport: transport, expected: enrollment.account)
             try await preferences?.sync(configuration: config, account: enrollment.account, identity: transport, store: store)
             let completed = Date()

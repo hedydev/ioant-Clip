@@ -6,6 +6,8 @@ import OSLog
     @Published private(set) var listRevision = 0
     @Published private(set) var enrollment: SyncEnrollment?
     @Published private(set) var tagCounts: [String: Int] = [:]
+    @Published private(set) var totalCount = 0
+    @Published private(set) var untaggedCount = 0
     @Published private(set) var syncConflictCount = 0
     var hasConflicts: Bool { syncConflictCount > 0 }
     @Published var error: LibraryIssue?
@@ -14,27 +16,43 @@ import OSLog
     let url: URL
     var library: NoteLibrary { (try? repository?.snapshot()) ?? NoteLibrary() }
     var allTags: [String] { tagCounts.keys.sorted { $0.localizedStandardCompare($1) == .orderedAscending } }
-    var revisionCount: Int { (try? repository?.revisionCount()) ?? 0 }
+    @Published private(set) var revisionCount = 0
     func color(for tag: String) -> TagColor { colors[TagColor.key(tag)] ?? .gray }
-    func note(_ id: UUID?) -> Note? {
-        guard let id else { return nil }
-        return try? repository?.note(id)
-    }
-
     func loadNote(_ id: UUID) async throws -> Note? {
         guard repository != nil else { return nil }
-        return try await Task.detached(priority: .userInitiated) { [url] in
+        return try await databaseWork { [url] in
             try SQLiteNoteRepository.readNote(id, legacyURL: url)
-        }.value
+        }
     }
 
-    func page(query: String, filter: TagFilter, after: SQLiteNoteRepository.Row?) -> [SQLiteNoteRepository.Row] {
-        do { return try repository?.page(query: query, filter: filter, after: after, limit: 40) ?? [] }
-        catch { self.error = LibraryIssue(error); return [] }
+    func loadPage(query: String, filter: TagFilter, after: SQLiteNoteRepository.Row?) async throws -> SQLiteNoteRepository.Page {
+        try await databaseWork { [url] in
+            try SQLiteNoteRepository.readPage(legacyURL: url, query: query, filter: filter, after: after, limit: 40)
+        }
     }
 
-    func count(query: String = "", filter: TagFilter = .all) -> Int {
-        (try? repository?.count(query: query, filter: filter)) ?? 0
+    func loadSyncJournal() async throws -> SyncJournal {
+        try await databaseWork(priority: .utility) { [url] in
+            try SQLiteNoteRepository.readSyncJournal(legacyURL: url)
+        }
+    }
+
+    func matchesFilter(_ filter: TagFilter, note id: UUID) async throws -> Bool {
+        try await databaseWork { [url] in
+            try SQLiteNoteRepository.matchesFilter(filter, note: id, legacyURL: url)
+        }
+    }
+
+    private func databaseWork<Result: Sendable>(priority: TaskPriority = .userInitiated, _ work: @escaping @Sendable () throws -> Result) async throws -> Result {
+        let task = Task.detached(priority: priority) {
+            try Task.checkCancellation()
+            return try work()
+        }
+        return try await withTaskCancellationHandler {
+            try await task.value
+        } onCancel: {
+            task.cancel()
+        }
     }
 
     func requireSyncAccount(_ account: SyncAccount) throws {
@@ -60,18 +78,22 @@ import OSLog
         tagCounts = try database.tagCounts()
         colors = try database.colors()
         syncConflictCount = try database.conflictCount
+        totalCount = try database.count()
+        untaggedCount = try database.count(filter: .untagged)
+        revisionCount = try database.revisionCount()
         listRevision += 1
     }
 
     private func update<T>(_ mutation: (inout NoteLibrary) throws -> T) throws -> T {
         guard let repository else { throw SyncSessionError.persistenceFailed }
-        let previous = try repository.snapshot()
-        var next = previous
-        let result = try mutation(&next)
-        if next != previous {
-            try repository.save(next, previous: previous)
-            try refresh(repository)
+        var changed = false
+        let result = try repository.modify { library in
+            let previous = library
+            let value = try mutation(&library)
+            changed = previous != library
+            return value
         }
+        if changed { try refresh(repository) }
         return result
     }
 
@@ -99,6 +121,15 @@ import OSLog
     func commitRemoteRevisions(_ revisions: [SyncRevision], account: SyncAccount) throws {
         try requireSyncAccount(account)
         try update { try $0.ingestSyncRevisions(revisions) }
+    }
+
+    func prepareSync(remote: [SyncRevision], account: SyncAccount, limits: SyncLimits) async throws -> SyncCycle.Preparation {
+        try requireSyncAccount(account)
+        let prepared = try await databaseWork(priority: .utility) { [url] in
+            try SQLiteNoteRepository.prepareSync(legacyURL: url, remote: remote, account: account, limits: limits)
+        }
+        if prepared.downloaded > 0, let repository { try refresh(repository) }
+        return prepared
     }
 
     func resolveConflict(_ key: SyncKey, revision: UUID) {

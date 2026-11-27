@@ -82,4 +82,44 @@ final class SQLiteNoteRepositoryTests: XCTestCase {
         XCTAssertEqual(usage.audioBytes, 1)
         XCTAssertEqual(try database.note(note.id), note)
     }
+
+    func testBackgroundPagesAndSyncKeepLocalChanges() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let url = directory.appendingPathComponent("notes.json")
+        let database = try SQLiteNoteRepository(legacyURL: url)
+        let account = SyncAccount(provider: "icloud", namespace: "test", accountID: "example")
+        let id = try database.modify { library in
+            let id = try XCTUnwrap(library.add(NotePart(text: "First local clip")))
+            try library.enrollSync(account: account, replaceLocalHistory: true)
+            return id
+        }
+        let localHistory = try XCTUnwrap(database.snapshot().syncJournal)
+        let unchanged = try SQLiteNoteRepository.prepareSync(legacyURL: url, remote: [], account: account, limits: .review)
+        XCTAssertEqual(unchanged.downloaded, 0)
+        XCTAssertEqual(unchanged.plan.outgoing.count, 1)
+
+        let remote = Note(title: "From iCloud", parts: [.init(text: "Second clip")])
+        let record = SyncRevision(key: .note(remote.id), parents: [], value: .note(remote))
+        try database.modify { library in
+            let before = library
+            library.update(id, title: "Edited locally", tags: ["Working"])
+            try library.recordLocalChanges(from: before)
+        }
+        let prepared = try SQLiteNoteRepository.prepareSync(legacyURL: url, remote: [record], account: account, limits: .review)
+        XCTAssertEqual(prepared.downloaded, 1)
+        XCTAssertEqual(prepared.plan.outgoing.count, localHistory.revisions.count + 1)
+        XCTAssertEqual(try database.note(id)?.title, "Edited locally")
+        XCTAssertEqual(try database.note(remote.id), remote)
+
+        let first = try SQLiteNoteRepository.readPage(legacyURL: url, query: "", filter: .all, after: nil, limit: 1)
+        XCTAssertEqual(first.total, 2)
+        let next = try SQLiteNoteRepository.readPage(legacyURL: url, query: "", filter: .all, after: first.rows.first, limit: 1)
+        XCTAssertNil(next.total)
+        XCTAssertEqual(Set((first.rows + next.rows).map(\.id)), [id, remote.id])
+        XCTAssertTrue(try SQLiteNoteRepository.matchesFilter(.tag("Working"), note: id, legacyURL: url))
+
+        try database.modify { try $0.setSyncPaused(true, account: account) }
+        XCTAssertThrowsError(try SQLiteNoteRepository.prepareSync(legacyURL: url, remote: [record], account: account, limits: .review))
+    }
 }

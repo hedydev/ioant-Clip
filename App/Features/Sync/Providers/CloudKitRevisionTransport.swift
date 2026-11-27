@@ -60,7 +60,9 @@ actor CloudKitRevisionTransport: RevisionTransport {
     }
     private func loadCheckpoint(expected: SyncAccount) throws -> RemoteRevisionCheckpoint? {
         if let checkpoint {
-            try checkpoint.validate(account: expected, zone: zone.zoneID.zoneName)
+            guard checkpoint.account == expected, checkpoint.zone == zone.zoneID.zoneName else {
+                throw RemoteRevisionCheckpoint.Failure.scopeMismatch
+            }
             return checkpoint
         }
         guard let url = checkpointURL, FileManager.default.fileExists(atPath: url.path) else { return nil }
@@ -68,6 +70,7 @@ actor CloudKitRevisionTransport: RevisionTransport {
         guard size <= 384 * 1024 * 1024 else { throw SyncSessionError.historyLimit }
         let stored = try JSONDecoder().decode(RemoteRevisionCheckpoint.self, from: Data(contentsOf: url))
         try stored.validate(account: expected, zone: zone.zoneID.zoneName)
+        checkpoint = stored
         return stored
     }
     private func persist(_ next: RemoteRevisionCheckpoint) throws {
@@ -115,7 +118,7 @@ actor CloudKitRevisionTransport: RevisionTransport {
         let archive = try NSKeyedArchiver.archivedData(withRootObject: scanned.1, requiringSecureCoding: true)
         let next = RemoteRevisionCheckpoint(account: expected, zone: zone.zoneID.zoneName, cursor: archive, journal: scanned.0)
         try next.validate(account: expected, zone: zone.zoneID.zoneName)
-        try persist(next)
+        if next != prior { try persist(next) }
         lastRead = ReadMetrics(usedCursor: usedCursor, downloadedRecords: scanned.2, downloadedBytes: scanned.3)
         return Array(scanned.0.revisions.values)
     }
@@ -155,6 +158,7 @@ actor CloudKitRevisionTransport: RevisionTransport {
             if !page.moreComing { break }
         }
         guard let token else { throw ProviderError.invalidRecord }
+        guard !pending.isEmpty else { return (initial, token, downloaded, receivedBytes) }
         var merged = initial
         try merged.ingest(Array(pending.values))
         try limits.validate(Array(merged.revisions.values))

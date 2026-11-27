@@ -4,6 +4,7 @@ struct SyncSettingsView: View {
     @EnvironmentObject private var store: LibraryStore
     @EnvironmentObject private var language: LanguagePreferences
     @State private var pending: SyncRevision?
+    @State private var conflictJournal: SyncJournal?
     var body: some View {
         ModalScrollPage {
             LocalStorageSection()
@@ -21,7 +22,7 @@ struct SyncSettingsView: View {
                         ModalDescription(key: "sync.usage.remoteDetails")
                     } label: { Text(verbatim: language.localized("sync.history")) }
                 }
-                if store.hasConflicts, let journal = store.library.syncJournal {
+                if store.hasConflicts, let journal = conflictJournal {
                     ForEach(Array(journal.conflictKeys).sorted(by: { String(describing: $0) < String(describing: $1) }), id: \.self) { key in
                         ModalSection(title: "sync.conflict.versions") {
                             ForEach(journal.heads(for: key), id: \.id) { revision in
@@ -42,6 +43,20 @@ struct SyncSettingsView: View {
                         }
                     }
                 }
+            }
+        }
+        .task(id: store.listRevision) {
+            guard store.hasConflicts else {
+                conflictJournal = nil
+                return
+            }
+            do {
+                let journal = try await store.loadSyncJournal()
+                guard !Task.isCancelled else { return }
+                conflictJournal = journal
+            } catch {
+                guard !Task.isCancelled else { return }
+                store.error = LibraryIssue(error)
             }
         }
         .confirmationDialog(Text(verbatim: language.localized("sync.conflict.confirm")), isPresented: Binding(get: { pending != nil }, set: { if !$0 { pending = nil } }), titleVisibility: .visible) {

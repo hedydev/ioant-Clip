@@ -7,11 +7,21 @@ import Foundation
     var syncConflictCount: Int { get }
     func requireSyncAccount(_ account: SyncAccount) throws
     func commitRemoteRevisions(_ revisions: [SyncRevision], account: SyncAccount) throws
+    func prepareSync(remote: [SyncRevision], account: SyncAccount, limits: SyncLimits) async throws -> SyncCycle.Preparation
 }
 
 public extension SyncLibraryAccess {
     var syncConflictCount: Int { syncSnapshot.syncJournal?.conflictKeys.count ?? 0 }
     func requireSyncAccount(_ account: SyncAccount) throws { try syncSnapshot.requireSyncAccount(account) }
+
+    func prepareSync(remote: [SyncRevision], account: SyncAccount, limits: SyncLimits) async throws -> SyncCycle.Preparation {
+        let current = syncSnapshot
+        try current.requireSyncAccount(account)
+        guard let local = current.syncJournal else { throw SyncSessionError.persistenceFailed }
+        let prepared = try SyncCycle.prepare(local: local, remote: remote, limits: limits)
+        try commitRemoteRevisions(remote, account: account)
+        return prepared
+    }
 }
 
 @MainActor public final class SyncCycle {
@@ -21,6 +31,25 @@ public extension SyncLibraryAccess {
         public let conflicts: Int
         public let confirmedRevisionCount: Int
     }
+    public struct Preparation: Sendable {
+        let plan: SyncExchange.Plan
+        public let downloaded: Int
+        let confirmedRevisionCount: Int
+    }
+
+    nonisolated static func prepare(local: SyncJournal, remote: [SyncRevision], limits: SyncLimits) throws -> Preparation {
+        // Validate the remote graph independently before merging or uploading.
+        try limits.validate(remote)
+        var remoteJournal = SyncJournal()
+        try remoteJournal.ingest(remote)
+        var combined = local
+        try combined.ingest(remote)
+        try limits.validate(Array(combined.revisions.values))
+        let plan = try SyncExchange.plan(local: local, remote: remote)
+        let downloaded = remoteJournal.revisions.keys.filter { local.revisions[$0] == nil }.count
+        return Preparation(plan: plan, downloaded: downloaded, confirmedRevisionCount: combined.revisions.count)
+    }
+
     private var running = false
     public init() {}
     public func run(library: any SyncLibraryAccess, transport: any RevisionTransport,
@@ -36,26 +65,13 @@ public extension SyncLibraryAccess {
         try Task.checkCancellation()
         guard try await transport.identity() == expected else { throw SyncSessionError.accountMismatch }
         try Task.checkCancellation()
-        let current = library.syncSnapshot
-        try current.requireSyncAccount(expected)
-        guard let local = current.syncJournal else { throw SyncSessionError.persistenceFailed }
-        // Validate remote independently; never repair a corrupt cloud graph by
-        // blindly pushing local records. Bound the combined set before commit.
-        try limits.validate(remote)
-        var remoteJournal = SyncJournal()
-        try remoteJournal.ingest(remote)
-        var combined = local
-        try combined.ingest(remote)
-        try limits.validate(Array(combined.revisions.values))
-        let plan = try SyncExchange.plan(local: local, remote: remote)
-        let downloaded = Set(remote.map(\.id)).subtracting(local.revisions.keys).count
-        // Synchronous main actor transaction. If disk write fails, no upload.
-        try library.commitRemoteRevisions(remote, account: expected)
+        let prepared = try await library.prepareSync(remote: remote, account: expected, limits: limits)
         try library.requireSyncAccount(expected)
         try Task.checkCancellation()
-        try await SyncExchange.send(plan, transport: transport, expected: expected)
+        try await SyncExchange.send(prepared.plan, transport: transport, expected: expected)
         try Task.checkCancellation()
         try library.requireSyncAccount(expected)
-        return Result(downloaded: downloaded, uploaded: plan.outgoing.count, conflicts: library.syncConflictCount, confirmedRevisionCount: combined.revisions.count)
+        return Result(downloaded: prepared.downloaded, uploaded: prepared.plan.outgoing.count,
+                      conflicts: library.syncConflictCount, confirmedRevisionCount: prepared.confirmedRevisionCount)
     }
 }

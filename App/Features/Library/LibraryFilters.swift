@@ -119,8 +119,11 @@ struct LibraryFilters: View {
     }
 
     private func count(_ filter: TagFilter) -> Int {
-        if case .tag(let name) = filter { return store.tagCounts[name] ?? 0 }
-        return store.count(filter: filter)
+        switch filter {
+        case .all: store.totalCount
+        case .untagged: store.untaggedCount
+        case .tag(let name): store.tagCounts[name] ?? 0
+        }
     }
 
     private func title(_ filter: TagFilter) -> Text {

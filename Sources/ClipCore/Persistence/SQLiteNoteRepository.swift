@@ -3,7 +3,7 @@ import SQLite3
 
 /// Each connection is confined to its caller. Note bodies are loaded on request.
 public final class SQLiteNoteRepository {
-    public struct Row: Identifiable, Equatable {
+    public struct Row: Identifiable, Equatable, Sendable {
         public let id: UUID
         public let title: String
         public let createdAt: Date
@@ -57,6 +57,28 @@ public final class SQLiteNoteRepository {
 
     private init(readOnlyAt url: URL) throws {
         db = try Self.open(url, flags: SQLITE_OPEN_READONLY | SQLITE_OPEN_FULLMUTEX)
+    }
+
+    public struct Page: Sendable {
+        public let rows: [Row]
+        public let total: Int?
+    }
+
+    public static func readPage(legacyURL: URL, query: String, filter: TagFilter, after: Row?, limit: Int) throws -> Page {
+        let reader = try Self(readOnlyAt: databaseURL(for: legacyURL))
+        return try reader.transaction(begin: "BEGIN") {
+            let count: Int? = after == nil ? try reader.count(query: query, filter: filter) : nil
+            try Task.checkCancellation()
+            let rows = try reader.page(query: query, filter: filter, after: after, limit: limit)
+            return Page(rows: rows, total: count)
+        }
+    }
+
+    public static func matchesFilter(_ filter: TagFilter, note id: UUID, legacyURL: URL) throws -> Bool {
+        let reader = try Self(readOnlyAt: databaseURL(for: legacyURL))
+        let (condition, args) = reader.predicate("", filter)
+        return try reader.query("SELECT 1 FROM notes n" + condition + " AND n.id = ?",
+                                args + [.text(id.uuidString)]) { _ in true }.first ?? false
     }
 
     public static func readNote(_ id: UUID, legacyURL: URL) throws -> Note? {
@@ -157,16 +179,73 @@ public final class SQLiteNoteRepository {
     public func snapshot() throws -> NoteLibrary {
         let ids = try query("SELECT id FROM notes ORDER BY created DESC, id ASC") { try uuid($0, 0) }
         let notes = try ids.compactMap(note)
+        return NoteLibrary(storedNotes: notes, colors: try colors(), journal: try readJournal(), enrollment: try enrollment)
+    }
+
+    public static func readSyncJournal(legacyURL: URL) throws -> SyncJournal {
+        let reader = try Self(readOnlyAt: databaseURL(for: legacyURL))
+        return try reader.readJournal()
+    }
+
+    private func readJournal() throws -> SyncJournal {
         let revisions = try query("SELECT payload FROM revisions") {
-            try decoder.decode(SyncRevision.self, from: blob($0, 0))
+            try Task.checkCancellation()
+            return try decoder.decode(SyncRevision.self, from: blob($0, 0))
         }
         var journal = SyncJournal()
         try journal.ingest(revisions)
-        return NoteLibrary(storedNotes: notes, colors: try colors(), journal: journal, enrollment: try enrollment)
+        return journal
+    }
+
+    public static func prepareSync(legacyURL: URL, remote: [SyncRevision], account: SyncAccount,
+                                   limits: SyncLimits) throws -> SyncCycle.Preparation {
+        let url = databaseURL(for: legacyURL)
+        let reader = try Self(readOnlyAt: url)
+        let journal = try reader.transaction(begin: "BEGIN") {
+            guard let enrollment = try reader.enrollment else { throw SyncSessionError.notEnrolled }
+            guard enrollment.account == account else { throw SyncSessionError.accountMismatch }
+            guard !enrollment.isPaused else { throw SyncSessionError.paused }
+            try Task.checkCancellation()
+            return try reader.readJournal()
+        }
+        let prepared = try SyncCycle.prepare(local: journal, remote: remote, limits: limits)
+        guard prepared.downloaded > 0 else { return prepared }
+
+        let writer = try Self(syncWriterAt: url)
+        return try writer.modify { library in
+            // Re-read under the write lock so an intervening local edit or pause survives.
+            try library.requireSyncAccount(account)
+            guard let journal = library.syncJournal else { throw SyncSessionError.persistenceFailed }
+            let latest = try SyncCycle.prepare(local: journal, remote: remote, limits: limits)
+            if latest.downloaded > 0 {
+                try Task.checkCancellation()
+                try library.ingestSyncRevisions(remote)
+            }
+            return latest
+        }
+    }
+
+    private init(syncWriterAt url: URL) throws {
+        db = try Self.open(url, flags: SQLITE_OPEN_READWRITE | SQLITE_OPEN_FULLMUTEX)
+        try execute("PRAGMA foreign_keys = ON")
     }
 
     public func revisionCount() throws -> Int {
         try query("SELECT COUNT(*) FROM revisions") { Int(sqlite3_column_int64($0, 0)) }.first ?? 0
+    }
+
+    @discardableResult
+    public func modify<Value>(_ mutation: (inout NoteLibrary) throws -> Value) throws -> Value {
+        try transaction {
+            let previous = try snapshot()
+            var next = previous
+            let result = try mutation(&next)
+            try Task.checkCancellation()
+            if next != previous {
+                try write(next, previous: previous)
+            }
+            return result
+        }
     }
 
     public func save(_ library: NoteLibrary, previous: NoteLibrary) throws {
@@ -267,10 +346,16 @@ public final class SQLiteNoteRepository {
 
     private func failure() -> Error { Error(errorDescription: String(cString: sqlite3_errmsg(db))) }
 
-    private func transaction(_ block: () throws -> Void) throws {
-        try execute("BEGIN IMMEDIATE")
-        do { try block(); try execute("COMMIT") }
-        catch { try? execute("ROLLBACK"); throw error }
+    private func transaction<Value>(begin: String = "BEGIN IMMEDIATE", _ block: () throws -> Value) throws -> Value {
+        try execute(begin)
+        do {
+            let result = try block()
+            try execute("COMMIT")
+            return result
+        } catch {
+            try? execute("ROLLBACK")
+            throw error
+        }
     }
 
     private func execute(_ sql: String, _ args: [Value] = []) throws {

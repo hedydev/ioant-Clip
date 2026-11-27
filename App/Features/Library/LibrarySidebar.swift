@@ -27,6 +27,7 @@ struct LibrarySidebar: View {
     @State private var rows: [SQLiteNoteRepository.Row] = []
     @State private var total = 0
     @State private var loadedRequest: PageRequest?
+    @State private var moreTask: Task<Void, Never>?
     private struct PageRequest: Equatable {
         let revision: Int
         let query: String
@@ -35,16 +36,47 @@ struct LibrarySidebar: View {
     private var request: PageRequest {
         PageRequest(revision: store.listRevision, query: query, tagFilter: tagFilter)
     }
-    private func reload() {
-        let key = request
-        total = store.count(query: key.query, filter: key.tagFilter)
-        rows = store.page(query: key.query, filter: key.tagFilter, after: nil)
-        loadedRequest = key
+    private func reload(_ key: PageRequest) async {
+        cancelPagination()
+        do {
+            if key.query != loadedRequest?.query && !key.query.isEmpty {
+                try await Task.sleep(for: .milliseconds(160))
+            }
+            let page = try await store.loadPage(query: key.query, filter: key.tagFilter, after: nil)
+            guard !Task.isCancelled, request == key else { return }
+            total = page.total ?? page.rows.count
+            rows = page.rows
+            loadedRequest = key
+        } catch {
+            guard !Task.isCancelled, request == key else { return }
+            store.error = LibraryIssue(error)
+            rows = []
+            total = 0
+            loadedRequest = key
+        }
     }
+
+    private func cancelPagination() {
+        moreTask?.cancel()
+        moreTask = nil
+    }
+
     private func loadMore(after id: UUID) {
         let key = request
-        guard loadedRequest == key, rows.count < total, let cursor = rows.last, cursor.id == id else { return }
-        rows += store.page(query: key.query, filter: key.tagFilter, after: cursor)
+        guard moreTask == nil, loadedRequest == key, rows.count < total,
+              let cursor = rows.last, cursor.id == id else { return }
+        moreTask = Task {
+            defer { if !Task.isCancelled { moreTask = nil } }
+            do {
+                let page = try await store.loadPage(query: key.query, filter: key.tagFilter, after: cursor)
+                guard !Task.isCancelled, request == key, rows.last?.id == cursor.id else { return }
+                if page.rows.isEmpty { total = rows.count }
+                else { rows += page.rows }
+            } catch {
+                guard !Task.isCancelled, request == key else { return }
+                store.error = LibraryIssue(error)
+            }
+        }
     }
     private var clipRowInsets: EdgeInsets? {
         #if os(macOS)
@@ -61,7 +93,9 @@ struct LibrarySidebar: View {
             Divider()
             collectionHeader
             List {
-                if rows.isEmpty {
+                if rows.isEmpty && loadedRequest != request {
+                    ProgressView().controlSize(.small)
+                } else if rows.isEmpty {
                     Label(query.isEmpty ? LocalizedStringKey("library.noClips") : LocalizedStringKey("library.noResults"), systemImage: query.isEmpty ? "tray" : "magnifyingglass")
                         .font(.subheadline).foregroundStyle(.secondary)
                         .padding(.vertical, LayoutMetrics.small)
@@ -82,7 +116,8 @@ struct LibrarySidebar: View {
             .contentMargins(.top, 0, for: .scrollContent)
             .accessibilityIdentifier("clip-list")
         }
-        .onChange(of: request, initial: true) { _, _ in reload() }
+        .task(id: request) { [key = request] in await reload(key) }
+        .onDisappear { cancelPagination() }
         .navigationTitle(ClipPreferencesScope.windowTitle)
         .searchable(text: $query, prompt: Text("library.search"))
         .autocorrectionDisabled()
@@ -151,6 +186,16 @@ struct LibrarySidebar: View {
     private func applyFilter(_ filter: TagFilter) {
         tagFilter = filter
         checked.removeAll()
-        if let note = store.note(selected), !filter.includes(note) { selected = nil }
+        guard filter != .all, let id = selected else { return }
+        Task {
+            do {
+                let matches = try await store.matchesFilter(filter, note: id)
+                guard !matches, selected == id, tagFilter == filter else { return }
+                selected = nil
+            } catch {
+                guard !Task.isCancelled, selected == id, tagFilter == filter else { return }
+                store.error = LibraryIssue(error)
+            }
+        }
     }
 }
