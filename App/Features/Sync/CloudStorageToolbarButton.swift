@@ -109,21 +109,3 @@ struct CloudStorageToolbarButton: View {
         #endif
     }
 }
-struct CloudStorageStatusRow: View {
-    @EnvironmentObject private var store: LibraryStore
-    @EnvironmentObject private var language: LanguagePreferences
-    @EnvironmentObject private var controller: CloudSyncController
-    var body: some View {
-        let status = controller.presentation(for: store)
-        HStack(spacing: LayoutMetrics.medium) {
-            CloudStorageSymbol(status: status)
-            VStack(alignment: .leading, spacing: 4) {
-                status.provider.title(language: language).font(.headline)
-                Text(verbatim: language.localized(status.state.title)).font(.caption).foregroundStyle(.secondary)
-            }
-            Spacer(minLength: 0)
-        }
-        .accessibilityElement(children: .combine)
-        .accessibilityIdentifier("clip-cloud-storage-status")
-    }
-}

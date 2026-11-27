@@ -1,19 +1,8 @@
 import Foundation
 
-struct StorageUsage: Sendable {
-    let localBytes: Int64?
-    let estimatedSyncBytes: Int64?
-
-    static func read(libraryURL: URL, account: SyncAccount?, zone: String) throws -> Self {
-        let localBytes = try? diskBytes(in: libraryURL.deletingLastPathComponent())
-        try Task.checkCancellation()
-        let estimatedSyncBytes = account.flatMap { account in
-            try? checkpointBytes(libraryURL: libraryURL, account: account, zone: zone)
-        }
-        return Self(localBytes: localBytes, estimatedSyncBytes: estimatedSyncBytes)
-    }
-
-    private static func diskBytes(in directory: URL) throws -> Int64 {
+enum StorageUsage {
+    static func localBytes(libraryURL: URL) throws -> Int64 {
+        let directory = libraryURL.deletingLastPathComponent()
         let keys: Set<URLResourceKey> = [.isRegularFileKey, .isSymbolicLinkKey,
                                          .totalFileAllocatedSizeKey, .fileAllocatedSizeKey, .fileSizeKey]
         var readError: Error?
@@ -43,7 +32,7 @@ struct StorageUsage: Sendable {
         let zone: String
     }
 
-    private static func checkpointBytes(libraryURL: URL, account: SyncAccount, zone: String) throws -> Int64? {
+    static func syncedBytes(libraryURL: URL, account: SyncAccount, zone: String) throws -> Int64? {
         let url = CloudKitReviewConfiguration.checkpointURL(libraryURL: libraryURL)
         let data = try Data(contentsOf: url, options: .mappedIfSafe)
         let scope = try JSONDecoder().decode(CheckpointScope.self, from: data)

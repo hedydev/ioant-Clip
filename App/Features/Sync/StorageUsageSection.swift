@@ -1,66 +1,51 @@
 import SwiftUI
 
-struct StorageUsageSection: View {
+struct LocalStorageSection: View {
     @EnvironmentObject private var store: LibraryStore
     @EnvironmentObject private var language: LanguagePreferences
-    @EnvironmentObject private var controller: CloudSyncController
-    @State private var usage: StorageUsage?
     @State private var expanded = false
 
-    private struct Refresh: Equatable {
-        let libraryRevision: Int
-        let lastSync: Date?
-    }
-
     var body: some View {
-        ModalSection(title: "sync.usage.title") {
-            LabeledContent {
-                if let usage {
-                    size(usage.localBytes)
-                } else {
-                    ProgressView().controlSize(.small)
-                }
-            } label: { title("sync.usage.local") }
-            LabeledContent {
-                if store.enrollment == nil {
-                    title("sync.disconnected").foregroundStyle(.secondary)
-                } else {
-                    size(usage?.estimatedSyncBytes)
-                }
-            } label: { title("sync.usage.remote") }
-
+        let url = store.url
+        ModalSection(title: "sync.storage.local") {
+            StorageUsageRow(label: "sync.usage.local", revision: store.listRevision) {
+                try StorageUsage.localBytes(libraryURL: url)
+            }
             DisclosureGroup(isExpanded: $expanded) {
                 if expanded {
-                    StorageContentUsageRows(libraryURL: store.url, revision: store.listRevision)
+                    StorageContentUsageRows(libraryURL: url, revision: store.listRevision)
                     ModalDescription(key: "sync.usage.explanation")
-                    if store.enrollment != nil {
-                        ModalDescription(key: "sync.usage.remoteDetails")
-                    }
-                    Link(destination: URL(string: "https://support.apple.com/108922")!) {
-                        title("sync.usage.help")
-                    }
                 }
-            } label: { title("sync.usage.details") }
+            } label: { Text(verbatim: language.localized("sync.usage.details")) }
         }
-        .task(id: Refresh(libraryRevision: store.listRevision, lastSync: controller.lastSuccess)) {
-            let url = store.url
-            let account = store.enrollment?.account
-            let zone = CloudKitReviewConfiguration.zoneName
-            let result = await storageRead { try StorageUsage.read(libraryURL: url, account: account, zone: zone) }
+    }
+}
+
+struct StorageUsageRow<Revision: Equatable>: View {
+    @EnvironmentObject private var language: LanguagePreferences
+    @State private var bytes: Int64?
+    @State private var loading = true
+    let label: String
+    let revision: Revision
+    let read: @Sendable () throws -> Int64?
+
+    var body: some View {
+        LabeledContent {
+            if loading {
+                ProgressView().controlSize(.small)
+            } else if let bytes {
+                Text(bytes, format: .byteCount(style: .file)).monospacedDigit()
+            } else {
+                Text(verbatim: language.localized("sync.usage.unavailable")).foregroundStyle(.secondary)
+            }
+        } label: {
+            Text(verbatim: language.localized(label))
+        }
+        .task(id: revision) {
+            let result = await storageRead(read) ?? nil
             guard !Task.isCancelled else { return }
-            usage = result ?? StorageUsage(localBytes: nil, estimatedSyncBytes: nil)
-        }
-    }
-
-    private func title(_ key: String) -> Text {
-        Text(verbatim: language.localized(key))
-    }
-
-    @ViewBuilder private func size(_ bytes: Int64?) -> some View {
-        if let bytes {
-            Text(bytes, format: .byteCount(style: .file)).monospacedDigit()
-        } else {
-            title("sync.usage.unavailable").foregroundStyle(.secondary)
+            bytes = result
+            loading = false
         }
     }
 }

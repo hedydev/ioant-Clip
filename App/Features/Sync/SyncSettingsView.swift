@@ -4,25 +4,24 @@ struct SyncSettingsView: View {
     @EnvironmentObject private var store: LibraryStore
     @EnvironmentObject private var language: LanguagePreferences
     @State private var pending: SyncRevision?
-    private var journal: SyncJournal? { store.library.syncJournal }
     var body: some View {
         ModalScrollPage {
-                ModalSection(title: "sync.storage") {
-                    CloudStorageStatusRow()
-                    ModalDescription(key: store.enrollment == nil ? "sync.local.description" : "sync.bound.description")
+            LocalStorageSection()
+            ModalSection(title: "sync.icloud") {
+                CloudKitSettingsSection()
+                if store.enrollment != nil {
+                    DisclosureGroup {
+                        LabeledContent {
+                            Text(store.revisionCount, format: .number)
+                        } label: { Text(verbatim: language.localized("sync.revisions")) }
+                        LabeledContent {
+                            Text(store.syncConflictCount, format: .number)
+                        } label: { Text(verbatim: language.localized("sync.conflicts")) }
+                        ModalDescription(key: "sync.history.cloudDescription")
+                        ModalDescription(key: "sync.usage.remoteDetails")
+                    } label: { Text(verbatim: language.localized("sync.history")) }
                 }
-                StorageUsageSection()
-                ModalSection(title: "sync.providers") {
-                    CloudKitSettingsSection()
-                    Divider()
-                    provider("Google Drive", icon: "externaldrive", status: "sync.google.required")
-                }
-                ModalSection(title: "sync.history") {
-                    LabeledContent { Text(journal?.revisions.count ?? 0, format: .number) } label: { Text(verbatim: language.localized("sync.revisions")) }
-                    LabeledContent { Text(journal?.conflictKeys.count ?? 0, format: .number) } label: { Text(verbatim: language.localized("sync.conflicts")) }
-                    ModalDescription(key: store.enrollment == nil ? "sync.history.description" : "sync.history.cloudDescription")
-                }
-                if let journal {
+                if store.hasConflicts, let journal = store.library.syncJournal {
                     ForEach(Array(journal.conflictKeys).sorted(by: { String(describing: $0) < String(describing: $1) }), id: \.self) { key in
                         ModalSection(title: "sync.conflict.versions") {
                             ForEach(journal.heads(for: key), id: \.id) { revision in
@@ -44,35 +43,13 @@ struct SyncSettingsView: View {
                     }
                 }
             }
-            .navigationTitle(Text(verbatim: language.localized("sync.title")))
-            .confirmationDialog(Text(verbatim: language.localized("sync.conflict.confirm")), isPresented: Binding(get: { pending != nil }, set: { if !$0 { pending = nil } }), titleVisibility: .visible) {
-                Button {
-                    if let revision = pending { store.resolveConflict(revision.key, revision: revision.id) }
-                    pending = nil
-                } label: { Text(verbatim: language.localized("sync.conflict.keepSelected")) }
-                Button(role: .cancel) { pending = nil } label: { Text(verbatim: language.localized("common.cancel")) }
-            }
-    }
-    private func provider(_ name: String, icon: String, status: String) -> some View {
-        ViewThatFits(in: .horizontal) {
-            HStack {
-                providerDetails(name, icon: icon, status: status)
-                Spacer(minLength: LayoutMetrics.small)
-                Text(verbatim: language.localized("sync.disconnected")).font(.caption).foregroundStyle(.secondary)
-            }
-            VStack(alignment: .leading, spacing: LayoutMetrics.small) {
-                providerDetails(name, icon: icon, status: status)
-                Text(verbatim: language.localized("sync.disconnected")).font(.caption).foregroundStyle(.secondary)
-            }
-        }.padding(.vertical, 4)
-    }
-    private func providerDetails(_ name: String, icon: String, status: String) -> some View {
-        HStack(alignment: .top) {
-            Image(systemName: icon).font(.title2).foregroundStyle(.secondary)
-            VStack(alignment: .leading, spacing: 4) {
-                Text(name).font(.headline)
-                Text(verbatim: language.localized(status)).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-            }
+        }
+        .confirmationDialog(Text(verbatim: language.localized("sync.conflict.confirm")), isPresented: Binding(get: { pending != nil }, set: { if !$0 { pending = nil } }), titleVisibility: .visible) {
+            Button {
+                if let revision = pending { store.resolveConflict(revision.key, revision: revision.id) }
+                pending = nil
+            } label: { Text(verbatim: language.localized("sync.conflict.keepSelected")) }
+            Button(role: .cancel) { pending = nil } label: { Text(verbatim: language.localized("common.cancel")) }
         }
     }
 }

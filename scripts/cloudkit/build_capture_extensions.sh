@@ -21,7 +21,7 @@ scheme="ioant-Clip-$platform"
 case "$platform" in
   macOS) dest="platform=macOS"; product="Debug/ioant-Clip-macOS.app";;
   iOS) dest="generic/platform=iOS"; product="Debug-iphoneos/ioant-Clip-iOS.app";;
-  simulator) lane=SimulatorStorageUsage; scheme=ioant-Clip-iOS; dest="generic/platform=iOS Simulator"; product="Debug-iphonesimulator/ioant-Clip-iOS.app";;
+  simulator) lane=SimulatorStorageSections; scheme=ioant-Clip-iOS; dest="generic/platform=iOS Simulator"; product="Debug-iphonesimulator/ioant-Clip-iOS.app";;
   *) exit 2;;
 esac
 if [ "$platform" = simulator ]; then

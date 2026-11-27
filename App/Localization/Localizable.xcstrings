@@ -1,6 +1,76 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "sync.storage.local": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Local storage"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "本地存储"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "本機儲存"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ローカルストレージ"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "로컬 저장 공간"
+          }
+        }
+      }
+    },
+    "sync.icloud": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iCloud"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iCloud"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iCloud"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iCloud"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iCloud"
+          }
+        }
+      }
+    },
     "sync.usage.title": {
       "extractionState": "manual",
       "localizations": {
@@ -42,31 +112,31 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Local library on this device"
+            "value": "Space used"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "本机资料库占用"
+            "value": "已用空间"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "本機資料庫用量"
+            "value": "已用空間"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "このデバイスのライブラリ"
+            "value": "使用済み容量"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "이 기기의 보관함"
+            "value": "사용 중인 공간"
           }
         }
       }
@@ -3017,31 +3087,31 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Cloud sync"
+            "value": "Storage"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "云同步"
+            "value": "存储"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "雲端同步"
+            "value": "儲存空間"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "クラウド同期"
+            "value": "ストレージ"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "클라우드 동기화"
+            "value": "저장 공간"
           }
         }
       }
@@ -3262,31 +3332,31 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Local sync history"
+            "value": "Sync history"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "本地同步记录"
+            "value": "同步历史"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "本機同步記錄"
+            "value": "同步記錄"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "端末内の同期履歴"
+            "value": "同期履歴"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "로컬 동기화 기록"
+            "value": "동기화 기록"
           }
         }
       }
